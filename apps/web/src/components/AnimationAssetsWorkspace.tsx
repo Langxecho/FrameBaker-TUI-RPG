@@ -244,6 +244,14 @@ export function SkeletonEditor({ skeleton, previewBinding, busy, onSave }: { ske
 
 type BindingTransformTool = "translate" | "rotate" | "scale" | "pivot" | "warp";
 
+export interface CharacterPreviewSocketMarker {
+  id: string;
+  boneId: string;
+  rest: CharacterBinding["attachments"][number]["rest"];
+  label: string;
+  selected?: boolean;
+}
+
 interface CharacterPreviewProps {
   binding: CharacterBinding;
   skeleton: Skeleton;
@@ -253,8 +261,10 @@ interface CharacterPreviewProps {
   selectedBoneId?: string;
   showSkeleton?: boolean;
   transformTool?: BindingTransformTool;
+  socketMarkers?: CharacterPreviewSocketMarker[];
   onSelectAttachment?: (id: string) => void;
   onSelectBone?: (id: string) => void;
+  onSelectSocket?: (id: string) => void;
   onTransformAttachment?: (id: string, patch: Partial<CharacterBinding["attachments"][number]>) => void;
   /** 动作编辑模式：拖拽/检查器产生部件偏移关键帧（att: 轨道）而非修改绑定 rest；tx/ty 为 rest 后局部像素、rz 为角度制，sx/sy 为缩放倍率，bend 为 deform 弯曲增量的绝对值，warp 为自描述轨道值 [列数, 行数, dx0, dy0, …]。 */
   onTransformAttachmentOffset?: (id: string, patch: { tx?: number; ty?: number; rz?: number; sx?: number; sy?: number; bend?: number; warp?: number[] }) => void;
@@ -316,7 +326,7 @@ function effectiveWarp(attachment: CharacterBinding["attachments"][number], offs
   return resolved && resolved.points.some((value) => Math.abs(value) > 1e-9) ? resolved : undefined;
 }
 
-export function CharacterPreview({ binding, skeleton, clip, time, selectedAttachmentId, selectedBoneId, showSkeleton = false, transformTool = "translate", onSelectAttachment, onSelectBone, onTransformAttachment, onTransformAttachmentOffset, onBeginTransform, onEndTransform }: CharacterPreviewProps) {
+export function CharacterPreview({ binding, skeleton, clip, time, selectedAttachmentId, selectedBoneId, showSkeleton = false, transformTool = "translate", socketMarkers, onSelectAttachment, onSelectBone, onSelectSocket, onTransformAttachment, onTransformAttachmentOffset, onBeginTransform, onEndTransform }: CharacterPreviewProps) {
   const t = useT();
   const filterPrefix = useId().replaceAll(":", "");
   const boneName = (bone: Skeleton["bones"][number]) => localizeBoneName(skeleton.id, bone.id, bone.name, t);
@@ -373,14 +383,20 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
           return endpoint ? [origin, endpoint] : [origin];
         })
         : [];
-      return [...attachmentPoints, ...skeletonPoints];
+      const socketPoints = (socketMarkers ?? []).flatMap((marker) => {
+        const bone = sampled.worldMatrices[marker.boneId];
+        if (!bone) return [];
+        const world = multiplyMatrices(bone, transformToMatrix(marker.rest));
+        return [transformPoint(world, [0, 0, 0]), transformPoint(world, [18, 0, 0])];
+      });
+      return [...attachmentPoints, ...skeletonPoints, ...socketPoints];
     });
     if (!points.length) return "-2 -2 4 4";
     const minX = Math.min(...points.map((point) => point[0])), maxX = Math.max(...points.map((point) => point[0]));
     const minY = Math.min(...points.map((point) => point[1])), maxY = Math.max(...points.map((point) => point[1]));
     const pad = Math.max(.2, Math.max(maxX - minX, maxY - minY) * .12);
     return `${minX - pad} ${-(maxY + pad)} ${Math.max(.5, maxX - minX + pad * 2)} ${Math.max(.5, maxY - minY + pad * 2)}`;
-  }, [binding, clip, showSkeleton, skeleton]);
+  }, [binding, clip, showSkeleton, skeleton, socketMarkers]);
   const svgPoint = (svg: SVGSVGElement, clientX: number, clientY: number) => {
     const point = svg.createSVGPoint();
     point.x = clientX;
@@ -620,6 +636,20 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
         {warpOverlay.lines.map((line, index) => <polyline className="binding-warp-grid" key={`warp-line-${index}`} points={line} />)}
         {warpOverlay.nodes.map((node, index) => <circle className="binding-warp-point" key={`warp-point-${index}`} cx={node[0]} cy={node[1]} r={handleRadius * .7} onPointerDown={(event) => beginTransform(event, selectedAttachment, selectedBoneMatrix, selectedWorld, "warp", index)}><title>{t("animation.binding.warpPoint")}</title></circle>)}
       </>}
+    </g>}{(socketMarkers?.length ?? 0) > 0 && <g className="body-profile-socket-layer">
+      {socketMarkers!.map((marker) => {
+        const bone = pose.worldMatrices[marker.boneId];
+        if (!bone) return null;
+        const world = multiplyMatrices(bone, transformToMatrix(marker.rest));
+        const point = transformPoint(world, [0, 0, 0]);
+        const tip = transformPoint(world, [18, 0, 0]);
+        const selected = !!marker.selected;
+        return <g className={`body-profile-socket-marker${selected ? " selected" : ""}`} key={marker.id} role={onSelectSocket ? "button" : undefined} tabIndex={onSelectSocket ? 0 : undefined} aria-label={marker.label} onPointerDown={onSelectSocket ? (event) => { event.preventDefault(); event.stopPropagation(); onSelectSocket(marker.id); } : undefined} onKeyDown={onSelectSocket ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectSocket(marker.id); } } : undefined}>
+          <line x1={point[0]} y1={point[1]} x2={tip[0]} y2={tip[1]} />
+          <circle cx={point[0]} cy={point[1]} r={selected ? boneNodeRadius * 1.6 : boneNodeRadius * 1.15} />
+          <text x={point[0] + boneNodeRadius * 2} y={-(point[1] + boneNodeRadius * 2)} transform="scale(1 -1)">{marker.label}</text>
+        </g>;
+      })}
     </g>}</g>
   </svg>;
 }

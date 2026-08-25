@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type AnimationAssetSummary, type CharacterBinding, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
+import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
 import { ArrowLeft, Bone, Boxes, Camera, Download, Pause, Pencil, Play, Plus, Trash2, Upload, X } from "lucide-react";
 import { api, type Folder, type Project, type SkeletalProjectDocument } from "../api";
 import { wsClient } from "../api/ws";
@@ -10,11 +10,12 @@ import { askConfirm, notify } from "../notice";
 import { exportSkeletalProjectPackage } from "../export";
 import { readZip } from "../zip";
 import AnimationAssetsWorkspace, { BindingEditor, CharacterPreview, SkeletonEditor } from "./AnimationAssetsWorkspace";
+import BodyProfileWorkspace from "./BodyProfileWorkspace";
 import MaterialImportModal from "./MaterialImportModal";
 import PxSelect from "./PxSelect";
 
 type WorkspaceTab = "character" | "animations";
-type BindingToolTab = "skeleton" | "parts";
+type BindingToolTab = "skeleton" | "parts" | "semantics";
 
 export default function SkeletalProjectEditor({ project, onBack }: { project: Project; onBack: () => void }) {
   const t = useT();
@@ -262,11 +263,24 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
   const compatibleClips = assets.filter((item) => item.kind === "motion-clip" && item.skeleton_id === skeleton?.id);
 
   const closeBindingEditor = useCallback(() => {
-    void askConfirm(t("skeletal.character.closeBindingEditorConfirm")).then((confirmed) => {
+    const message = bindingToolTab === "semantics"
+      ? t("skeletal.bodyProfile.unsavedConfirm")
+      : t("skeletal.character.closeBindingEditorConfirm");
+    void askConfirm(message).then((confirmed) => {
       if (confirmed) setBindingEditorOpen(false);
     });
-  }, [t]);
+  }, [bindingToolTab, t]);
   useModalEscClose(closeBindingEditor, bindingEditorOpen && !materialImportOpen);
+
+  const saveBodyProfile = useCallback(async (profile: BodyProfile) => {
+    if (!document) return;
+    const existing = document.bodyProfiles ?? [];
+    const nextProfiles = existing.some((item) => item.id === profile.id)
+      ? existing.map((item) => item.id === profile.id ? profile : item)
+      : [...existing, profile];
+    const ok = await save({ ...document, bodyProfiles: nextProfiles });
+    if (!ok) throw new Error(t("skeletal.bodyProfile.saveFailed", { msg: "document save failed" }));
+  }, [document, save, t]);
 
   const reloadMaterialLibrary = useCallback(async () => {
     const nextMaterials = await api.listMaterials();
@@ -456,12 +470,22 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
           <div className="skeletal-binding-tool-tabs" role="tablist">
             <button type="button" className={`px-btn ${bindingToolTab === "skeleton" ? "accent" : ""}`} onClick={() => setBindingToolTab("skeleton")}>{t("skeletal.character.editSkeleton")}</button>
             <button type="button" className={`px-btn ${bindingToolTab === "parts" ? "accent" : ""}`} onClick={() => setBindingToolTab("parts")}>{t("skeletal.character.editParts")}</button>
+            <button type="button" className={`px-btn ${bindingToolTab === "semantics" ? "accent" : ""}`} onClick={() => setBindingToolTab("semantics")}>{t("skeletal.character.editSemantics")}</button>
           </div>
           {bindingToolTab === "skeleton"
             ? <SkeletonEditor skeleton={skeleton} previewBinding={binding} busy={busy} onSave={saveSkeleton} />
-            : <BindingEditor binding={binding} skeleton={skeleton} materials={materials} materialFolders={materialFolders} busy={busy} onMaterialsChanged={() => void reloadMaterialLibrary().catch((e) => notify(t("skeletal.loadFailed", { msg: (e as Error).message })))} onSave={async (next: CharacterBinding) => {
-              if (await save({ ...document, character: { binding: next } })) setBindingEditorOpen(false);
-            }} />}
+            : bindingToolTab === "parts"
+              ? <BindingEditor binding={binding} skeleton={skeleton} materials={materials} materialFolders={materialFolders} busy={busy} onMaterialsChanged={() => void reloadMaterialLibrary().catch((e) => notify(t("skeletal.loadFailed", { msg: (e as Error).message })))} onSave={async (next: CharacterBinding) => {
+                if (await save({ ...document, character: { binding: next } })) setBindingEditorOpen(false);
+              }} />
+              : <BodyProfileWorkspace
+                  profile={document.bodyProfiles?.[0] ?? null}
+                  skeleton={skeleton}
+                  binding={binding}
+                  clip={clip}
+                  busy={busy}
+                  onSave={saveBodyProfile}
+                />}
         </section>
         {materialImportOpen && <MaterialImportModal initialTab="upload" onClose={() => setMaterialImportOpen(false)} onDone={() => {
           setMaterialImportOpen(false);

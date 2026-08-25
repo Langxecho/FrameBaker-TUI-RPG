@@ -4821,6 +4821,45 @@ body.resizing-row * {
 @media (max-width: 420px) { .binding-tuning-row { grid-template-columns: minmax(0, 1fr) 72px; } .binding-tuning-row > span { grid-column: 1 / -1; } }
 @media (max-width: 620px) { .animation-flow-map { grid-template-columns: 1fr; } .animation-workspace { display: flex; flex-direction: column; } .animation-folders { min-height: 180px; } .animation-preview { overflow: visible; } .animation-builtin-notice { grid-template-columns: auto minmax(0, 1fr); } .animation-builtin-notice .px-btn { grid-column: 1 / -1; } .binding-field-grid, .skeletal-generation-flow { grid-template-columns: 1fr; } .animation-controls { flex-wrap: wrap; } }
 
+/* ===== Body profile / socket editor ===== */
+.body-profile-workspace { display: grid; gap: 10px; min-height: 0; }
+.body-profile-toolbar, .body-profile-history-actions, .body-profile-mode-tabs, .body-profile-inline, .body-profile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.body-profile-toolbar { justify-content: space-between; }
+.body-profile-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .7fr); gap: 10px; align-items: start; }
+.body-profile-canvas, .body-profile-inspector { min-width: 0; padding: 12px; border: 2px solid var(--border); background: var(--surface); box-shadow: 3px 3px 0 var(--elevated); }
+.body-profile-canvas-stage { min-height: clamp(420px, 54dvh, 640px); border: 2px solid var(--border); background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 0 0 / 18px 18px; }
+.body-profile-canvas-stage > .binding-preview { width: 100%; height: clamp(420px, 54dvh, 640px); }
+.body-profile-empty-canvas { display: grid; place-items: center; min-height: clamp(420px, 54dvh, 640px); color: var(--text-muted); padding: 16px; text-align: center; }
+.body-profile-follow-time { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 10px; color: var(--text-muted); }
+.body-profile-inspector { display: grid; gap: 12px; }
+.body-profile-inspector > label { display: grid; gap: 4px; color: var(--text-muted); }
+.body-profile-meta { justify-content: space-between; color: var(--text-muted); }
+.body-profile-meta .dirty { color: var(--accent); }
+.body-profile-section { display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.body-profile-section > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.body-profile-section h3 { margin: 0; color: var(--text); font-size: 13px; }
+.body-profile-bone-list, .body-profile-item-list { display: grid; gap: 2px; max-height: 160px; overflow: auto; padding: 4px; border: 1px solid var(--border); background: var(--bg); }
+.body-profile-bone-list button, .body-profile-item-list button { display: grid; gap: 2px; min-width: 0; padding: 4px 6px; border: 0; background: transparent; color: var(--text-muted); font: inherit; text-align: left; cursor: pointer; }
+.body-profile-bone-list button:hover, .body-profile-item-list button:hover { color: var(--text); background: var(--selected); }
+.body-profile-bone-list button.on, .body-profile-item-list button.on { color: var(--accent); background: var(--selected); }
+.body-profile-item-list button strong { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.body-profile-item-list button span { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.body-profile-fields { display: grid; gap: 8px; }
+.body-profile-fields > label { display: grid; gap: 3px; color: var(--text-muted); }
+.body-profile-transform { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.body-profile-transform label { display: grid; gap: 3px; color: var(--text-muted); }
+.body-profile-hint { margin: 0; color: var(--text-muted); font-size: 12px; }
+.body-profile-diagnostics { margin: 0; padding-left: 18px; color: var(--text); }
+.body-profile-diagnostics code { color: var(--accent); }
+.body-profile-socket-marker line { stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.body-profile-socket-marker circle { fill: var(--surface); stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; cursor: pointer; }
+.body-profile-socket-marker.selected circle { fill: var(--accent); stroke: var(--text); }
+.body-profile-socket-marker text { fill: var(--text); font-size: 10px; pointer-events: none; }
+@media (max-width: 900px) {
+  .body-profile-layout { grid-template-columns: 1fr; }
+  .body-profile-transform { grid-template-columns: 1fr 1fr; }
+}
+
 /* ===== Tooltip ===== */
 .tip {
   z-index: 99999;
