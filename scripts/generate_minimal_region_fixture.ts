@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BodyProfile, CharacterBinding, MotionClip, Skeleton } from "../packages/shared/src";
 import { buildMinimalRegionFixtureEntries } from "../apps/web/src/skeletalExport";
+import { solidTexturePng } from "./lib/fixturePng";
 
 const transform = {
   translation: [0, 0, 0] as [number, number, number],
@@ -13,7 +14,7 @@ const transform = {
   scale: [1, 1, 1] as [number, number, number],
 };
 
-const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]);
+const png = solidTexturePng(16, [200, 200, 200, 255]);
 
 const skeleton: Skeleton = {
   schemaVersion: 1,
@@ -30,17 +31,27 @@ const binding: CharacterBinding = {
   id: "minimal-binding",
   name: "Minimal",
   skeletonId: skeleton.id,
-  attachments: [{
-    id: "body-region",
-    name: "Body",
-    type: "region",
-    materialId: "mat-body",
-    imageSlot: "raw",
-    size: [16, 16],
-    pivot: [0.5, 0.5],
-    rest: transform,
-  }],
-  slots: [{ id: "body-slot", name: "Body", boneId: "root", attachmentId: "body-region", drawOrder: 0 }],
+  attachments: [
+    {
+      id: "body-region",
+      name: "Body",
+      type: "region",
+      materialId: "mat-body",
+      imageSlot: "raw",
+      size: [16, 16],
+      pivot: [0.5, 0.5],
+      rest: transform,
+    },
+  ],
+  slots: [
+    {
+      id: "body-slot",
+      name: "Body",
+      boneId: "root",
+      attachmentId: "body-region",
+      drawOrder: 0,
+    },
+  ],
 };
 
 const body: BodyProfile = {
@@ -50,7 +61,15 @@ const body: BodyProfile = {
   skeletonId: skeleton.id,
   mirrorAxis: "x",
   slots: [{ id: "head", semantic: "head", capacity: 1, accepts: ["helmet"] }],
-  sockets: [{ id: "head-socket", semantic: "head", boneId: "root", rest: transform, accepts: ["helmet"] }],
+  sockets: [
+    {
+      id: "head-socket",
+      semantic: "head",
+      boneId: "root",
+      rest: transform,
+      accepts: ["helmet"],
+    },
+  ],
 };
 
 const clip: MotionClip = {

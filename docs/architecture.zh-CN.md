@@ -68,6 +68,14 @@
 
 根级 `scripts/version.ts` 实现 main 的 `MAJOR.WEEK.BUG` 发布规则，并统一同步根包/workspace package 版本、Bun lockfile workspace 版本、MCP 对外版本及中英文 changelog 发布标题。WEEK 是大版本内单调递增的开发周序号，不使用会跨年回退的 ISO 自然周。版本历史存放在 `docs/CHANGELOG.md` 与 `docs/CHANGELOG.zh-CN.md`，详细规则见 `docs/VERSIONING.md` 与 `docs/VERSIONING.zh-CN.md`。
 
+### 跨仓库 fbanim-v3 夹具
+
+- 权威源：`tests/fixtures/fbanim-v3/`（入库字节 + `manifest.json`）。
+- 合约共 11 个 fixture ID；仅 `available` 的 ID 附带包体。`missing` 的 ID 只做显式报告——两侧仓库都不得编造无效资产。
+- 精确字节同步到终端引擎：`bun scripts/sync_fbanim_fixtures.ts --target <tui-rpg-terminal-engine-root>`（或环境变量 `FRAMEBAKER_TERMINAL_ENGINE_ROOT`）。目标目录：`pixel-engine/tests/fixtures/fbanim-v3/`。
+- 对拍测试：FrameBaker `tests/cross-repo-fixtures.test.ts`；终端 `pixel-engine` 的 `skeletal_fixture_parity`。矩阵/插槽 epsilon 与像素 exact 策略写在 manifest。
+- 本夹具工作流不包含游戏服集成。
+
 ## 关键设计
 
 - **HTML import 全栈**：`apps/server/src/index.ts` 里 `import index from "../../web/index.html"`，`Bun.serve` 的 `routes` 把它挂在 `/` 与 `/project/:id`；编辑器页前端读 `location.pathname` 恢复项目上下文（无路由库）。development 模式（`NODE_ENV !== "production"`）下每次请求重新打包并支持 HMR。

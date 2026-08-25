@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "description": "Cross-repo fbanim-v3 fixture contract. FrameBaker is the canonical source; terminal engine consumes exact synced bytes.",
+  "contractIds": [
+    "minimal-region",
+    "eye-attachment",
+    "binocular-eye-multislot",
+    "cyber-arm-replacement",
+    "internal-chip-none",
+    "equipment-effect",
+    "rifle-right-primary",
+    "rifle-left-primary",
+    "dual-pistol",
+    "conflicting-loadout",
+    "action-event-boundary"
+  ],
+  "policies": {
+    "matrixEpsilon": 1e-5,
+    "socketEpsilon": 1e-5,
+    "pixelEquality": "exact",
+    "pixelNote": "Exact RGBA equality unless a fixture records a reviewed threshold in expected.json.thresholds.pixelMaxDiff."
+  },
+  "layout": {
+    "requiredFilesWhenPresent": [
+      "package.fbanim",
+      "loadout.json",
+      "action-steps.json",
+      "expected.json",
+      "metadata.json"
+    ],
+    "optionalFiles": [
+      "expected.png"
+    ]
+  },
+  "fixtures": {
+    "minimal-region": {
+      "status": "available",
+      "checks": ["package_load", "metadata_id", "decodeable_texture"],
+      "notes": "Phase-1 baseline: single root bone, one Region, idle action. Canonical bytes under this directory."
+    },
+    "eye-attachment": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "binocular-eye-multislot": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "cyber-arm-replacement": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "internal-chip-none": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "equipment-effect": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "rifle-right-primary": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "rifle-left-primary": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "dual-pistol": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "conflicting-loadout": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    },
+    "action-event-boundary": {
+      "status": "missing",
+      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+    }
+  }
+}

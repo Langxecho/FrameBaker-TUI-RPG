@@ -13,6 +13,8 @@
     "dev": "bun --watch apps/server/src/index.ts",
     "start": "bun apps/server/src/index.ts",
     "check:animation": "bun scripts/check_animation.ts && bun scripts/check_animation_package.ts",
+    "fixtures:generate:minimal-region": "bun scripts/generate_minimal_region_fixture.ts",
+    "fixtures:sync": "bun scripts/sync_fbanim_fixtures.ts",
     "typecheck": "tsc -p apps/server && tsc -p apps/web",
     "test": "bun test tests",
     "test:coverage": "bun test tests --coverage --coverage-reporter=text",

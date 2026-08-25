@@ -650,6 +650,14 @@ and expected PNG output. Matrices and sockets use explicit tolerances. Pixel
 outputs use exact equality unless a reviewed fixture defines a bounded
 difference policy.
 
+Canonical bytes live under FrameBaker `tests/fixtures/fbanim-v3/` with a
+`manifest.json` that lists all eleven contract IDs. Only fixtures marked
+`available` include packages; `missing` IDs are reported by parity tests and
+must not be invented in either repository. `scripts/sync_fbanim_fixtures.ts`
+copies exact available bytes into the terminal engine's
+`pixel-engine/tests/fixtures/fbanim-v3/`. Game integration remains out of
+scope for this fixture workflow.
+
 ## Delivery Phases
 
 ### Phase 1: Region Runtime Baseline

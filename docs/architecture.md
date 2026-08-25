@@ -77,6 +77,14 @@ Root `tsconfig.base.json` provides shared compilerOptions (strict, moduleResolut
 
 Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy and keeps the root/workspace package versions, Bun lockfile workspace versions, MCP-reported version, and bilingual changelog release headings synchronized. The week is a monotonic development-week counter within a major, not an ISO calendar week. Version history lives in `docs/CHANGELOG.md` and `docs/CHANGELOG.zh-CN.md`; policy details live in `docs/VERSIONING.md` and `docs/VERSIONING.zh-CN.md`.
 
+### Cross-repo fbanim-v3 fixtures
+
+- Canonical source: `tests/fixtures/fbanim-v3/` (checked-in bytes + `manifest.json`).
+- Contract lists eleven fixture IDs; only IDs marked `available` ship packages. Missing IDs are reported explicitly — do not invent invalid assets in either repo.
+- Sync exact bytes into the terminal engine with `bun scripts/sync_fbanim_fixtures.ts --target <tui-rpg-terminal-engine-root>` (or `FRAMEBAKER_TERMINAL_ENGINE_ROOT`). Destination: `pixel-engine/tests/fixtures/fbanim-v3/`.
+- Parity tests: `tests/cross-repo-fixtures.test.ts` (FrameBaker) and `pixel-engine` `skeletal_fixture_parity` (terminal). Matrix/socket epsilon and exact pixel policy live in the manifest.
+- Game-server integration is out of scope for this fixture workflow.
+
 ## Key Design
 
 - **HTML import fullstack**: `apps/server/src/index.ts` does `import index from "../../web/index.html"`, `Bun.serve`'s `routes` mounts it at `/` and `/project/:id`; the editor page frontend reads `location.pathname` to restore project context (no router library). In development mode (`NODE_ENV !== "production"`), each request re-bundles with HMR support.

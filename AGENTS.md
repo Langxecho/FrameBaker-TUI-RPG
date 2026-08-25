@@ -11,9 +11,12 @@ apps/
 packages/
   shared/        @framebaker/shared — shared types/constants for front & back (no build, exports point directly to src/index.ts)
 docs/            architecture / API / roadmap / changelog documentation
-scripts/         environment setup + synchronized SemVer version management
+scripts/         environment setup + synchronized SemVer version management + fbanim fixture sync
+tests/           bun tests; canonical fbanim-v3 fixtures under tests/fixtures/fbanim-v3/
 storage/         generated at runtime (gitignored), resolves to repo root regardless of startup cwd
 ```
+
+Cross-repo fbanim-v3 fixtures: FrameBaker owns checked-in bytes under `tests/fixtures/fbanim-v3/` (`manifest.json` lists eleven contract IDs; only `available` packages ship). Sync exact bytes to the terminal engine with `bun scripts/sync_fbanim_fixtures.ts --target <tui-rpg-terminal-engine-root>`. Do not invent missing fixture packages.
 
 ## Common Commands
 
