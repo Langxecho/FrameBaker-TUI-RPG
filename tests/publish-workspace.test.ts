@@ -38,6 +38,7 @@ const skeleton: Skeleton = {
   coordinateSystem: { handedness: "right", upAxis: "y", forwardAxis: "+z", unit: "pixel" },
   bones: [
     { id: "root", name: "Root", parentId: null, rest: transform, tipOffset: [0, 10, 0] },
+    { id: "hand_r", name: "Hand R", parentId: "root", rest: { ...transform, translation: [8, 10, 0] }, tipOffset: [0, 1, 0] },
     { id: "upper", name: "Upper", parentId: "root", rest: { ...transform, translation: [0, 10, 0] }, tipOffset: [0, 20, 0] },
     { id: "lower", name: "Lower", parentId: "upper", rest: { ...transform, translation: [0, 20, 0] }, tipOffset: [0, 20, 0] },
     { id: "end", name: "End", parentId: "lower", rest: { ...transform, translation: [0, 20, 0] }, tipOffset: [0, 1, 0] },
@@ -76,9 +77,9 @@ const body: BodyProfile = {
   ],
   sockets: [
     { id: "head-socket", semantic: "head", boneId: "root", rest: transform, accepts: ["helmet"] },
-    { id: "sock-r", semantic: "weapon_hand_right", boneId: "end", rest: transform, accepts: ["weapon"], mirrorSocketId: "sock-l" },
+    { id: "sock-r", semantic: "weapon_hand_right", boneId: "hand_r", rest: transform, accepts: ["weapon"], mirrorSocketId: "sock-l" },
     { id: "sock-l", semantic: "weapon_hand_left", boneId: "end", rest: transform, accepts: ["weapon"], mirrorSocketId: "sock-r" },
-    { id: "sock-muzzle", semantic: "custom:muzzle", boneId: "end", rest: transform, accepts: ["effect"] },
+    { id: "sock-muzzle", semantic: "custom:muzzle", boneId: "hand_r", rest: transform, accepts: ["effect"] },
   ],
 };
 
@@ -346,7 +347,7 @@ describe("publish workspace diagnostics", () => {
         preferredPrimaryHand: "right",
         mirrorAllowed: true,
         primaryGrip: transform,
-        secondaryGrip: transform,
+        secondaryGrip: { ...transform, translation: [200, 0, 0] },
         stanceProfile: "rifle_two_hand",
         secondaryHandConstraint: {
           id: "ik-rifle",
@@ -360,28 +361,124 @@ describe("publish workspace diagnostics", () => {
         },
       },
     };
-    // Stretch tip so rest distance exceeds chain — tipOffsets total 40; push end far via rest translation on a clip keyframe
-    const farClip: MotionClip = {
-      ...clip,
-      id: "far",
-      tracks: [{
-        targetId: "end",
-        property: "translation",
-        interpolation: "step",
-        keyframes: [{ time: 0, value: [0, 200, 0] }],
-      }],
-    } as MotionClip;
     const report = await collectPublishDiagnostics(baseInput({
       document: document({
         equipment: [rifle],
         loadouts: [],
-        animations: [{ id: "aim", name: "aim", motionClipId: farClip.id, speed: 1, repeat: 1, loop: false }],
+        animations: [{ id: "aim", name: "aim", motionClipId: clip.id, speed: 1, repeat: 1, loop: false }],
       }),
-      clips: { [farClip.id]: farClip },
+      clips: { [clip.id]: clip },
       textures: [{ attachmentId: "body-region", bytes: png }],
     }));
     expect(report.diagnostics.some((d) => d.stage === "fullDurationIk" && d.code === "IK_UNREACHABLE")).toBeTrue();
     expect(report.canExport).toBeFalse();
+  });
+
+  test("full-duration IK uses grip/secondary solver semantics not coarse tip distance", async () => {
+    // Huge display tipOffsets would trip coarse upper-tip→end-tip distance, but rest
+    // bone lengths + reachable secondary grip must still pass the pure 2D solver.
+    const tipHeavy: Skeleton = {
+      ...skeleton,
+      bones: skeleton.bones.map((bone) => (
+        bone.id === "upper" || bone.id === "lower" || bone.id === "end"
+          ? { ...bone, tipOffset: [0, 200, 0] as [number, number, number] }
+          : bone
+      )),
+    };
+    const rifle: EquipmentDefinition = {
+      ...helmet,
+      id: "rifle-ok",
+      name: "Rifle",
+      tags: ["weapon"],
+      primarySlot: "hand-r",
+      occupiedSlots: ["hand-r", "hand-l"],
+      attachments: [],
+      weapon: {
+        holdMode: "two_hand",
+        preferredPrimaryHand: "right",
+        mirrorAllowed: true,
+        primaryGrip: transform,
+        secondaryGrip: { ...transform, translation: [8, 2, 0] },
+        stanceProfile: "rifle_two_hand",
+        secondaryHandConstraint: {
+          id: "ik-rifle-ok",
+          upperBoneId: "upper",
+          lowerBoneId: "lower",
+          endBoneId: "end",
+          targetSocket: "sock-l",
+          bendDirection: "positive",
+          mix: 1,
+          stretch: "forbid",
+        },
+      },
+    };
+    const report = await collectPublishDiagnostics(baseInput({
+      skeleton: tipHeavy,
+      document: document({
+        equipment: [rifle],
+        loadouts: [],
+        animations: [{ id: "aim", name: "aim", motionClipId: clip.id, speed: 1, repeat: 1, loop: false }],
+      }),
+      clips: { [clip.id]: clip },
+      textures: [{ attachmentId: "body-region", bytes: png }],
+    }));
+    expect(report.diagnostics.filter((d) => d.stage === "fullDurationIk")).toEqual([]);
+    expect(report.diagnostics.some((d) => d.stage === "fullDurationIk" && d.code === "IK_UNREACHABLE")).toBeFalse();
+  });
+
+  test("full-duration IK reports zero-length and limited-stretch diagnostics", async () => {
+    const zeroBoneSkeleton: Skeleton = {
+      ...skeleton,
+      id: skeleton.id,
+      bones: [
+        { id: "root", name: "Root", parentId: null, rest: transform, tipOffset: [0, 10, 0] },
+        { id: "hand_r", name: "Hand R", parentId: "root", rest: { ...transform, translation: [8, 10, 0] }, tipOffset: [0, 1, 0] },
+        { id: "upper", name: "Upper", parentId: "root", rest: { ...transform, translation: [0, 10, 0] }, tipOffset: [0, 0, 0] },
+        { id: "lower", name: "Lower", parentId: "upper", rest: transform, tipOffset: [0, 0, 0] },
+        { id: "end", name: "End", parentId: "lower", rest: { ...transform, translation: [5, 0, 0] }, tipOffset: [0, 1, 0] },
+      ],
+    };
+    const rifle: EquipmentDefinition = {
+      ...helmet,
+      id: "rifle-zero",
+      name: "Rifle",
+      tags: ["weapon"],
+      primarySlot: "hand-r",
+      occupiedSlots: ["hand-r", "hand-l"],
+      attachments: [],
+      weapon: {
+        holdMode: "two_hand",
+        preferredPrimaryHand: "right",
+        mirrorAllowed: true,
+        primaryGrip: transform,
+        secondaryGrip: { ...transform, translation: [3, 0, 0] },
+        stanceProfile: "rifle_two_hand",
+        secondaryHandConstraint: {
+          id: "ik-zero",
+          upperBoneId: "upper",
+          lowerBoneId: "lower",
+          endBoneId: "end",
+          targetSocket: "sock-l",
+          bendDirection: "positive",
+          mix: 1,
+          stretch: "forbid",
+        },
+      },
+    };
+    const report = await collectPublishDiagnostics(baseInput({
+      skeleton: zeroBoneSkeleton,
+      document: document({
+        equipment: [rifle],
+        loadouts: [],
+        animations: [{ id: "aim", name: "aim", motionClipId: clip.id, speed: 1, repeat: 1, loop: false }],
+      }),
+      clips: { [clip.id]: { ...clip, skeletonId: zeroBoneSkeleton.id } },
+      textures: [{ attachmentId: "body-region", bytes: png }],
+    }));
+    expect(report.diagnostics.some((d) =>
+      d.stage === "fullDurationIk"
+      && (d.code === "IK_UNREACHABLE" || d.message.includes("zero_length_bone") || d.message.includes("zero-length"))
+    )).toBeTrue();
   });
 
   test("deterministic v3 bytes and fixture zip entries without storage writes", async () => {

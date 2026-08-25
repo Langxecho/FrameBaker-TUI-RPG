@@ -24,6 +24,8 @@ import {
   type Skeleton,
   type TwoBoneIkConstraint,
   type ValidationIssue,
+  ikDiagnosticsToIssues,
+  validateTwoHandIkSample,
 } from "@framebaker/shared";
 import { validateActionEvents } from "./actionUiState";
 
@@ -144,34 +146,59 @@ function collectConstraints(equipment: readonly EquipmentDefinition[]): Array<{ 
   return out;
 }
 
-function boneLength(skeleton: Skeleton, boneId: string): number {
-  const bone = skeleton.bones.find((b) => b.id === boneId);
-  if (!bone?.tipOffset) return 0;
-  const [x, y, z] = bone.tipOffset;
-  return Math.hypot(x, y, z);
+const IDENTITY_MAT4 = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+] as const;
+
+function boneById(skeleton: Skeleton, id: string) {
+  return skeleton.bones.find((b) => b.id === id);
 }
 
-/** Coarse reachability: chain max length vs rest-distance upper→target at each sample. */
+/**
+ * Full-duration two-hand IK sampling using primary-grip alignment + secondary
+ * target + pure 2D two-bone solver (matches terminal skeletal_constraints.rs).
+ */
 function sampleIkReach(
   skeleton: Skeleton,
   clip: MotionClip,
   constraint: TwoBoneIkConstraint,
+  equipment: EquipmentDefinition,
+  body: BodyProfile | undefined,
   duration: number,
   step: number,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const boneIds = new Set(skeleton.bones.map((b) => b.id));
-  for (const id of [constraint.upperBoneId, constraint.lowerBoneId, constraint.endBoneId]) {
-    if (!boneIds.has(id)) {
-      issues.push({ path: `constraints.${constraint.id}.${id}`, message: `IK 骨骼不存在：${id}` });
+  const path = `constraints.${constraint.id}`;
+  const upperBone = boneById(skeleton, constraint.upperBoneId);
+  const lowerBone = boneById(skeleton, constraint.lowerBoneId);
+  const endBone = boneById(skeleton, constraint.endBoneId);
+  for (const [id, bone] of [
+    [constraint.upperBoneId, upperBone],
+    [constraint.lowerBoneId, lowerBone],
+    [constraint.endBoneId, endBone],
+  ] as const) {
+    if (!bone) {
+      issues.push({ path: `${path}.${id}`, message: `IK 骨骼不存在：${id}` });
       return issues;
     }
   }
-  const maxLen = boneLength(skeleton, constraint.upperBoneId) + boneLength(skeleton, constraint.lowerBoneId);
-  if (!(maxLen > 0)) {
-    issues.push({ path: `constraints.${constraint.id}`, message: "IK 链长度为 0" });
+  const weapon = equipment.weapon;
+  if (!weapon?.primaryGrip || !weapon.secondaryGrip) {
+    issues.push({ path, message: "双手 IK 需要 primaryGrip 与 secondaryGrip" });
     return issues;
   }
+
+  const primarySemantic = weapon.preferredPrimaryHand === "left" ? "weapon_hand_left" : "weapon_hand_right";
+  const primarySocket = body?.sockets.find((s) => s.semantic === primarySemantic || s.id === primarySemantic)
+    ?? body?.sockets.find((s) =>
+      weapon.preferredPrimaryHand === "left"
+        ? (s.semantic === "hand_left" || s.semantic === "weapon_hand_left")
+        : (s.semantic === "hand_right" || s.semantic === "weapon_hand_right")
+    );
+
   const samples = Math.max(1, Math.ceil(Math.max(duration, 0) / step) + 1);
   for (let i = 0; i < samples; i++) {
     const t = Math.min(duration, i * step);
@@ -179,25 +206,117 @@ function sampleIkReach(
     try {
       pose = sampleMotionClip(clip, skeleton, t);
     } catch {
-      issues.push({ path: `constraints.${constraint.id}`, message: `t=${t.toFixed(4)} 采样失败` });
+      issues.push({ path, message: `t=${t.toFixed(4)} 采样失败` });
       continue;
     }
-    const upper = getBoneEndpoint(pose, skeleton, constraint.upperBoneId);
-    const end = getBoneEndpoint(pose, skeleton, constraint.endBoneId);
-    if (!upper || !end) {
-      issues.push({ path: `constraints.${constraint.id}`, message: `t=${t.toFixed(4)} 无法解析 IK 端点` });
+
+    const upperLocal = pose.local[constraint.upperBoneId];
+    const lowerLocal = pose.local[constraint.lowerBoneId];
+    const endLocal = pose.local[constraint.endBoneId];
+    if (!upperLocal || !lowerLocal || !endLocal) {
+      issues.push({ path, message: `t=${t.toFixed(4)} 无法解析 IK 局部变换` });
       continue;
     }
-    const dist = Math.hypot(end[0] - upper[0], end[1] - upper[1], end[2] - upper[2]);
-    const limit = constraint.stretch === "limited" && constraint.maxStretch
-      ? maxLen * constraint.maxStretch
-      : maxLen * 1.001;
-    if (dist > limit + 1e-4) {
-      issues.push({
-        path: `constraints.${constraint.id}`,
-        message: `t=${t.toFixed(4)} 双手 IK 不可达 (dist=${dist.toFixed(3)}, max=${limit.toFixed(3)})`,
-      });
-      break;
+
+    const upperParentId = upperBone!.parentId;
+    const upperParentWorld = upperParentId
+      ? pose.worldMatrices[upperParentId] ?? IDENTITY_MAT4
+      : IDENTITY_MAT4;
+
+    let primaryHandWorld: number[] = [...IDENTITY_MAT4];
+    if (primarySocket) {
+      const boneWorld = pose.worldMatrices[primarySocket.boneId];
+      if (boneWorld) {
+        // socket local rest * bone world ≈ hand world (column-major TRS multiply)
+        const rest = primarySocket.rest;
+        const rx = rest.rotation;
+        const sx = rest.scale;
+        const xx = rx[0] * rx[0];
+        const yy = rx[1] * rx[1];
+        const zz = rx[2] * rx[2];
+        const xy = rx[0] * rx[1];
+        const xz = rx[0] * rx[2];
+        const yz = rx[1] * rx[2];
+        const wx = rx[3] * rx[0];
+        const wy = rx[3] * rx[1];
+        const wz = rx[3] * rx[2];
+        const localM = [
+          (1 - 2 * (yy + zz)) * sx[0], (2 * (xy + wz)) * sx[0], (2 * (xz - wy)) * sx[0], 0,
+          (2 * (xy - wz)) * sx[1], (1 - 2 * (xx + zz)) * sx[1], (2 * (yz + wx)) * sx[1], 0,
+          (2 * (xz + wy)) * sx[2], (2 * (yz - wx)) * sx[2], (1 - 2 * (xx + yy)) * sx[2], 0,
+          rest.translation[0], rest.translation[1], rest.translation[2], 1,
+        ];
+        primaryHandWorld = new Array(16).fill(0);
+        for (let col = 0; col < 4; col++) {
+          for (let row = 0; row < 4; row++) {
+            primaryHandWorld[col * 4 + row] =
+              boneWorld[row]! * localM[col * 4]!
+              + boneWorld[4 + row]! * localM[col * 4 + 1]!
+              + boneWorld[8 + row]! * localM[col * 4 + 2]!
+              + boneWorld[12 + row]! * localM[col * 4 + 3]!;
+          }
+        }
+      }
+    } else {
+      // Fall back to end-bone world as primary hand when package sockets missing.
+      const endWorld = pose.worldMatrices[constraint.endBoneId];
+      if (endWorld) primaryHandWorld = [...endWorld];
+      else {
+        const tip = getBoneEndpoint(pose, skeleton, constraint.endBoneId);
+        if (tip) {
+          primaryHandWorld = [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            tip[0], tip[1], tip[2], 1,
+          ];
+        }
+      }
+    }
+
+    const result = validateTwoHandIkSample({
+      upperRest: upperLocal,
+      lowerRest: lowerLocal,
+      endRest: endLocal,
+      upperParentWorld: [...upperParentWorld],
+      primaryHandWorld,
+      primaryGrip: weapon.primaryGrip,
+      secondaryGrip: weapon.secondaryGrip,
+      bendPositive: constraint.bendDirection !== "negative",
+      stretch: constraint.stretch,
+      maxStretch: constraint.maxStretch,
+      mix: constraint.mix,
+    });
+
+    if (!result.reached || result.diagnostics.some((d) =>
+      d.code === "zero_length_bone"
+      || d.code === "nonfinite_target"
+      || d.code === "nonfinite_rest"
+      || d.code === "nonfinite_result"
+      || d.code === "nonfinite_grip"
+      || d.code === "singular_grip"
+      || d.code === "singular_parent"
+      || d.code === "nonfinite_world"
+      || d.code === "degenerate_target"
+      || d.code === "angle_limit"
+    )) {
+      const blocking = result.diagnostics.filter((d) =>
+        d.code === "unreachable"
+        || d.code === "zero_length_bone"
+        || d.code === "nonfinite_target"
+        || d.code === "nonfinite_rest"
+        || d.code === "nonfinite_result"
+        || d.code === "nonfinite_grip"
+        || d.code === "singular_grip"
+        || d.code === "singular_parent"
+        || d.code === "nonfinite_world"
+        || d.code === "degenerate_target"
+        || d.code === "angle_limit"
+      );
+      if (blocking.length) {
+        issues.push(...ikDiagnosticsToIssues(blocking, path, t.toFixed(4)));
+        break;
+      }
     }
   }
   return issues;
@@ -485,6 +604,8 @@ export async function collectPublishDiagnostics(input: PublishInput): Promise<Pu
   const constraints = collectConstraints(equipment);
   for (const { constraint, equipmentId } of constraints) {
     if (!skeleton) break;
+    const item = equipment.find((e) => e.id === equipmentId);
+    if (!item) continue;
     const clips = Object.values(input.clips);
     const sampleClips = clips.length ? clips : [];
     if (!sampleClips.length) {
@@ -500,13 +621,13 @@ export async function collectPublishDiagnostics(input: PublishInput): Promise<Pu
         tracks: [],
         events: [],
       };
-      for (const issue of sampleIkReach(skeleton, dummy, constraint, 0, step)) {
+      for (const issue of sampleIkReach(skeleton, dummy, constraint, item, body0, 0, step)) {
         buckets.fullDurationIk.push(diag("fullDurationIk", "error", "IK_UNREACHABLE", `equipment.${equipmentId}.${issue.path}`, issue.message));
       }
       continue;
     }
     for (const clip of sampleClips) {
-      for (const issue of sampleIkReach(skeleton, clip, constraint, clip.duration, step)) {
+      for (const issue of sampleIkReach(skeleton, clip, constraint, item, body0, clip.duration, step)) {
         buckets.fullDurationIk.push(diag("fullDurationIk", "error", "IK_UNREACHABLE", `equipment.${equipmentId}.${issue.path}`, issue.message));
       }
     }

@@ -8,4 +8,5 @@ export * from "./json";
 export * from "./skeletalProject";
 export * from "./equipment";
 export * from "./actionComposition";
+export * from "./twoBoneIk";
 export * from "./types";

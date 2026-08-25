@@ -1,8 +1,10 @@
 import {
   EQUIPMENT_SCHEMA_VERSION,
   assembleLoadout,
+  ikDiagnosticsToIssues,
   validateEquipmentDefinition,
   validateLoadout,
+  validateTwoHandIkSample,
   type AssembledLoadout,
   type BodyProfile,
   type CharacterBinding,
@@ -343,6 +345,83 @@ export function weaponWizardBlockingIssues(
   }
   const validated = validateEquipmentDefinition(draft, body);
   return [...issues, ...validated.issues];
+}
+
+/** Rest-pose two-hand IK diagnostics shared with publish solver semantics. */
+export function diagnoseWeaponTwoHandIk(
+  draft: EquipmentDefinition,
+  body: BodyProfile,
+  skeleton: Skeleton,
+): ValidationIssue[] {
+  const weapon = draft.weapon;
+  const constraint = weapon?.secondaryHandConstraint;
+  if (!weapon || !constraint || !weapon.primaryGrip || !weapon.secondaryGrip) return [];
+
+  const upper = skeleton.bones.find((b) => b.id === constraint.upperBoneId);
+  const lower = skeleton.bones.find((b) => b.id === constraint.lowerBoneId);
+  const end = skeleton.bones.find((b) => b.id === constraint.endBoneId);
+  if (!upper || !lower || !end) {
+    return [{ path: "weapon.secondaryHandConstraint", message: "IK 骨骼不存在" }];
+  }
+
+  const primarySemantic = weapon.preferredPrimaryHand === "left" ? "weapon_hand_left" : "weapon_hand_right";
+  const primarySocket = body.sockets.find((s) => s.semantic === primarySemantic || s.id === primarySemantic);
+  const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const boneWorld = (boneId: string): number[] => {
+    const chain: typeof skeleton.bones = [];
+    let cur: typeof upper | undefined = skeleton.bones.find((b) => b.id === boneId);
+    while (cur) {
+      chain.unshift(cur);
+      cur = cur.parentId ? skeleton.bones.find((b) => b.id === cur!.parentId!) : undefined;
+    }
+    let m = identity.slice();
+    for (const bone of chain) {
+      const t = bone.rest.translation;
+      const next = identity.slice();
+      next[12] = m[12]! + t[0];
+      next[13] = m[13]! + t[1];
+      next[14] = m[14]! + t[2];
+      m = next;
+    }
+    return m;
+  };
+
+  const upperParentWorld = upper.parentId ? boneWorld(upper.parentId) : identity.slice();
+  let primaryHandWorld = identity.slice();
+  if (primarySocket) {
+    const bw = boneWorld(primarySocket.boneId);
+    primaryHandWorld = bw.slice();
+    primaryHandWorld[12] = bw[12]! + primarySocket.rest.translation[0];
+    primaryHandWorld[13] = bw[13]! + primarySocket.rest.translation[1];
+    primaryHandWorld[14] = bw[14]! + primarySocket.rest.translation[2];
+  } else {
+    primaryHandWorld = boneWorld(end.id);
+  }
+
+  const result = validateTwoHandIkSample({
+    upperRest: upper.rest,
+    lowerRest: lower.rest,
+    endRest: end.rest,
+    upperParentWorld,
+    primaryHandWorld,
+    primaryGrip: weapon.primaryGrip,
+    secondaryGrip: weapon.secondaryGrip,
+    bendPositive: constraint.bendDirection !== "negative",
+    stretch: constraint.stretch,
+    maxStretch: constraint.maxStretch,
+    mix: constraint.mix,
+  });
+  if (result.reached && !result.diagnostics.length) return [];
+  const blocking = result.diagnostics.filter((d) =>
+    d.code === "unreachable"
+    || d.code === "zero_length_bone"
+    || d.code.startsWith("nonfinite")
+    || d.code === "singular_grip"
+    || d.code === "singular_parent"
+    || d.code === "degenerate_target"
+    || d.code === "angle_limit"
+  );
+  return ikDiagnosticsToIssues(blocking, "weapon.secondaryHandConstraint");
 }
 
 export function canCompleteWeaponWizard(

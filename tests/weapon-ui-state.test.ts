@@ -4,6 +4,7 @@ import {
   canCompleteWeaponWizard,
   createEmptyWeapon,
   createWeaponUiState,
+  diagnoseWeaponTwoHandIk,
   isWeaponDirty,
   reduceWeaponUi,
   resolveWeaponHandSlots,
@@ -25,12 +26,12 @@ const skeleton: Skeleton = {
   coordinateSystem: { handedness: "right", upAxis: "y", forwardAxis: "+z", unit: "pixel" },
   bones: [
     { id: "root", name: "Root", parentId: null, rest: transform },
-    { id: "upper_r", name: "Upper R", parentId: "root", rest: transform },
-    { id: "lower_r", name: "Lower R", parentId: "upper_r", rest: transform },
-    { id: "hand_r", name: "Hand R", parentId: "lower_r", rest: transform },
-    { id: "upper_l", name: "Upper L", parentId: "root", rest: transform },
-    { id: "lower_l", name: "Lower L", parentId: "upper_l", rest: transform },
-    { id: "hand_l", name: "Hand L", parentId: "lower_l", rest: transform },
+    { id: "upper_r", name: "Upper R", parentId: "root", rest: { ...transform, translation: [8, 10, 0] } },
+    { id: "lower_r", name: "Lower R", parentId: "upper_r", rest: { ...transform, translation: [10, 0, 0] } },
+    { id: "hand_r", name: "Hand R", parentId: "lower_r", rest: { ...transform, translation: [10, 0, 0] } },
+    { id: "upper_l", name: "Upper L", parentId: "root", rest: { ...transform, translation: [0, 10, 0] } },
+    { id: "lower_l", name: "Lower L", parentId: "upper_l", rest: { ...transform, translation: [10, 0, 0] } },
+    { id: "hand_l", name: "Hand L", parentId: "lower_l", rest: { ...transform, translation: [10, 0, 0] } },
   ],
 };
 
@@ -181,5 +182,38 @@ describe("weapon ui state", () => {
     state = reduceWeaponUi(state, { type: "undo" }, body, binding, skeleton);
     expect(state.draft!.weapon!.holdMode).toBe("one_hand");
     expect(state.draft!.occupiedSlots).toEqual(["slot-hand-r"]);
+  });
+
+  test("weapon diagnostics reuse pure two-bone IK for unreachable secondary grip", () => {
+    const ikSkeleton: Skeleton = {
+      ...skeleton,
+      bones: [
+        { id: "root", name: "Root", parentId: null, rest: transform },
+        { id: "upper_r", name: "Upper R", parentId: "root", rest: { ...transform, translation: [8, 10, 0] } },
+        { id: "lower_r", name: "Lower R", parentId: "upper_r", rest: { ...transform, translation: [10, 0, 0] } },
+        { id: "hand_r", name: "Hand R", parentId: "lower_r", rest: { ...transform, translation: [10, 0, 0] } },
+        { id: "upper_l", name: "Upper L", parentId: "root", rest: { ...transform, translation: [0, 10, 0] } },
+        { id: "lower_l", name: "Lower L", parentId: "upper_l", rest: { ...transform, translation: [10, 0, 0] } },
+        { id: "hand_l", name: "Hand L", parentId: "lower_l", rest: { ...transform, translation: [10, 0, 0] } },
+      ],
+    };
+    const rifle = createEmptyWeapon("wpn-ik", "IK Rifle", body, {
+      holdMode: "two_hand",
+      preferredPrimaryHand: "right",
+    });
+    rifle.weapon!.primaryGrip = transform;
+    rifle.weapon!.secondaryGrip = { ...transform, translation: [200, 0, 0] };
+    rifle.weapon!.secondaryHandConstraint = {
+      id: "ik-secondary",
+      upperBoneId: "upper_l",
+      lowerBoneId: "lower_l",
+      endBoneId: "hand_l",
+      targetSocket: "sock-hand-l",
+      bendDirection: "positive",
+      mix: 1,
+      stretch: "forbid",
+    };
+    const issues = diagnoseWeaponTwoHandIk(rifle, body, ikSkeleton);
+    expect(issues.some((issue) => issue.message.includes("unreachable") || issue.path.includes("secondaryHandConstraint"))).toBeTrue();
   });
 });
