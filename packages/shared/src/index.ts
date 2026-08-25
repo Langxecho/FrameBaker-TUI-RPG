@@ -5,4 +5,5 @@ export * from "./builtinMotions";
 export * from "./humanoidBinding";
 export * from "./json";
 export * from "./skeletalProject";
+export * from "./equipment";
 export * from "./types";

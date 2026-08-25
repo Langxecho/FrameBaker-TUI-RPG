@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:framebaker:schema:animation:v3:body-profile",
+  "type": "object", "additionalProperties": false, "required": ["schemaVersion", "id", "name", "skeletonId", "mirrorAxis", "slots", "sockets"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "id": { "$ref": "common.schema.json#/$defs/id" }, "name": { "$ref": "common.schema.json#/$defs/name" }, "skeletonId": { "$ref": "common.schema.json#/$defs/id" }, "mirrorAxis": { "const": "x" },
+    "slots": { "type": "array", "maxItems": 4096, "items": { "type": "object", "additionalProperties": false, "required": ["id", "semantic", "capacity", "accepts"], "properties": { "id": { "$ref": "common.schema.json#/$defs/id" }, "semantic": { "type": "string", "minLength": 1, "maxLength": 128 }, "capacity": { "type": "integer", "minimum": 1, "maximum": 32 }, "accepts": { "$ref": "common.schema.json#/$defs/tags" } } } },
+    "sockets": { "type": "array", "maxItems": 4096, "items": { "type": "object", "additionalProperties": false, "required": ["id", "semantic", "boneId", "rest", "accepts"], "properties": { "id": { "$ref": "common.schema.json#/$defs/id" }, "semantic": { "type": "string", "minLength": 1, "maxLength": 128 }, "boneId": { "$ref": "common.schema.json#/$defs/id" }, "rest": { "$ref": "common.schema.json#/$defs/transform" }, "accepts": { "$ref": "common.schema.json#/$defs/tags" }, "mirrorSocketId": { "$ref": "common.schema.json#/$defs/id" } } } }
+  }
+}
