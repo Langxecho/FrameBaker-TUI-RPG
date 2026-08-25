@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
-import { ArrowLeft, Bone, Boxes, Camera, Download, Pause, Pencil, Play, Plus, Trash2, Upload, X } from "lucide-react";
+import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type CharacterLoadout, type EquipmentDefinition, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
+import { ArrowLeft, Bone, Boxes, Camera, Download, Pause, Pencil, Play, Plus, Shield, Trash2, Upload, X } from "lucide-react";
 import { api, type Folder, type Project, type SkeletalProjectDocument } from "../api";
 import { wsClient } from "../api/ws";
 import { localizeSkeletonName } from "../builtinAnimationLabels";
@@ -11,10 +11,11 @@ import { exportSkeletalProjectPackage } from "../export";
 import { readZip } from "../zip";
 import AnimationAssetsWorkspace, { BindingEditor, CharacterPreview, SkeletonEditor } from "./AnimationAssetsWorkspace";
 import BodyProfileWorkspace from "./BodyProfileWorkspace";
+import EquipmentWorkspace from "./EquipmentWorkspace";
 import MaterialImportModal from "./MaterialImportModal";
 import PxSelect from "./PxSelect";
 
-type WorkspaceTab = "character" | "animations";
+type WorkspaceTab = "character" | "equipment" | "animations";
 type BindingToolTab = "skeleton" | "parts" | "semantics";
 
 export default function SkeletalProjectEditor({ project, onBack }: { project: Project; onBack: () => void }) {
@@ -282,6 +283,12 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
     if (!ok) throw new Error(t("skeletal.bodyProfile.saveFailed", { msg: "document save failed" }));
   }, [document, save, t]);
 
+  const saveEquipment = useCallback(async (nextEquipment: EquipmentDefinition[], nextLoadouts: CharacterLoadout[]) => {
+    if (!document) return;
+    const ok = await save({ ...document, equipment: nextEquipment, loadouts: nextLoadouts });
+    if (!ok) throw new Error(t("skeletal.equipment.saveFailed", { msg: "document save failed" }));
+  }, [document, save, t]);
+
   const reloadMaterialLibrary = useCallback(async () => {
     const nextMaterials = await api.listMaterials();
     setMaterials(nextMaterials.filter((item) => item.kind === "image"));
@@ -426,7 +433,8 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
 
       <nav className="skeletal-project-tabs" aria-label={t("skeletal.workspaceTabs")}>
         <button type="button" className={`${tab === "character" ? "active " : ""}${binding ? "done" : ""}`} onClick={() => setTab("character")}><Boxes size={17} /> 1. {t("skeletal.tab.character")}</button>
-        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "animations" ? "active " : ""}${document.animations.length ? "done" : ""}`} onClick={() => binding ? setTab("animations") : undefined}><Play size={17} /> 2. {t("skeletal.tab.animations")} <span>{document.animations.length}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "equipment" ? "active " : ""}${(document.equipment?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("equipment") : undefined}><Shield size={17} /> 2. {t("skeletal.tab.equipment")} <span>{document.equipment?.length ?? 0}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "animations" ? "active " : ""}${document.animations.length ? "done" : ""}`} onClick={() => binding ? setTab("animations") : undefined}><Play size={17} /> 3. {t("skeletal.tab.animations")} <span>{document.animations.length}</span></button>
         <input ref={importInputRef} hidden type="file" accept=".zip,.fbanim,application/zip" onChange={(event) => { void importPackage(event.target.files?.[0]); event.currentTarget.value = ""; }} />
         <div className="skeletal-project-actions">
           <button type="button" className="skeletal-tab-action" disabled={busy} onClick={() => importInputRef.current?.click()}><Upload size={17} /> {t("skeletal.import.runtime")}</button>
@@ -492,6 +500,22 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
           void reloadMaterialLibrary().catch((e) => notify(t("skeletal.loadFailed", { msg: (e as Error).message })));
         }} />}
       </div>}
+
+      {tab === "equipment" && binding && skeleton && <main className="skeletal-equipment-workspace">
+        {(document.bodyProfiles?.length ?? 0) === 0
+          ? <div className="skeletal-empty-state"><Shield size={38} /><h2>{t("skeletal.equipment.needBodyTitle")}</h2><p>{t("skeletal.equipment.needBody")}</p></div>
+          : <EquipmentWorkspace
+              equipment={document.equipment ?? []}
+              loadouts={document.loadouts ?? []}
+              bodyProfiles={document.bodyProfiles ?? []}
+              skeleton={skeleton}
+              binding={binding}
+              clip={clip}
+              materials={materials}
+              busy={busy}
+              onSaveEquipment={saveEquipment}
+            />}
+      </main>}
 
       {tab === "animations" && binding && skeleton && <main className="skeletal-animation-workspace">
         <aside className="pixel-panel skeletal-action-list">
