@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type ActionTemplate, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type CharacterLoadout, type EquipmentDefinition, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
-import { ArrowLeft, Bone, Boxes, Camera, Download, Package, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Bone, Boxes, Camera, Crosshair, Download, Package, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
 import { api, type Folder, type Project, type SkeletalProjectDocument } from "../api";
 import { wsClient } from "../api/ws";
 import { localizeSkeletonName } from "../builtinAnimationLabels";
@@ -16,8 +16,9 @@ import EquipmentWorkspace from "./EquipmentWorkspace";
 import MaterialImportModal from "./MaterialImportModal";
 import PublishWorkspace from "./PublishWorkspace";
 import PxSelect from "./PxSelect";
+import WeaponWorkspace from "./WeaponWorkspace";
 
-type WorkspaceTab = "character" | "equipment" | "actions" | "animations" | "publish";
+type WorkspaceTab = "character" | "equipment" | "weapons" | "actions" | "animations" | "publish";
 type BindingToolTab = "skeleton" | "parts" | "semantics";
 
 export default function SkeletalProjectEditor({ project, onBack }: { project: Project; onBack: () => void }) {
@@ -495,9 +496,10 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
       <nav className="skeletal-project-tabs" aria-label={t("skeletal.workspaceTabs")}>
         <button type="button" className={`${tab === "character" ? "active " : ""}${binding ? "done" : ""}`} onClick={() => setTab("character")}><Boxes size={17} /> 1. {t("skeletal.tab.character")}</button>
         <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "equipment" ? "active " : ""}${(document.equipment?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("equipment") : undefined}><Shield size={17} /> 2. {t("skeletal.tab.equipment")} <span>{document.equipment?.length ?? 0}</span></button>
-        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "actions" ? "active " : ""}${(document.actionTemplates?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("actions") : undefined}><Swords size={17} /> 3. {t("skeletal.tab.actions")} <span>{document.actionTemplates?.length ?? 0}</span></button>
-        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "animations" ? "active " : ""}${document.animations.length ? "done" : ""}`} onClick={() => binding ? setTab("animations") : undefined}><Play size={17} /> 4. {t("skeletal.tab.animations")} <span>{document.animations.length}</span></button>
-        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "publish" ? "active " : ""}`} onClick={() => binding ? setTab("publish") : undefined}><Package size={17} /> 5. {t("skeletal.tab.publish")}</button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "weapons" ? "active " : ""}${(document.equipment ?? []).some((item) => item.weapon) ? "done" : ""}`} onClick={() => binding ? setTab("weapons") : undefined}><Crosshair size={17} /> 3. {t("skeletal.tab.weapons")} <span>{(document.equipment ?? []).filter((item) => item.weapon).length}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "actions" ? "active " : ""}${(document.actionTemplates?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("actions") : undefined}><Swords size={17} /> 4. {t("skeletal.tab.actions")} <span>{document.actionTemplates?.length ?? 0}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "animations" ? "active " : ""}${document.animations.length ? "done" : ""}`} onClick={() => binding ? setTab("animations") : undefined}><Play size={17} /> 5. {t("skeletal.tab.animations")} <span>{document.animations.length}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "publish" ? "active " : ""}`} onClick={() => binding ? setTab("publish") : undefined}><Package size={17} /> 6. {t("skeletal.tab.publish")}</button>
         <input ref={importInputRef} hidden type="file" accept=".zip,.fbanim,application/zip" onChange={(event) => { void importPackage(event.target.files?.[0]); event.currentTarget.value = ""; }} />
         <div className="skeletal-project-actions">
           <button type="button" className="skeletal-tab-action" disabled={busy} onClick={() => importInputRef.current?.click()}><Upload size={17} /> {t("skeletal.import.runtime")}</button>
@@ -577,6 +579,21 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               materials={materials}
               busy={busy}
               onSaveEquipment={saveEquipment}
+            />}
+      </main>}
+
+      {tab === "weapons" && binding && skeleton && <main className="skeletal-weapon-workspace">
+        {(document.bodyProfiles?.length ?? 0) === 0
+          ? <div className="skeletal-empty-state"><Crosshair size={38} /><h2>{t("skeletal.weapon.needBodyTitle")}</h2><p>{t("skeletal.weapon.needBody")}</p></div>
+          : <WeaponWorkspace
+              equipment={document.equipment ?? []}
+              loadouts={document.loadouts ?? []}
+              bodyProfiles={document.bodyProfiles ?? []}
+              skeleton={skeleton}
+              binding={binding}
+              clip={clip}
+              busy={busy}
+              onSaveWeapons={saveEquipment}
             />}
       </main>}
 
