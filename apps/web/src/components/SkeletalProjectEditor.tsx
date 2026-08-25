@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type ActionTemplate, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type CharacterLoadout, type EquipmentDefinition, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
-import { ArrowLeft, Bone, Boxes, Camera, Download, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Bone, Boxes, Camera, Download, Package, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
 import { api, type Folder, type Project, type SkeletalProjectDocument } from "../api";
 import { wsClient } from "../api/ws";
 import { localizeSkeletonName } from "../builtinAnimationLabels";
@@ -14,9 +14,10 @@ import AnimationAssetsWorkspace, { BindingEditor, CharacterPreview, SkeletonEdit
 import BodyProfileWorkspace from "./BodyProfileWorkspace";
 import EquipmentWorkspace from "./EquipmentWorkspace";
 import MaterialImportModal from "./MaterialImportModal";
+import PublishWorkspace from "./PublishWorkspace";
 import PxSelect from "./PxSelect";
 
-type WorkspaceTab = "character" | "equipment" | "actions" | "animations";
+type WorkspaceTab = "character" | "equipment" | "actions" | "animations" | "publish";
 type BindingToolTab = "skeleton" | "parts" | "semantics";
 
 export default function SkeletalProjectEditor({ project, onBack }: { project: Project; onBack: () => void }) {
@@ -496,6 +497,7 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
         <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "equipment" ? "active " : ""}${(document.equipment?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("equipment") : undefined}><Shield size={17} /> 2. {t("skeletal.tab.equipment")} <span>{document.equipment?.length ?? 0}</span></button>
         <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "actions" ? "active " : ""}${(document.actionTemplates?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("actions") : undefined}><Swords size={17} /> 3. {t("skeletal.tab.actions")} <span>{document.actionTemplates?.length ?? 0}</span></button>
         <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "animations" ? "active " : ""}${document.animations.length ? "done" : ""}`} onClick={() => binding ? setTab("animations") : undefined}><Play size={17} /> 4. {t("skeletal.tab.animations")} <span>{document.animations.length}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "publish" ? "active " : ""}`} onClick={() => binding ? setTab("publish") : undefined}><Package size={17} /> 5. {t("skeletal.tab.publish")}</button>
         <input ref={importInputRef} hidden type="file" accept=".zip,.fbanim,application/zip" onChange={(event) => { void importPackage(event.target.files?.[0]); event.currentTarget.value = ""; }} />
         <div className="skeletal-project-actions">
           <button type="button" className="skeletal-tab-action" disabled={busy} onClick={() => importInputRef.current?.click()}><Upload size={17} /> {t("skeletal.import.runtime")}</button>
@@ -634,6 +636,19 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
           </> : <div className="skeletal-empty-state"><Play size={38} /><h2>{t("skeletal.animations.empty")}</h2><p>{t("skeletal.animations.emptyHint")}</p></div>}
         </section>
       </main>}
+
+      {tab === "publish" && binding && skeleton && (
+        <PublishWorkspace
+          projectName={project.name}
+          document={document}
+          skeleton={skeleton}
+          binding={binding}
+          clips={actionClips}
+          clip={clip}
+          busy={busy}
+          onBusy={setBusy}
+        />
+      )}
 
       {actionEditorClipId && binding && skeleton && <div className="modal-mask skeletal-action-editor-mask">
         <section className="modal pixel-panel skeletal-action-editor-modal" role="dialog" aria-modal="true" aria-label={t("skeletal.animations.editOnCharacter")}>

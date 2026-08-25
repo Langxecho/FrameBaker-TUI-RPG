@@ -4939,6 +4939,40 @@ body.resizing-row * {
   .skeletal-action-workspace { grid-template-columns: 1fr; }
 }
 
+
+.skeletal-publish-workspace { min-height: 0; }
+.skeletal-publish-panel { display: grid; gap: 12px; padding: 12px; }
+.skeletal-publish-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.skeletal-publish-header h2 { margin: 0; }
+.skeletal-publish-header p { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; }
+.skeletal-publish-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.skeletal-publish-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.skeletal-publish-section { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); background: var(--surface); }
+.skeletal-publish-section h3 { margin: 0; font-size: 13px; color: var(--text); }
+.skeletal-publish-list { margin: 0; padding-left: 18px; color: var(--text-muted); font-size: 12px; }
+.skeletal-publish-list code { color: var(--accent); }
+.skeletal-publish-terminal { display: grid; place-items: center; }
+.skeletal-publish-terminal > * { transform-origin: center center; max-width: 100%; max-height: 100%; }
+.skeletal-publish-time { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; }
+.skeletal-publish-time input { flex: 1; }
+.skeletal-publish-stages { display: grid; gap: 8px; }
+.skeletal-publish-stage { border: 1px solid var(--border); background: var(--bg); padding: 8px; }
+.skeletal-publish-stage header { display: flex; justify-content: space-between; gap: 8px; color: var(--text); font-size: 12px; }
+.skeletal-publish-stage.ok header { color: var(--text-muted); }
+.skeletal-publish-stage.warn { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.skeletal-publish-stage.error { border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, var(--bg)); }
+.skeletal-publish-diag { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.skeletal-publish-diag button { display: grid; grid-template-columns: auto auto 1fr; gap: 4px 8px; width: 100%; text-align: left; border: 0; background: transparent; color: var(--text-muted); font: inherit; cursor: pointer; padding: 4px; }
+.skeletal-publish-diag button.on, .skeletal-publish-diag button:hover { background: var(--selected); color: var(--text); }
+.skeletal-publish-diag .sev { font-size: 11px; text-transform: uppercase; }
+.skeletal-publish-diag .sev.error { color: var(--danger); }
+.skeletal-publish-diag .sev.warning { color: var(--accent); }
+.skeletal-publish-diag code.path { color: var(--accent); grid-column: 1 / -1; }
+.skeletal-publish-diag span:last-child { grid-column: 1 / -1; }
+@media (max-width: 980px) {
+  .skeletal-publish-grid { grid-template-columns: 1fr; }
+}
+
 /* ===== Tooltip ===== */
 .tip {
   z-index: 99999;
