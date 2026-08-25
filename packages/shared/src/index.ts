@@ -1,6 +1,7 @@
 export * from "./animation";
 export * from "./animationPackage";
 export * from "./animationPackageV2";
+export * from "./animationPackageV3";
 export * from "./builtinMotions";
 export * from "./humanoidBinding";
 export * from "./json";
