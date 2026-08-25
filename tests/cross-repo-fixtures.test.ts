@@ -58,9 +58,9 @@ describe("cross-repo fbanim-v3 fixture contract", () => {
     }
 
     const available = m.contractIds.filter((id) => m.fixtures[id]!.status === "available");
-    expect(available).toContain("minimal-region");
+    expect(available).toEqual(m.contractIds);
     const missing = m.contractIds.filter((id) => m.fixtures[id]!.status === "missing");
-    expect(missing.length).toBe(10);
+    expect(missing).toEqual([]);
   });
 
   test("available fixtures have required files; missing IDs report clean absence", () => {
@@ -94,37 +94,30 @@ describe("cross-repo fbanim-v3 fixture contract", () => {
     }
 
     const missingIds = report.filter((r) => r.status === "missing").map((r) => r.id);
-    expect(missingIds).toEqual([
-      "eye-attachment",
-      "binocular-eye-multislot",
-      "cyber-arm-replacement",
-      "internal-chip-none",
-      "equipment-effect",
-      "rifle-right-primary",
-      "rifle-left-primary",
-      "dual-pistol",
-      "conflicting-loadout",
-      "action-event-boundary",
-    ]);
+    expect(missingIds).toEqual([]);
+    expect(report.map((r) => r.id).sort()).toEqual([...m.contractIds].sort());
   });
 
-  test("minimal-region package verifies and texture is a decodeable PNG signature+IHDR", async () => {
-    const dir = join(fixtureRoot, "minimal-region");
-    const packageBytes = readFileSync(join(dir, "package.fbanim"));
-    const entries = await readZip(new Blob([packageBytes]));
-    const verified = await verifyFbanimV3Entries(
-      entries.map((e) => ({ path: e.name, bytes: e.data })),
-    );
-    expect(verified.ok).toBeTrue();
-    if (!verified.ok) return;
+  test("every available package verifies and textures are decodeable PNG signature+IHDR", async () => {
+    const m = loadManifest();
+    for (const id of m.contractIds) {
+      if (m.fixtures[id]!.status !== "available") continue;
+      const dir = join(fixtureRoot, id);
+      const packageBytes = readFileSync(join(dir, "package.fbanim"));
+      const entries = await readZip(new Blob([packageBytes]));
+      const verified = await verifyFbanimV3Entries(
+        entries.map((e) => ({ path: e.name, bytes: e.data })),
+      );
+      expect(verified.ok, `${id} verify`).toBeTrue();
+      if (!verified.ok) continue;
 
-    const tex = entries.find((e) => e.name.startsWith("textures/") && e.name.endsWith(".png"));
-    expect(tex).toBeDefined();
-    const bytes = tex!.data;
-    expect(bytes.length).toBeGreaterThan(32);
-    expect([...bytes.slice(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-    // IHDR chunk must follow signature for a real PNG (not digest-only stub).
-    expect(String.fromCharCode(bytes[12]!, bytes[13]!, bytes[14]!, bytes[15]!)).toBe("IHDR");
+      const tex = entries.find((e) => e.name.startsWith("textures/") && e.name.endsWith(".png"));
+      expect(tex, `${id} texture`).toBeDefined();
+      const bytes = tex!.data;
+      expect(bytes.length).toBeGreaterThan(32);
+      expect([...bytes.slice(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+      expect(String.fromCharCode(bytes[12]!, bytes[13]!, bytes[14]!, bytes[15]!)).toBe("IHDR");
+    }
   });
 
   test("available fixture expected.json must be non-empty semantic truth", () => {
@@ -181,6 +174,22 @@ describe("cross-repo fbanim-v3 fixture contract", () => {
     for (const entry of built) {
       const onDisk = readFileSync(join(dir, entry.name));
       expect(Buffer.from(entry.data).equals(onDisk), `byte mismatch ${entry.name}`).toBeTrue();
+    }
+  });
+
+  test("contract fixture IDs match pure builder bytes on disk", async () => {
+    const { CONTRACT_FIXTURE_IDS, buildContractFixtureEntries } = await import(
+      "../apps/web/src/contractFixtures"
+    );
+    const m = loadManifest();
+    for (const id of CONTRACT_FIXTURE_IDS) {
+      expect(m.fixtures[id]!.status).toBe("available");
+      const built = await buildContractFixtureEntries(id);
+      const dir = join(fixtureRoot, id);
+      for (const entry of built) {
+        const onDisk = readFileSync(join(dir, entry.name));
+        expect(Buffer.from(entry.data).equals(onDisk), `${id}/${entry.name} byte mismatch`).toBeTrue();
+      }
     }
   });
 

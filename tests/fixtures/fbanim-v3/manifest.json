@@ -15,8 +15,8 @@
     "action-event-boundary"
   ],
   "policies": {
-    "matrixEpsilon": 1e-5,
-    "socketEpsilon": 1e-5,
+    "matrixEpsilon": 0.00001,
+    "socketEpsilon": 0.00001,
     "pixelEquality": "exact",
     "pixelNote": "Exact RGBA equality unless a fixture records a reviewed threshold in expected.json.thresholds.pixelMaxDiff."
   },
@@ -49,44 +49,154 @@
       "notes": "Phase-1 baseline: single root bone, one Region, idle action. expected.json is pure-builder semantic truth (FK matrices, sockets, draw-order slots, RGBA samples/checksum)."
     },
     "eye-attachment": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture eye-attachment from pure FrameBaker builders."
     },
     "binocular-eye-multislot": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture binocular-eye-multislot from pure FrameBaker builders."
     },
     "cyber-arm-replacement": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture cyber-arm-replacement from pure FrameBaker builders."
     },
     "internal-chip-none": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture internal-chip-none from pure FrameBaker builders."
     },
     "equipment-effect": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture equipment-effect from pure FrameBaker builders."
     },
     "rifle-right-primary": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture rifle-right-primary from pure FrameBaker builders."
     },
     "rifle-left-primary": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture rifle-left-primary from pure FrameBaker builders."
     },
     "dual-pistol": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture dual-pistol from pure FrameBaker builders."
     },
     "conflicting-loadout": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture conflicting-loadout from pure FrameBaker builders."
     },
     "action-event-boundary": {
-      "status": "missing",
-      "reason": "Canonical package not yet produced by FrameBaker publish APIs; do not invent assets."
+      "status": "available",
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Canonical contract fixture action-event-boundary from pure FrameBaker builders."
     }
   }
 }
