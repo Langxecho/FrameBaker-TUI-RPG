@@ -7,4 +7,5 @@ export * from "./humanoidBinding";
 export * from "./json";
 export * from "./skeletalProject";
 export * from "./equipment";
+export * from "./actionComposition";
 export * from "./types";

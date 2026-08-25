@@ -1277,6 +1277,7 @@ export default function AnimationAssetsWorkspace({ onOpenProjects, initialAssetI
         return;
       }
     }
+    // 自由文本事件仍保留；语义化 weapon/equipment/effect 事件由 ActionWorkspace 模板与兼容矩阵约束。
     const event = { time, type: eventDraft.type, name: eventDraft.name, ...(payload ? { payload } : {}) };
     if (await commitClipEdit(addMotionEvent(clip, event))) {
       setEventDraft({ type: "", name: "", payload: "" });

@@ -4896,9 +4896,47 @@ body.resizing-row * {
 .equipment-diagnostics code { color: var(--accent); }
 .skeletal-equipment-workspace { min-height: 0; }
 
+.skeletal-actions-workspace { min-height: 0; }
+.skeletal-action-workspace {
+  display: grid;
+  grid-template-columns: clamp(220px, 18vw, 280px) minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 10px;
+  align-items: start;
+}
+.skeletal-action-tree,
+.skeletal-action-inspector,
+.skeletal-action-preview {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  min-height: 420px;
+}
+.skeletal-action-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.skeletal-action-layer-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.skeletal-action-layers,
+.skeletal-action-settings { display: grid; gap: 8px; }
+.skeletal-action-diagnostics { margin: 0; padding-left: 18px; color: var(--text-muted); }
+.skeletal-action-note { margin: 0; color: var(--text-muted); font-size: 12px; }
+.skeletal-action-muzzle,
+.skeletal-action-muzzle-marker {
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+}
+.skeletal-action-matrix { display: grid; gap: 8px; overflow: auto; }
+.skeletal-action-matrix table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.skeletal-action-matrix th,
+.skeletal-action-matrix td { padding: 4px 6px; border: 1px solid var(--border); text-align: left; }
+.skeletal-action-matrix tr.ok td { color: var(--text-muted); }
+.skeletal-action-matrix tr.fail td { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+.skeletal-dirty { margin: 0; color: var(--accent); }
+.skeletal-clean { margin: 0; color: var(--text-muted); }
+
 @media (max-width: 980px) {
   .equipment-layout { grid-template-columns: 1fr; }
   .equipment-transform { grid-template-columns: 1fr 1fr; }
+  .skeletal-action-workspace { grid-template-columns: 1fr; }
 }
 
 /* ===== Tooltip ===== */

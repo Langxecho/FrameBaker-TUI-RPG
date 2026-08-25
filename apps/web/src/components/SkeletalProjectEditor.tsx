@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type CharacterLoadout, type EquipmentDefinition, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
-import { ArrowLeft, Bone, Boxes, Camera, Download, Pause, Pencil, Play, Plus, Shield, Trash2, Upload, X } from "lucide-react";
+import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type ActionTemplate, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type CharacterLoadout, type EquipmentDefinition, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
+import { ArrowLeft, Bone, Boxes, Camera, Download, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
 import { api, type Folder, type Project, type SkeletalProjectDocument } from "../api";
 import { wsClient } from "../api/ws";
 import { localizeSkeletonName } from "../builtinAnimationLabels";
@@ -9,13 +9,14 @@ import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
 import { exportSkeletalProjectPackage } from "../export";
 import { readZip } from "../zip";
+import ActionWorkspace from "./ActionWorkspace";
 import AnimationAssetsWorkspace, { BindingEditor, CharacterPreview, SkeletonEditor } from "./AnimationAssetsWorkspace";
 import BodyProfileWorkspace from "./BodyProfileWorkspace";
 import EquipmentWorkspace from "./EquipmentWorkspace";
 import MaterialImportModal from "./MaterialImportModal";
 import PxSelect from "./PxSelect";
 
-type WorkspaceTab = "character" | "equipment" | "animations";
+type WorkspaceTab = "character" | "equipment" | "actions" | "animations";
 type BindingToolTab = "skeleton" | "parts" | "semantics";
 
 export default function SkeletalProjectEditor({ project, onBack }: { project: Project; onBack: () => void }) {
@@ -27,6 +28,7 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
   const [materialFolders, setMaterialFolders] = useState<Folder[]>([]);
   const [skeleton, setSkeleton] = useState<Skeleton>();
   const [clip, setClip] = useState<MotionClip>();
+  const [actionClips, setActionClips] = useState<Record<string, MotionClip>>({});
   const [skeletonToUse, setSkeletonToUse] = useState("");
   const [clipToAdd, setClipToAdd] = useState("");
   const [playing, setPlaying] = useState(false);
@@ -215,6 +217,27 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
     return () => { active = false; };
   }, [activeAnimation?.id, activeAnimation?.motionClipId, t]);
 
+  useEffect(() => {
+    let active = true;
+    const ids = [...new Set((document?.animations ?? []).map((item) => item.motionClipId))];
+    if (!ids.length) { setActionClips({}); return () => { active = false; }; }
+    void Promise.all(ids.map(async (id) => {
+      try {
+        const { asset } = await api.getAnimationAsset(id);
+        return asset.kind === "motion-clip" ? asset : null;
+      } catch {
+        return null;
+      }
+    })).then((loaded) => {
+      if (!active) return;
+      const next: Record<string, MotionClip> = {};
+      for (const item of loaded) if (item) next[item.id] = item;
+      if (clip) next[clip.id] = clip;
+      setActionClips(next);
+    });
+    return () => { active = false; };
+  }, [document?.animations, clip]);
+
   // 动作编辑弹窗（或其他页面）保存动画资产后服务端会广播 animation_assets_changed，
   // 这里按资产 id 精准重拉，保证画板预览、骨骼展示和资产列表同步到最新内容。
   useEffect(() => {
@@ -287,6 +310,43 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
     if (!document) return;
     const ok = await save({ ...document, equipment: nextEquipment, loadouts: nextLoadouts });
     if (!ok) throw new Error(t("skeletal.equipment.saveFailed", { msg: "document save failed" }));
+  }, [document, save, t]);
+
+  const saveActions = useCallback(async (payload: {
+    templates: ActionTemplate[];
+    clips: Record<string, MotionClip>;
+    baseActions: Record<string, string>;
+    stanceActions: Record<string, string>;
+    equipmentOverrides: Record<string, string>;
+  }) => {
+    if (!document) return;
+    for (const clip of Object.values(payload.clips)) {
+      try {
+        await api.putAnimationAsset(clip.id, clip);
+      } catch {
+        await api.createAnimationAsset(clip, null);
+      }
+    }
+    const stanceProfiles = Object.keys(payload.stanceActions).length
+      ? [{
+          id: document.stanceProfiles?.[0]?.id ?? "stance-default",
+          requiredActions: Object.keys(payload.stanceActions),
+          optionalActions: [],
+          constraints: [],
+        }]
+      : (document.stanceProfiles ?? []);
+    const ok = await save({
+      ...document,
+      actionTemplates: payload.templates,
+      stanceProfiles,
+      animations: document.animations.map((item) => {
+        const clipId = payload.baseActions[item.name] ?? payload.baseActions[item.id];
+        return clipId ? { ...item, motionClipId: clipId } : item;
+      }),
+    });
+    if (!ok) throw new Error(t("skeletal.actions.saveFailed", { msg: "document save failed" }));
+    const nextAssets = await api.listAnimationAssets();
+    setAssets(nextAssets);
   }, [document, save, t]);
 
   const reloadMaterialLibrary = useCallback(async () => {
@@ -434,7 +494,8 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
       <nav className="skeletal-project-tabs" aria-label={t("skeletal.workspaceTabs")}>
         <button type="button" className={`${tab === "character" ? "active " : ""}${binding ? "done" : ""}`} onClick={() => setTab("character")}><Boxes size={17} /> 1. {t("skeletal.tab.character")}</button>
         <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "equipment" ? "active " : ""}${(document.equipment?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("equipment") : undefined}><Shield size={17} /> 2. {t("skeletal.tab.equipment")} <span>{document.equipment?.length ?? 0}</span></button>
-        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "animations" ? "active " : ""}${document.animations.length ? "done" : ""}`} onClick={() => binding ? setTab("animations") : undefined}><Play size={17} /> 3. {t("skeletal.tab.animations")} <span>{document.animations.length}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "actions" ? "active " : ""}${(document.actionTemplates?.length ?? 0) ? "done" : ""}`} onClick={() => binding ? setTab("actions") : undefined}><Swords size={17} /> 3. {t("skeletal.tab.actions")} <span>{document.actionTemplates?.length ?? 0}</span></button>
+        <button type="button" title={!binding ? t("skeletal.step.requiresCharacter") : undefined} className={`${tab === "animations" ? "active " : ""}${document.animations.length ? "done" : ""}`} onClick={() => binding ? setTab("animations") : undefined}><Play size={17} /> 4. {t("skeletal.tab.animations")} <span>{document.animations.length}</span></button>
         <input ref={importInputRef} hidden type="file" accept=".zip,.fbanim,application/zip" onChange={(event) => { void importPackage(event.target.files?.[0]); event.currentTarget.value = ""; }} />
         <div className="skeletal-project-actions">
           <button type="button" className="skeletal-tab-action" disabled={busy} onClick={() => importInputRef.current?.click()}><Upload size={17} /> {t("skeletal.import.runtime")}</button>
@@ -515,6 +576,30 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               busy={busy}
               onSaveEquipment={saveEquipment}
             />}
+      </main>}
+
+      {tab === "actions" && binding && skeleton && <main className="skeletal-actions-workspace">
+        <ActionWorkspace
+          templates={document.actionTemplates ?? []}
+          clips={actionClips}
+          baseActions={Object.fromEntries(
+            (document.actionTemplates ?? []).map((template) => {
+              const match = document.animations.find((item) => item.name === template.id || item.id === template.id);
+              return [template.id, match?.motionClipId ?? `clip-${template.id}`];
+            }),
+          )}
+          bodyProfiles={document.bodyProfiles ?? []}
+          equipment={document.equipment ?? []}
+          loadouts={(document.loadouts ?? []).map((item, index) => ({
+            name: item.equipment.map((entry) => entry.equipmentId).join("+") || `loadout-${index + 1}`,
+            loadout: item,
+          }))}
+          skeleton={skeleton}
+          binding={binding}
+          busy={busy}
+          onSaveActions={saveActions}
+          onEditMotionClip={(clipId) => setActionEditorClipId(clipId)}
+        />
       </main>}
 
       {tab === "animations" && binding && skeleton && <main className="skeletal-animation-workspace">
