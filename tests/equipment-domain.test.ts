@@ -29,11 +29,15 @@ describe("equipment domain", () => {
     for (const mode of ["none", "attached", "replacement", "effect"] as const) expect(validateEquipmentDefinition(equipment(mode), body).ok).toBeTrue();
     expect(validateEquipmentDefinition({ ...equipment("none"), attachments: [attachment("bad", "head-socket")] }, body).ok).toBeFalse();
     expect(validateEquipmentDefinition({ ...equipment("attached"), attachments: [{ ...attachment("bad", "head-socket"), socket: "missing" }] }, body).ok).toBeFalse();
+    expect(validateEquipmentDefinition({ ...equipment(), visualMode: "invalid" as EquipmentDefinition["visualMode"] }, body).ok).toBeFalse();
+    const invalidTags = { ...equipment(), id: "invalid-tags", tags: ["wrong-tag"] };
+    expect(validateLoadout(body, [invalidTags], validLoadout(body, invalidTags)).ok).toBeFalse();
   });
 
   test("rejects invalid two-hand grip declarations and non-finite transforms", () => {
     const rifle = { ...equipment(), id: "rifle", tags: ["weapon"], primarySlot: "left", occupiedSlots: ["left", "right"], attachments: [attachment("rifle", "left-socket")], weapon: { holdMode: "two_hand" as const, preferredPrimaryHand: "left" as const, mirrorAllowed: true, primaryGrip: transform, stanceProfile: "rifle_two_hand" } };
     expect(validateEquipmentDefinition(rifle, body).ok).toBeFalse();
+    expect(validateEquipmentDefinition({ ...equipment(), id: "ik", weapon: { holdMode: "one_hand", preferredPrimaryHand: "left", mirrorAllowed: true, primaryGrip: transform, stanceProfile: "stance", secondaryHandConstraint: { id: "constraint", upperBoneId: "root", lowerBoneId: "root", endBoneId: "root", targetSocket: "head-socket", bendDirection: "positive", mix: 0, stretch: "limited", maxStretch: 0 } } }, body).ok).toBeFalse();
     expect(validateEquipmentDefinition({ ...equipment(), attachments: [{ ...attachment("bad", "head-socket"), rest: { ...transform, translation: [Number.NaN, 0, 0] as [number, number, number] } }] }, body).ok).toBeFalse();
   });
 
@@ -43,9 +47,29 @@ describe("equipment domain", () => {
     const definitions = [first, second];
     const invalid: CharacterLoadout = { bodyProfileId: body.id, equipment: [{ equipmentId: first.id, primarySlot: "head" }, { equipmentId: second.id, primarySlot: "head" }] };
     expect(validateLoadout(body, definitions, invalid).ok).toBeFalse();
+    expect(validateLoadout(body, [first, first], validLoadout(body, first)).ok).toBeFalse();
     const valid: CharacterLoadout = { bodyProfileId: body.id, equipment: [{ equipmentId: first.id, primarySlot: "head" }] };
     const assembled = assembleLoadout(body, binding, definitions, valid);
     expect(assembled.ok).toBeTrue();
     if (assembled.ok) expect(assembled.value.occupiedSlots).toEqual(["head"]);
   });
+
+  test("rejects duplicate occupied slots and invalid effect socket references", () => {
+    expect(validateEquipmentDefinition({ ...equipment(), occupiedSlots: ["head", "head"] }, body).ok).toBeFalse();
+    expect(validateEquipmentDefinition({ ...equipment("effect"), effectBindings: [{ event: "fire", effectId: "spark", socket: "missing" }] }, body).ok).toBeFalse();
+  });
+
+  test("returns a frozen deterministic assembly", () => {
+    const result = assembleLoadout(body, binding, [equipment()], { bodyProfileId: body.id, equipment: [{ equipmentId: "item-attached", primarySlot: "head" }] });
+    expect(result.ok).toBeTrue();
+    if (result.ok) {
+      expect(Object.isFrozen(result.value)).toBeTrue();
+      expect(Object.isFrozen(result.value.attachments)).toBeTrue();
+      expect(Object.isFrozen(result.value.attachments[0]!)).toBeTrue();
+    }
+  });
 });
+
+function validLoadout(bodyProfile: BodyProfile, item: EquipmentDefinition): CharacterLoadout {
+  return { bodyProfileId: bodyProfile.id, equipment: [{ equipmentId: item.id, primarySlot: item.primarySlot }] };
+}
