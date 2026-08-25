@@ -13,6 +13,7 @@ import {
   FBANIM_V2_LIMITS,
   type FbanimV2PackageSource,
 } from "./animationPackageV2";
+import { compileActionSet } from "./actionComposition";
 import {
   validateBodyProfile,
   validateEquipmentDefinition,
@@ -46,6 +47,8 @@ export interface FbanimV3Action extends FbanimV3FileDescriptor {
   speed: number;
   repeat: number;
   loop: boolean;
+  /** Declared missing-action fallback; optional for backward compatibility. */
+  fallbackAction?: string;
   dependencies: { skeletonId: string };
 }
 export interface FbanimV3Texture extends FbanimV3FileDescriptor { attachmentId: string }
@@ -69,10 +72,16 @@ export interface FbanimManifestV3 {
 export interface FbanimV3ActionSource {
   id: string;
   name: string;
+  /** Base (or already-composed) motion clip. */
   motionClip: MotionClip;
   speed: number;
   repeat: number;
   loop: boolean;
+  /** Optional authoring layers; package build composes them into runtime motion. */
+  stanceClip?: MotionClip;
+  equipmentClip?: MotionClip;
+  correctionClip?: MotionClip;
+  fallbackAction?: string;
 }
 export interface FbanimV3TextureSource { attachmentId: string; bytes: Uint8Array }
 export interface FbanimV3ConstraintSource { id: string; constraint: TwoBoneIkConstraint }
@@ -96,7 +105,15 @@ export interface VerifiedFbanimV3Package {
   characterBinding: CharacterBinding;
   bodyProfiles: BodyProfile[];
   equipment: EquipmentDefinition[];
-  actions: Array<Omit<FbanimV3ActionSource, "motionClip"> & { motionClip: MotionClip }>;
+  actions: Array<{
+    id: string;
+    name: string;
+    motionClip: MotionClip;
+    speed: number;
+    repeat: number;
+    loop: boolean;
+    fallbackAction?: string;
+  }>;
   actionProfiles: ActionTemplate[];
   constraints: FbanimV3ConstraintSource[];
   textures: FbanimV3TextureSource[];
@@ -219,7 +236,7 @@ export function validateFbanimV3Manifest(value: unknown, limitOverrides: Partial
       e.actions.forEach((a, i) => {
         const p = `entry.actions[${i}]`;
         if (!validFile(a, p, JSON_PATH, lim, issues)) return;
-        unknown(a, ["id", "name", "motionClipId", "path", "digest", "byteLength", "speed", "repeat", "loop", "dependencies"], p, issues);
+        unknown(a, ["id", "name", "motionClipId", "path", "digest", "byteLength", "speed", "repeat", "loop", "fallbackAction", "dependencies"], p, issues);
         if (typeof a.id !== "string" || !ID.test(a.id) || typeof a.name !== "string" || !a.name || typeof a.motionClipId !== "string" || !ID.test(a.motionClipId)) {
           issues.push({ path: p, message: "动作身份无效" });
         } else {
@@ -231,6 +248,9 @@ export function validateFbanimV3Manifest(value: unknown, limitOverrides: Partial
         if (typeof a.path === "string" && !a.path.startsWith("motions/")) issues.push({ path: `${p}.path`, message: "目录不匹配" });
         if (typeof a.speed !== "number" || !Number.isFinite(a.speed) || a.speed <= 0 || a.speed > 8 || typeof a.repeat !== "number" || !Number.isInteger(a.repeat) || a.repeat < 1 || a.repeat > 100 || typeof a.loop !== "boolean") {
           issues.push({ path: p, message: "动作播放参数无效" });
+        }
+        if (a.fallbackAction !== undefined && (typeof a.fallbackAction !== "string" || !ID.test(a.fallbackAction))) {
+          issues.push({ path: `${p}.fallbackAction`, message: "fallbackAction 无效" });
         }
         if (!record(a.dependencies) || typeof a.dependencies.skeletonId !== "string") issues.push({ path: `${p}.dependencies`, message: "依赖无效" });
         else unknown(a.dependencies, ["skeletonId"], `${p}.dependencies`, issues);
@@ -296,8 +316,62 @@ function requiredTextureIds(source: FbanimV3PackageSource): Set<string> {
   return ids;
 }
 
+/** Compose optional authoring layers into one runtime motion clip. */
 function compileRuntimeClip(action: FbanimV3ActionSource): MotionClip {
-  return structuredClone(action.motionClip);
+  const hasLayers = action.stanceClip || action.equipmentClip || action.correctionClip;
+  if (!hasLayers) {
+    // Preserve raw clip identity for layer-free packages (compat with existing fixtures).
+    return structuredClone(action.motionClip);
+  }
+  const clips: Record<string, MotionClip> = {
+    [`base:${action.id}`]: action.motionClip,
+  };
+  const baseActions: Record<string, string> = { [action.id]: `base:${action.id}` };
+  const stanceActions: Record<string, string> = {};
+  const equipmentOverrides: Record<string, string> = {};
+  const equipmentCorrections: Record<string, string> = {};
+  if (action.stanceClip) {
+    clips[`stance:${action.id}`] = action.stanceClip;
+    stanceActions[action.id] = `stance:${action.id}`;
+  }
+  if (action.equipmentClip) {
+    clips[`equip:${action.id}`] = action.equipmentClip;
+    equipmentOverrides[action.id] = `equip:${action.id}`;
+  }
+  if (action.correctionClip) {
+    clips[`corr:${action.id}`] = action.correctionClip;
+    equipmentCorrections[action.id] = `corr:${action.id}`;
+  }
+  const composed = compileActionSet({
+    actionIds: [action.id],
+    clips,
+    baseActions,
+    stanceActions,
+    equipmentOverrides,
+    equipmentCorrections,
+    templates: action.fallbackAction
+      ? [{
+          id: action.id,
+          loop: action.loop,
+          requiredTracks: [],
+          requiredEvents: [],
+          allowedEvents: [],
+          contactRules: [],
+          constraintRules: [],
+          fallbackAction: action.fallbackAction,
+          defaultInterrupt: "immediate",
+          defaultBlendMs: 0,
+        }]
+      : undefined,
+  });
+  const result = composed.actions[0];
+  if (!result) return structuredClone(action.motionClip);
+  return {
+    ...result.clip,
+    id: `runtime:${action.id}`,
+    name: action.name || action.id,
+    skeletonId: action.motionClip.skeletonId,
+  };
 }
 
 export function migrateV2PackageSource(source: FbanimV2PackageSource): FbanimV3PackageSource {
@@ -387,6 +461,8 @@ export async function buildFbanimV3Entries(source: FbanimV3PackageSource): Promi
     const compiled = compileRuntimeClip(action);
     const validated = validateMotionClip(compiled, source.skeleton);
     if (!validated.ok || compiled.skeletonId !== source.skeleton.id) throw new Error(`动作 ${action.id} 与骨架不匹配或无效`);
+    const profileFallback = source.actionProfiles.find((p) => p.id === action.id)?.fallbackAction;
+    const fallbackAction = action.fallbackAction ?? profileFallback;
     actions.push({
       id: action.id,
       name: action.name,
@@ -394,6 +470,7 @@ export async function buildFbanimV3Entries(source: FbanimV3PackageSource): Promi
       speed: action.speed,
       repeat: action.repeat,
       loop: action.loop,
+      ...(fallbackAction ? { fallbackAction } : {}),
       ...await add("motions", compiled as unknown as JsonObject),
       dependencies: { skeletonId: source.skeleton.id },
     });
@@ -608,6 +685,7 @@ export async function verifyFbanimV3Entries(input: Iterable<FbanimEntry>, overri
       speed: descriptor.speed,
       repeat: descriptor.repeat,
       loop: descriptor.loop,
+      ...(descriptor.fallbackAction ? { fallbackAction: descriptor.fallbackAction } : {}),
     });
   }
 

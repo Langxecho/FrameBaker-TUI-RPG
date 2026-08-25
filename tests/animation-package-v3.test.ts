@@ -260,6 +260,85 @@ describe("fbanim v3 运行时包", () => {
     expect((await verifyFbanimV3Entries(prettyEntries)).ok).toBeFalse();
   });
 
+  test("publish 源编译为合成 runtime 剪辑，而非仅透传原始层", async () => {
+    const base = {
+      ...clip,
+      id: "base-aim",
+      name: "base-aim",
+      tracks: [{
+        targetId: "root",
+        property: "translation" as const,
+        interpolation: "step" as const,
+        keyframes: [{ time: 0, value: [1, 0, 0] as [number, number, number] }],
+      }],
+    };
+    const stance = {
+      ...clip,
+      id: "stance-aim",
+      name: "stance-aim",
+      tracks: [{
+        targetId: "root",
+        property: "translation" as const,
+        interpolation: "step" as const,
+        keyframes: [{ time: 0, value: [2, 0, 0] as [number, number, number] }],
+      }],
+    };
+    const correction = {
+      ...clip,
+      id: "corr-aim",
+      name: "corr-aim",
+      tracks: [{
+        targetId: "root",
+        property: "scale" as const,
+        interpolation: "step" as const,
+        keyframes: [{ time: 0, value: [1.1, 1, 1] as [number, number, number] }],
+      }],
+    };
+    const entries = await buildFbanimV3Entries(source({
+      bodyProfiles: [],
+      equipment: [],
+      textures: [{ attachmentId: "body-region", bytes: png }],
+      actions: [{
+        id: "aim",
+        name: "aim",
+        motionClip: base,
+        speed: 1,
+        repeat: 1,
+        loop: false,
+        stanceClip: stance,
+        correctionClip: correction,
+        fallbackAction: "idle",
+      }],
+      actionProfiles: [{
+        id: "aim",
+        loop: false,
+        requiredTracks: [],
+        requiredEvents: [],
+        allowedEvents: [],
+        contactRules: [],
+        constraintRules: [],
+        fallbackAction: "idle",
+        defaultInterrupt: "immediate",
+        defaultBlendMs: 80,
+      }],
+    }));
+    const verified = await verifyFbanimV3Entries(entries);
+    expect(verified.ok).toBeTrue();
+    if (!verified.ok) return;
+    const aim = verified.value.actions.find((a) => a.id === "aim");
+    expect(aim).toBeDefined();
+    expect(aim!.fallbackAction).toBe("idle");
+    // Composed: stance translation wins, correction scale merged — not raw base-only.
+    const tx = aim!.motionClip.tracks.find((t) => t.property === "translation");
+    const sc = aim!.motionClip.tracks.find((t) => t.property === "scale");
+    expect(tx && "keyframes" in tx ? tx.keyframes[0]?.value : undefined).toEqual([2, 0, 0]);
+    expect(sc && "keyframes" in sc ? sc.keyframes[0]?.value : undefined).toEqual([1.1, 1, 1]);
+    expect(aim!.motionClip.id).toBe("runtime:aim");
+    const manifest = JSON.parse(new TextDecoder().decode(entries[0]!.bytes));
+    const manifestAction = manifest.entry.actions.find((a: { id: string }) => a.id === "aim");
+    expect(manifestAction.fallbackAction).toBe("idle");
+  });
+
   test("v2 包仍可读写；无动态特性时可迁移为 v3 最小表示", async () => {
     const v2Source = {
       createdBy: { name: "FrameBaker", version: "test" },

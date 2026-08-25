@@ -198,6 +198,92 @@ describe("publish workspace diagnostics", () => {
     expect(report.canExport).toBeFalse();
   });
 
+  test("package source emits composed runtime clips and action fallback metadata", async () => {
+    const baseAim: MotionClip = {
+      ...clip,
+      id: "base-aim",
+      name: "base-aim",
+      tracks: [{
+        targetId: "root",
+        property: "translation",
+        interpolation: "step",
+        keyframes: [{ time: 0, value: [1, 0, 0] }],
+      }],
+    };
+    const stanceAim: MotionClip = {
+      ...clip,
+      id: "stance-aim",
+      name: "stance-aim",
+      tracks: [{
+        targetId: "root",
+        property: "translation",
+        interpolation: "step",
+        keyframes: [{ time: 0, value: [9, 0, 0] }],
+      }],
+    };
+    const doc = document({
+      animations: [
+        { id: "idle", name: "idle", motionClipId: clip.id, speed: 1, repeat: 1, loop: true },
+        { id: "aim", name: "aim", motionClipId: baseAim.id, speed: 1, repeat: 1, loop: false },
+      ],
+      actionTemplates: [
+        {
+          id: "idle",
+          loop: true,
+          requiredTracks: [],
+          requiredEvents: [],
+          allowedEvents: [],
+          contactRules: [],
+          constraintRules: [],
+          defaultInterrupt: "immediate",
+          defaultBlendMs: 80,
+        },
+        {
+          id: "aim",
+          loop: false,
+          requiredTracks: [],
+          requiredEvents: [],
+          allowedEvents: [],
+          contactRules: [],
+          constraintRules: [],
+          fallbackAction: "idle",
+          defaultInterrupt: "event-boundary",
+          defaultBlendMs: 40,
+        },
+      ],
+    });
+    const { buildPublishPackageSource } = await import("../apps/web/src/publishDiagnostics");
+    const pkg = buildPublishPackageSource({
+      document: doc,
+      skeleton,
+      clips: { [clip.id]: clip, [baseAim.id]: baseAim, [stanceAim.id]: stanceAim },
+      textures: [
+        { attachmentId: "body-region", bytes: png },
+        { attachmentId: "helmet-part", bytes: png },
+      ],
+      composition: {
+        stanceActions: { aim: stanceAim.id },
+      },
+    });
+    expect(pkg).not.toBeNull();
+    const aim = pkg!.actions.find((a) => a.id === "aim");
+    expect(aim?.fallbackAction).toBe("idle");
+    const tx = aim?.motionClip.tracks.find((t) => t.property === "translation");
+    expect(tx && "keyframes" in tx ? tx.keyframes[0]?.value : undefined).toEqual([9, 0, 0]);
+    expect(aim?.motionClip.id.startsWith("runtime:")).toBeTrue();
+    expect(pkg!.actionProfiles.find((p) => p.id === "aim")?.fallbackAction).toBe("idle");
+
+    const entries = await buildFbanimV3Entries(pkg!);
+    const verified = await verifyFbanimV3Entries(entries);
+    expect(verified.ok).toBeTrue();
+    if (verified.ok) {
+      const packed = verified.value.actions.find((a) => a.id === "aim");
+      expect(packed?.fallbackAction).toBe("idle");
+      const packedTx = packed?.motionClip.tracks.find((t) => t.property === "translation");
+      expect(packedTx && "keyframes" in packedTx ? packedTx.keyframes[0]?.value : undefined).toEqual([9, 0, 0]);
+    }
+  });
+
   test("errors block export; warnings alone require confirmation", async () => {
     const ok = await collectPublishDiagnostics(baseInput());
     expect(ok.errors).toEqual([]);

@@ -66,6 +66,12 @@ export interface PublishInput {
   requirementsOverride?: FbanimV3Requirements;
   /** Sample step for full-duration IK (seconds). */
   ikSampleStep?: number;
+  /** Optional authoring-layer maps used only when composing publish runtime clips. */
+  composition?: {
+    stanceActions?: Record<string, string>;
+    equipmentOverrides?: Record<string, string>;
+    equipmentCorrections?: Record<string, string>;
+  };
 }
 
 export interface PublishPackageSummary {
@@ -200,9 +206,60 @@ function sampleIkReach(
 export function buildPublishPackageSource(input: PublishInput): FbanimV3PackageSource | null {
   if (!input.skeleton || !input.document.character) return null;
   const binding = input.document.character.binding;
+  const templates = input.document.actionTemplates ?? [];
+  const templateById = new Map(templates.map((t) => [t.id, t]));
+  const composition = input.composition ?? {};
+  const actionIds = input.document.animations.map((a) => a.id);
+  const baseActions: Record<string, string> = {};
+  for (const action of input.document.animations) {
+    baseActions[action.id] = action.motionClipId;
+    if (action.name !== action.id) baseActions[action.name] = action.motionClipId;
+  }
+  // Also map template ids that match animation names.
+  for (const template of templates) {
+    const match = input.document.animations.find((a) => a.id === template.id || a.name === template.id);
+    if (match) baseActions[template.id] = match.motionClipId;
+  }
+  const hasCompositionLayers = Boolean(
+    (composition.stanceActions && Object.keys(composition.stanceActions).length)
+    || (composition.equipmentOverrides && Object.keys(composition.equipmentOverrides).length)
+    || (composition.equipmentCorrections && Object.keys(composition.equipmentCorrections).length),
+  );
+  const compiledById = new Map(
+    hasCompositionLayers
+      ? compileActionSet({
+          actionIds: actionIds.length ? actionIds : templates.map((t) => t.id),
+          clips: input.clips,
+          baseActions,
+          stanceActions: composition.stanceActions,
+          equipmentOverrides: composition.equipmentOverrides,
+          equipmentCorrections: composition.equipmentCorrections,
+          templates,
+        }).actions.map((a) => [a.actionId, a] as const)
+      : [],
+  );
   const actions = input.document.animations.map((action) => {
-    const motionClip = input.clips[action.motionClipId];
-    if (!motionClip) throw new Error(`缺少动作剪辑：${action.motionClipId}`);
+    const raw = input.clips[action.motionClipId];
+    if (!raw) throw new Error(`缺少动作剪辑：${action.motionClipId}`);
+    const composed = compiledById.get(action.id) ?? compiledById.get(action.name);
+    const template = templateById.get(action.id) ?? templateById.get(action.name);
+    const needsCompose = Boolean(
+      composition.stanceActions?.[action.id]
+      || composition.stanceActions?.[action.name]
+      || composition.equipmentOverrides?.[action.id]
+      || composition.equipmentOverrides?.[action.name]
+      || composition.equipmentCorrections?.[action.id]
+      || composition.equipmentCorrections?.[action.name],
+    );
+    const motionClip = needsCompose && composed
+      ? {
+          ...composed.clip,
+          id: `runtime:${action.id}`,
+          name: action.name,
+          skeletonId: raw.skeletonId || composed.clip.skeletonId,
+        }
+      : raw;
+    // Layers are already resolved into motionClip; do not re-attach authoring layers.
     return {
       id: action.id,
       name: action.name,
@@ -210,6 +267,7 @@ export function buildPublishPackageSource(input: PublishInput): FbanimV3PackageS
       speed: action.speed,
       repeat: action.repeat,
       loop: action.loop,
+      ...(template?.fallbackAction ? { fallbackAction: template.fallbackAction } : {}),
     };
   });
   const constraints = collectConstraints(input.document.equipment ?? []).map(({ id, constraint }) => ({
@@ -227,7 +285,7 @@ export function buildPublishPackageSource(input: PublishInput): FbanimV3PackageS
     bodyProfiles: [...(input.document.bodyProfiles ?? [])],
     equipment: [...(input.document.equipment ?? [])],
     actions,
-    actionProfiles: [...(input.document.actionTemplates ?? [])],
+    actionProfiles: [...templates],
     constraints,
     textures: input.textures.map((t) => ({ attachmentId: t.attachmentId, bytes: t.bytes })),
     requirements: Object.keys(requirements).length ? requirements : undefined,
