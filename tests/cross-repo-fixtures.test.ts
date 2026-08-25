@@ -3,9 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { verifyFbanimV3Entries } from "../packages/shared/src";
 import { buildMinimalRegionFixtureEntries } from "../apps/web/src/skeletalExport";
-import { solidTexturePng } from "../scripts/lib/fixturePng";
 import { readZip } from "../apps/web/src/zip";
-import type { BodyProfile, CharacterBinding, MotionClip, Skeleton } from "../packages/shared/src";
 
 const fixtureRoot = join(import.meta.dir, "fixtures", "fbanim-v3");
 const manifestPath = join(fixtureRoot, "manifest.json");
@@ -36,12 +34,6 @@ interface FixtureManifest {
 function loadManifest(): FixtureManifest {
   return JSON.parse(readFileSync(manifestPath, "utf8")) as FixtureManifest;
 }
-
-const transform = {
-  translation: [0, 0, 0] as [number, number, number],
-  rotation: [0, 0, 0, 1] as [number, number, number, number],
-  scale: [1, 1, 1] as [number, number, number],
-};
 
 describe("cross-repo fbanim-v3 fixture contract", () => {
   test("manifest lists all eleven contract IDs with explicit policies", () => {
@@ -135,78 +127,55 @@ describe("cross-repo fbanim-v3 fixture contract", () => {
     expect(String.fromCharCode(bytes[12]!, bytes[13]!, bytes[14]!, bytes[15]!)).toBe("IHDR");
   });
 
+  test("available fixture expected.json must be non-empty semantic truth", () => {
+    const m = loadManifest();
+    for (const id of m.contractIds) {
+      if (m.fixtures[id]!.status !== "available") continue;
+      const expected = JSON.parse(readFileSync(join(fixtureRoot, id, "expected.json"), "utf8")) as {
+        matrices?: unknown[];
+        sockets?: unknown[];
+        slots?: unknown[];
+        events?: unknown[];
+        pixels?: { checksum?: string; samples?: unknown[] };
+      };
+      expect(Array.isArray(expected.matrices) && expected.matrices.length > 0, `${id} matrices`).toBeTrue();
+      expect(Array.isArray(expected.sockets) && expected.sockets.length > 0, `${id} sockets`).toBeTrue();
+      expect(Array.isArray(expected.slots) && expected.slots.length > 0, `${id} slots`).toBeTrue();
+      expect(Array.isArray(expected.events), `${id} events array`).toBeTrue();
+      expect(typeof expected.pixels?.checksum).toBe("string");
+      expect(expected.pixels!.checksum!.startsWith("sha256:")).toBeTrue();
+      expect(Array.isArray(expected.pixels?.samples) && expected.pixels!.samples!.length > 0, `${id} pixel samples`).toBeTrue();
+    }
+  });
+
+  test("minimal-region expected.json matches pure builder semantics", async () => {
+    const { buildMinimalRegionDomain, buildMinimalRegionExpected } = await import(
+      "../apps/web/src/minimalRegionFixture"
+    );
+    const domain = buildMinimalRegionDomain();
+    const expected = await buildMinimalRegionExpected(domain);
+    expect(expected.matrices.length).toBeGreaterThan(0);
+    expect(expected.sockets.length).toBeGreaterThan(0);
+    expect(expected.slots.length).toBeGreaterThan(0);
+    expect(expected.pixels.samples.length).toBeGreaterThan(0);
+    expect(expected.pixels.checksum.startsWith("sha256:")).toBeTrue();
+
+    const onDisk = JSON.parse(readFileSync(join(fixtureRoot, "minimal-region", "expected.json"), "utf8"));
+    expect(onDisk).toEqual(JSON.parse(new TextDecoder().decode(
+      (await import("../packages/shared/src")).canonicalizeJson(expected as never),
+    )));
+  });
+
   test("minimal-region checked-in bytes match deterministic builder output", async () => {
-    const skeleton: Skeleton = {
-      schemaVersion: 1,
-      kind: "skeleton",
-      id: "minimal-skeleton",
-      name: "Minimal",
-      coordinateSystem: { handedness: "right", upAxis: "y", forwardAxis: "+z", unit: "pixel" },
-      bones: [{ id: "root", name: "Root", parentId: null, rest: transform }],
-    };
-    const binding: CharacterBinding = {
-      schemaVersion: 1,
-      kind: "character-binding",
-      id: "minimal-binding",
-      name: "Minimal",
-      skeletonId: skeleton.id,
-      attachments: [
-        {
-          id: "body-region",
-          name: "Body",
-          type: "region",
-          materialId: "mat-body",
-          imageSlot: "raw",
-          size: [16, 16],
-          pivot: [0.5, 0.5],
-          rest: transform,
-        },
-      ],
-      slots: [
-        {
-          id: "body-slot",
-          name: "Body",
-          boneId: "root",
-          attachmentId: "body-region",
-          drawOrder: 0,
-        },
-      ],
-    };
-    const body: BodyProfile = {
-      schemaVersion: 1,
-      id: "body",
-      name: "Body",
-      skeletonId: skeleton.id,
-      mirrorAxis: "x",
-      slots: [{ id: "head", semantic: "head", capacity: 1, accepts: ["helmet"] }],
-      sockets: [
-        {
-          id: "head-socket",
-          semantic: "head",
-          boneId: "root",
-          rest: transform,
-          accepts: ["helmet"],
-        },
-      ],
-    };
-    const clip: MotionClip = {
-      schemaVersion: 1,
-      kind: "motion-clip",
-      id: "idle",
-      name: "Idle",
-      skeletonId: skeleton.id,
-      duration: 1,
-      loop: true,
-      tracks: [],
-      events: [],
-    };
+    const { buildMinimalRegionDomain } = await import("../apps/web/src/minimalRegionFixture");
+    const domain = buildMinimalRegionDomain();
 
     const built = await buildMinimalRegionFixtureEntries({
-      skeleton,
-      binding,
-      body,
-      clip,
-      textureBytes: solidTexturePng(16, [200, 200, 200, 255]),
+      skeleton: domain.skeleton,
+      binding: domain.binding,
+      body: domain.body,
+      clip: domain.clip,
+      textureBytes: domain.textureBytes,
     });
     const dir = join(fixtureRoot, "minimal-region");
     for (const entry of built) {

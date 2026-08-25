@@ -46,6 +46,7 @@ export interface FixtureExportInput {
     events?: unknown[];
     slots?: unknown[];
     sockets?: unknown[];
+    pixels?: unknown;
   };
   metadata: Record<string, unknown>;
 }
@@ -76,30 +77,55 @@ export async function downloadFixtureZip(name: string, input: FixtureExportInput
 }
 
 /** Canonical minimal-region fixture builder for tests/fixtures/fbanim-v3. */
-export async function buildMinimalRegionFixtureEntries(input: {
-  skeleton: Skeleton;
-  binding: CharacterBinding;
-  body: BodyProfile;
-  clip: MotionClip;
-  textureBytes: Uint8Array;
+export async function buildMinimalRegionFixtureEntries(input?: {
+  skeleton?: Skeleton;
+  binding?: CharacterBinding;
+  body?: BodyProfile;
+  clip?: MotionClip;
+  textureBytes?: Uint8Array;
 }): Promise<Array<{ name: string; data: Uint8Array }>> {
+  const { buildMinimalRegionDomain, buildMinimalRegionExpected } = await import("./minimalRegionFixture");
+  const domain = buildMinimalRegionDomain();
+  const skeleton = input?.skeleton ?? domain.skeleton;
+  const binding = input?.binding ?? domain.binding;
+  const body = input?.body ?? domain.body;
+  const clip = input?.clip ?? domain.clip;
+  const textureBytes = input?.textureBytes ?? domain.textureBytes;
+  const expectedDomain =
+    input == null ||
+    (input.skeleton === undefined &&
+      input.binding === undefined &&
+      input.body === undefined &&
+      input.clip === undefined &&
+      input.textureBytes === undefined)
+      ? domain
+      : {
+          ...domain,
+          skeleton,
+          binding,
+          body,
+          clip,
+          textureBytes,
+          loadout: { bodyProfileId: body.id, equipment: [] },
+        };
+  const expected = await buildMinimalRegionExpected(expectedDomain);
   const entries = await buildFbanimV3Entries({
     createdBy: { name: "FrameBaker", version: "fixture" },
-    skeleton: input.skeleton,
-    characterBinding: input.binding,
-    bodyProfiles: [input.body],
+    skeleton,
+    characterBinding: binding,
+    bodyProfiles: [body],
     equipment: [],
-    actions: [{ id: "idle", name: "Idle", motionClip: input.clip, speed: 1, repeat: 1, loop: true }],
+    actions: [{ id: "idle", name: "Idle", motionClip: clip, speed: 1, repeat: 1, loop: true }],
     actionProfiles: [],
     constraints: [],
-    textures: input.binding.attachments.map((a) => ({ attachmentId: a.id, bytes: input.textureBytes })),
+    textures: binding.attachments.map((a) => ({ attachmentId: a.id, bytes: textureBytes })),
   });
   return exportFixtureZipEntries({
     fixtureId: "minimal-region",
     packageEntries: entries,
-    loadout: { bodyProfileId: input.body.id, equipment: [] },
-    actionSteps: [{ actionId: "idle", time: 0 }],
-    expected: { matrices: [], events: [], slots: [] },
+    loadout: expectedDomain.loadout,
+    actionSteps: expectedDomain.actionSteps,
+    expected,
     metadata: { schemaVersion: 1, generatedBy: "FrameBaker", note: "canonical minimal-region" },
   });
 }

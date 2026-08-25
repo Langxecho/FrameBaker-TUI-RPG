@@ -35,8 +35,18 @@
   "fixtures": {
     "minimal-region": {
       "status": "available",
-      "checks": ["package_load", "metadata_id", "decodeable_texture"],
-      "notes": "Phase-1 baseline: single root bone, one Region, idle action. Canonical bytes under this directory."
+      "checks": [
+        "package_load",
+        "metadata_id",
+        "decodeable_texture",
+        "expected_matrices",
+        "expected_sockets",
+        "expected_slots",
+        "expected_events",
+        "expected_pixel_samples",
+        "expected_pixel_checksum"
+      ],
+      "notes": "Phase-1 baseline: single root bone, one Region, idle action. expected.json is pure-builder semantic truth (FK matrices, sockets, draw-order slots, RGBA samples/checksum)."
     },
     "eye-attachment": {
       "status": "missing",
