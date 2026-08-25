@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { isFbanimV2Id, validateCharacterBinding, type CharacterBinding, type SkeletalProjectDocument, type Skeleton } from "@framebaker/shared";
+import { isFbanimV2Id, migrateSkeletalProjectDocument, SKELETAL_PROJECT_SCHEMA_VERSION, validateBodyProfile, validateCharacterBinding, validateEquipmentDefinition, validateLoadout, type ActionTemplate, type BodyProfile, type CharacterBinding, type EquipmentDefinition, type SkeletalProjectDocument, type SkeletalProjectStanceProfile, type Skeleton } from "@framebaker/shared";
 import { db } from "../db";
 
 type ProjectRow = { id: string; kind: string };
@@ -10,16 +10,25 @@ function project(id: string): ProjectRow | null {
 }
 
 function emptyDocument(projectId: string): SkeletalProjectDocument {
-  return { schemaVersion: 1, projectId, character: null, animations: [], activeAnimationId: null };
+  return migrateSkeletalProjectDocument({ schemaVersion: SKELETAL_PROJECT_SCHEMA_VERSION, projectId, character: null, animations: [], activeAnimationId: null });
 }
+
+function assetSkeleton(id: string): Skeleton | null {
+  const row = db.query("SELECT data FROM animation_assets WHERE id = ? AND kind = 'skeleton'").get(id) as { data: string } | null;
+  if (!row) return null;
+  try { return JSON.parse(row.data) as Skeleton; } catch { return null; }
+}
+
+function validList(value: unknown, max: number): value is unknown[] { return Array.isArray(value) && value.length <= max; }
 
 function validateDocument(value: unknown, projectId: string): string | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "骨骼项目文档必须是对象";
   const document = value as Partial<SkeletalProjectDocument>;
-  if (document.schemaVersion !== 1) return "仅支持 schemaVersion 1";
+  if (document.schemaVersion !== SKELETAL_PROJECT_SCHEMA_VERSION) return "仅支持 schemaVersion 2";
   if (document.projectId !== projectId) return "文档 projectId 必须与 URL 项目一致";
   if (document.character !== null && (!document.character || typeof document.character !== "object" || Array.isArray(document.character))) return "character 无效";
   if (!Array.isArray(document.animations) || document.animations.length > 500) return "animations 必须是至多 500 项的数组";
+  if (!validList(document.bodyProfiles, 500) || !validList(document.equipment, 1_000) || !validList(document.loadouts, 500) || !validList(document.actionTemplates, 500) || !validList(document.stanceProfiles, 500)) return "项目实体数量超出限制";
   if (document.activeAnimationId !== null && (typeof document.activeAnimationId !== "string" || !document.activeAnimationId.trim() || document.activeAnimationId.length > 128)) return "activeAnimationId 无效";
 
   const ids = new Set<string>(), names = new Set<string>();
@@ -43,13 +52,58 @@ function validateDocument(value: unknown, projectId: string): string | null {
     const { binding } = document.character as { binding?: unknown };
     if (!binding || typeof binding !== "object") return "项目角色绑定无效";
     skeletonId = (binding as CharacterBinding).skeletonId;
-    const skeletonRow = typeof skeletonId === "string" ? db.query("SELECT data FROM animation_assets WHERE id = ? AND kind = 'skeleton'").get(skeletonId) as { data: string } | null : null;
-    if (!skeletonRow) return "项目角色引用的骨架不存在";
-    const result = validateCharacterBinding(binding, JSON.parse(skeletonRow.data) as Skeleton);
+    const skeleton = typeof skeletonId === "string" ? assetSkeleton(skeletonId) : null;
+    if (!skeleton) return "项目角色引用的骨架不存在";
+    const result = validateCharacterBinding(binding, skeleton);
     if (!result.ok) return `项目角色绑定无效：${result.issues[0]?.path ?? "binding"} ${result.issues[0]?.message ?? "格式错误"}`;
     for (const attachment of result.value.attachments) {
       if (!db.query("SELECT id FROM materials WHERE id = ?").get(attachment.materialId)) return `附件「${attachment.name}」引用的素材不存在`;
     }
+  }
+  const bodyProfiles = document.bodyProfiles ?? [];
+  const equipment = document.equipment ?? [];
+  const loadouts = document.loadouts ?? [];
+  const actions = document.actionTemplates ?? [];
+  const stances = document.stanceProfiles ?? [];
+  const bodyById = new Map<string, BodyProfile>();
+  for (const [index, body] of bodyProfiles.entries()) {
+    if (bodyById.has(body?.id)) return `BodyProfile[${index}] ID 重复`;
+    const skeleton = assetSkeleton(body?.skeletonId);
+    if (!skeleton) return `BodyProfile「${body?.id ?? index}」引用的骨架不存在`;
+    const result = validateBodyProfile(body, skeleton);
+    if (!result.ok) return `BodyProfile「${body.id}」无效：${result.issues[0]?.message}`;
+    bodyById.set(body.id, body);
+  }
+  const equipmentById = new Map<string, EquipmentDefinition>();
+  for (const [index, item] of equipment.entries()) {
+    if (equipmentById.has(item?.id)) return `装备[${index}] ID 重复`;
+    const body = item && bodyProfiles.find((candidate) => candidate.slots.some((slot) => slot.id === item.primarySlot));
+    if (!body) return `装备「${item?.id ?? index}」引用的 BodyProfile 不存在`;
+    const result = validateEquipmentDefinition(item, body);
+    if (!result.ok) return `装备「${item.id}」无效：${result.issues[0]?.message}`;
+    for (const attachment of item.attachments) if (!db.query("SELECT id FROM materials WHERE id = ?").get(attachment.materialId)) return `附件「${attachment.name}」引用的素材不存在`;
+    equipmentById.set(item.id, item);
+  }
+  const actionIds = new Set(actions.map((action) => action?.id));
+  for (const [index, action] of actions.entries()) {
+    if (!action || !isFbanimV2Id(action.id) || actionIds.size !== actions.length && [...actionIds].filter((id) => id === action.id).length > 1) return `ActionTemplate[${index}] ID 无效或重复`;
+    if (action.fallbackAction && !actionIds.has(action.fallbackAction)) return `ActionTemplate「${action.id}」引用的 fallbackAction 不存在`;
+  }
+  const stanceIds = new Set(stances.map((stance) => stance?.id));
+  for (const [index, stance] of stances.entries()) {
+    if (!stance || !isFbanimV2Id(stance.id) || stanceIds.size !== stances.length) return `StanceProfile[${index}] ID 无效或重复`;
+    if (![...stance.requiredActions, ...stance.optionalActions].every((id) => actionIds.has(id))) return `StanceProfile「${stance.id}」引用的动作不存在`;
+  }
+  for (const loadout of loadouts) {
+    const body = bodyById.get(loadout?.bodyProfileId);
+    if (!body) return "Loadout 引用的 BodyProfile 不存在";
+    const definitions = equipment.filter((item) => loadout.equipment.some((entry) => entry.equipmentId === item.id));
+    const result = validateLoadout(body, definitions, loadout);
+    if (!result.ok) return `Loadout 无效：${result.issues[0]?.message}`;
+  }
+  for (const item of equipment) {
+    if (item.actionProfile && !actionIds.has(item.actionProfile)) return `装备「${item.id}」引用的 actionProfile 不存在`;
+    if (item.weapon?.stanceProfile && !stanceIds.has(item.weapon.stanceProfile)) return `装备「${item.id}」引用的 stanceProfile 不存在`;
   }
   for (const item of document.animations) {
     const clip = db.query("SELECT kind, skeleton_id FROM animation_assets WHERE id = ?").get(item.motionClipId) as AssetRow | null;
@@ -65,18 +119,17 @@ export const skeletalProjectsApi = new Elysia({ prefix: "/api" })
     if (!row) return status(404, "项目不存在");
     if (row.kind !== "skeletal") return status(409, "逐帧项目没有骨骼项目文档");
     const stored = db.query("SELECT document FROM skeletal_projects WHERE project_id = ?").get(params.id) as { document: string } | null;
-    const document = stored ? JSON.parse(stored.document) as SkeletalProjectDocument & { character: ({ binding: CharacterBinding; sourceBindingId?: string | null }) | null } : emptyDocument(params.id);
-    if (document.character && "sourceBindingId" in document.character) delete document.character.sourceBindingId;
-    if (!stored) db.query("INSERT INTO skeletal_projects (project_id, document, updated_at) VALUES (?, ?, ?)").run(params.id, JSON.stringify(document), Date.now());
+    const document = stored ? migrateSkeletalProjectDocument(JSON.parse(stored.document)) : emptyDocument(params.id);
+    if (!stored || JSON.stringify(document) !== stored.document) db.query("INSERT INTO skeletal_projects (project_id, document, updated_at) VALUES (?, ?, ?) ON CONFLICT(project_id) DO UPDATE SET document = excluded.document, updated_at = excluded.updated_at").run(params.id, JSON.stringify(document), Date.now());
     return { document };
   })
   .put("/projects/:id/skeletal-document", ({ params, body, status }) => {
     const row = project(params.id);
     if (!row) return status(404, "项目不存在");
     if (row.kind !== "skeletal") return status(409, "逐帧项目不能保存骨骼项目文档");
-    const error = validateDocument(body, params.id);
+    const document = migrateSkeletalProjectDocument(body);
+    const error = validateDocument(document, params.id);
     if (error) return status(400, error);
-    const document = body as SkeletalProjectDocument;
     db.query("INSERT INTO skeletal_projects (project_id, document, updated_at) VALUES (?, ?, ?) ON CONFLICT(project_id) DO UPDATE SET document = excluded.document, updated_at = excluded.updated_at").run(params.id, JSON.stringify(document), Date.now());
     return { document };
   }, { body: t.Any() });
