@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import {
+  measureSkeletonHeight,
   quaternionFromZRotation,
   zRotationFromQuaternion,
   type BodyProfile,
@@ -9,7 +10,10 @@ import {
   type Material,
   type MotionClip,
   type Skeleton,
+  type Transform,
 } from "@framebaker/shared";
+import { materialImageUrl } from "../api";
+import { fitAttachmentSizeToImage } from "../bindingGeometry";
 import { Copy, Eye, Plus, Redo2, Save, Trash2, Undo2 } from "lucide-react";
 import {
   EQUIPMENT_WIZARD_STEPS,
@@ -18,14 +22,15 @@ import {
   createEmptyEquipment,
   createEquipmentUiState,
   equipmentWizardBlockingIssues,
-  focusZoomForSocketSemantic,
   isEquipmentDirty,
   reduceEquipmentUi,
+  slotIdForSocket,
   type EquipmentWizardStep,
   type FocusZoomTarget,
   type SavedTestLoadout,
 } from "../equipmentUiState";
 import { createEquipmentSampleFixtures } from "../equipmentFixtures";
+import { attachmentRestFromComposed, bindingWithAssembledLoadout, overlayDraftEquipment } from "../loadoutPreview";
 import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
 import { CharacterPreview } from "./AnimationAssetsWorkspace";
@@ -33,8 +38,19 @@ import PxSelect from "./PxSelect";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
+const FOCUS_CAMERA: Record<FocusZoomTarget, { zoom: number; panY: string }> = {
+  none: { zoom: 1, panY: "0%" },
+  eye: { zoom: 2.2, panY: "-12%" },
+  hand: { zoom: 1.8, panY: "8%" },
+  body: { zoom: 1.45, panY: "0%" },
+};
+
 function parseList(value: string): string[] {
   return [...new Set(value.split(/[,，\s]+/).map((item) => item.trim()).filter(Boolean))];
+}
+
+function toggleId(list: string[], id: string): string[] {
+  return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 }
 
 function parseOverrides(value: string): Record<string, string> {
@@ -107,11 +123,24 @@ export default function EquipmentWorkspace({
     () => materials.filter((item) => item.kind === "image").map((item) => ({ value: item.id, label: item.name })),
     [materials],
   );
+  const bindingParts = useMemo(() => {
+    if (!binding) return [];
+    return binding.slots.map((slot) => {
+      const attachment = binding.attachments.find((item) => item.id === slot.attachmentId);
+      return { id: slot.id, label: slot.name?.trim() || attachment?.name || slot.id };
+    });
+  }, [binding]);
+  const canvasEditBeforeRef = useRef<EquipmentDefinition | null>(null);
+  const canvasStageRef = useRef<HTMLDivElement | null>(null);
+  const [canvasZoom, setCanvasZoom] = useState(1);
+  const fitRequestRef = useRef(0);
+  const defaultGearSize = useMemo((): [number, number] => {
+    const span = Math.max(48, measureSkeletonHeight(skeleton) * 0.28);
+    return [span, span];
+  }, [skeleton]);
   const [loadoutName, setLoadoutName] = useState("");
   const [tagsDraft, setTagsDraft] = useState("");
   const [conflictDraft, setConflictDraft] = useState("");
-  const [replacesDraft, setReplacesDraft] = useState("");
-  const [hidesDraft, setHidesDraft] = useState("");
   const [overridesDraft, setOverridesDraft] = useState("");
   const [effectEvent, setEffectEvent] = useState("weapon.fire");
   const [effectId, setEffectId] = useState("muzzle-flash");
@@ -123,10 +152,8 @@ export default function EquipmentWorkspace({
   useEffect(() => {
     setTagsDraft(draft?.tags.join(", ") ?? "");
     setConflictDraft(draft?.conflictTags.join(", ") ?? "");
-    setReplacesDraft(draft?.replacesParts.join(", ") ?? "");
-    setHidesDraft(draft?.hidesSlots.join(", ") ?? "");
     setOverridesDraft(overridesToText(draft?.actionOverrides));
-  }, [draft?.id, draft?.tags, draft?.conflictTags, draft?.replacesParts, draft?.hidesSlots, draft?.actionOverrides]);
+  }, [draft?.id, draft?.tags, draft?.conflictTags, draft?.actionOverrides]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -140,6 +167,18 @@ export default function EquipmentWorkspace({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    const stage = canvasStageRef.current;
+    if (!stage) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const factor = event.deltaY > 0 ? 0.92 : 1.08;
+      setCanvasZoom((zoom) => Math.min(3, Math.max(0.5, Number((zoom * factor).toFixed(2)))));
+    };
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, []);
+
   const socketMarkers = useMemo(() => {
     if (!activeBody) return [];
     return activeBody.sockets.map((socket) => ({
@@ -151,7 +190,10 @@ export default function EquipmentWorkspace({
     }));
   }, [activeBody, selectedAttachment?.socket]);
 
-  const focusClass = state.focusZoom === "none" ? "" : ` focus-${state.focusZoom}`;
+  const canvasCameraStyle = {
+    "--eq-zoom": String(canvasZoom),
+    "--eq-pan-y": FOCUS_CAMERA[state.focusZoom].panY,
+  } as CSSProperties;
 
   const requestClose = async () => {
     if (!onRequestClose) return;
@@ -202,14 +244,90 @@ export default function EquipmentWorkspace({
 
   const stepLabel = (step: EquipmentWizardStep) => t(`skeletal.equipment.step.${step}`);
 
-  const setFocus = (focus: FocusZoomTarget) => dispatch({ type: "setFocusZoom", focus });
+  const setFocus = (focus: FocusZoomTarget) => {
+    dispatch({ type: "setFocusZoom", focus });
+    setCanvasZoom(FOCUS_CAMERA[focus].zoom);
+  };
+
+  const previewBinding = useMemo(() => {
+    if (!binding || !activeBody) return binding;
+    const assembled = overlayDraftEquipment(state.legalPreview, draft, activeBody.id);
+    return bindingWithAssembledLoadout(binding, activeBody, assembled, {
+      showHiddenBase: state.showHiddenBase,
+      isolateAttachmentIds: state.isolateSelected && draft?.attachments.length
+        ? draft.attachments.map((item) => item.id)
+        : undefined,
+    });
+  }, [activeBody, binding, draft, state.isolateSelected, state.legalPreview, state.showHiddenBase]);
 
   const onSelectAttachmentSocket = (socketId: string) => {
     if (!selectedAttachment || !activeBody) return;
-    const socket = activeBody.sockets.find((item) => item.id === socketId);
     dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { socket: socketId } });
-    if (socket) setFocus(focusZoomForSocketSemantic(socket.semantic));
   };
+
+  const onSelectCanvasAttachment = (attachmentId: string) => {
+    if (!draft?.attachments.some((item) => item.id === attachmentId)) return;
+    dispatch({ type: "selectAttachment", attachmentId });
+    dispatch({ type: "setWizardStep", step: "attachments" });
+  };
+
+  const onTransformCanvasAttachment = (attachmentId: string, patch: Partial<CharacterBinding["attachments"][number]>) => {
+    if (!draft || !activeBody) return;
+    const attachment = draft.attachments.find((item) => item.id === attachmentId);
+    if (!attachment) return;
+    const socket = activeBody.sockets.find((item) => item.id === attachment.socket);
+    if (!socket) return;
+    const restPatch: Partial<Transform> | undefined = patch.rest
+      ? attachmentRestFromComposed(socket.rest, patch.rest)
+      : undefined;
+    dispatch({
+      type: "patchAttachment",
+      attachmentId,
+      skipHistory: true,
+      patch: {
+        ...(patch.size ? { size: [...patch.size] as [number, number] } : {}),
+        ...(patch.pivot ? { pivot: [...patch.pivot] as [number, number] } : {}),
+        ...(restPatch ? { rest: restPatch } : {}),
+      },
+    });
+  };
+
+  const onBeginCanvasTransform = () => {
+    if (draft && !canvasEditBeforeRef.current) canvasEditBeforeRef.current = structuredClone(draft);
+  };
+
+  const onEndCanvasTransform = () => {
+    const before = canvasEditBeforeRef.current;
+    canvasEditBeforeRef.current = null;
+    if (before) dispatch({ type: "commitCanvasEdit", before });
+  };
+
+  const fitEquipmentToMaterial = async (attachmentId: string, materialId: string, imageSlot: "raw" | "processed", currentSize: [number, number]) => {
+    if (!materialId || materialId === "mat-placeholder") return;
+    const requestId = ++fitRequestRef.current;
+    try {
+      const response = await fetch(materialImageUrl(materialId, undefined, imageSlot, undefined, true));
+      if (!response.ok) throw new Error(`${response.status}`);
+      const bitmap = await createImageBitmap(await response.blob());
+      if (requestId !== fitRequestRef.current) {
+        bitmap.close();
+        return;
+      }
+      const figure = defaultGearSize[1];
+      const base: [number, number] = Math.max(currentSize[0], currentSize[1]) < figure * 0.5 ? [figure, figure] : currentSize;
+      const size = fitAttachmentSizeToImage(base, bitmap.width, bitmap.height);
+      bitmap.close();
+      dispatch({ type: "patchAttachment", attachmentId, patch: { size } });
+    } catch (error) {
+      if (requestId === fitRequestRef.current) notify(t("animation.binding.fitImageAspectFailed", { msg: (error as Error).message }));
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedAttachment || selectedAttachment.materialId === "mat-placeholder") return;
+    if (Math.max(selectedAttachment.size[0], selectedAttachment.size[1]) >= 32) return;
+    void fitEquipmentToMaterial(selectedAttachment.id, selectedAttachment.materialId, selectedAttachment.imageSlot, selectedAttachment.size);
+  }, [selectedAttachment?.id, selectedAttachment?.materialId, selectedAttachment?.imageSlot, selectedAttachment?.size]);
 
   return (
     <section className="equipment-workspace">
@@ -228,17 +346,23 @@ export default function EquipmentWorkspace({
       </header>
 
       <div className="equipment-layout">
-        <div className={`equipment-canvas pixel-panel${focusClass}`}>
-          <div className="equipment-canvas-stage">
-            {binding
+        <div className="equipment-canvas pixel-panel" style={canvasCameraStyle}>
+          <div ref={canvasStageRef} className={`equipment-canvas-stage${state.facing === "left" ? " facing-left" : ""}`}>
+            {previewBinding
               ? <CharacterPreview
-                  binding={binding}
+                  binding={previewBinding}
                   skeleton={skeleton}
                   clip={clip}
                   time={state.previewTime}
+                  selectedAttachmentId={selectedAttachment?.id ?? undefined}
                   showSkeleton
                   socketMarkers={socketMarkers}
-                  onSelectSocket={onSelectAttachmentSocket}
+                  onSelectAttachment={onSelectCanvasAttachment}
+                  onTransformAttachment={onTransformCanvasAttachment}
+                  onBeginTransform={onBeginCanvasTransform}
+                  onEndTransform={onEndCanvasTransform}
+                  pickAttachments
+                  fitTo="skeleton"
                 />
               : <div className="equipment-empty-canvas">{t("skeletal.equipment.needBinding")}</div>}
           </div>
@@ -257,6 +381,11 @@ export default function EquipmentWorkspace({
               <button type="button" className={`px-btn ${state.isolateSelected ? "accent" : ""}`} onClick={() => dispatch({ type: "setIsolateSelected", isolate: !state.isolateSelected })}>{t("skeletal.equipment.isolate")}</button>
             </div>
             <div className="equipment-inline">
+              <span>{t("skeletal.equipment.canvasZoom")}</span>
+              <input type="range" min={0.5} max={3} step={0.05} value={canvasZoom} onChange={(event) => setCanvasZoom(+event.target.value)} />
+              <span>{Math.round(canvasZoom * 100)}%</span>
+            </div>
+            <div className="equipment-inline">
               <span>{t("skeletal.equipment.focusZoom")}</span>
               {(["none", "eye", "hand", "body"] as const).map((focus) => (
                 <button key={focus} type="button" className={`px-btn ${state.focusZoom === focus ? "accent" : ""}`} onClick={() => setFocus(focus)}>{t(`skeletal.equipment.focus.${focus}`)}</button>
@@ -271,6 +400,7 @@ export default function EquipmentWorkspace({
                 })}
               </p>
             )}
+            <p className="equipment-hint">{t("skeletal.equipment.canvasHint")}</p>
             {state.conflictIssues.length > 0 && (
               <ul className="equipment-diagnostics">
                 {state.conflictIssues.map((issue, index) => (
@@ -328,7 +458,9 @@ export default function EquipmentWorkspace({
                 <div className="equipment-fields">
                   <label>{t("skeletal.equipment.name")}<input className="px-input" value={draft.name} disabled={busy} onChange={(event) => dispatch({ type: "patchDraft", patch: { name: event.target.value } })} /></label>
                   <label>{t("skeletal.equipment.tags")}<input className="px-input" value={tagsDraft} disabled={busy} onChange={(event) => setTagsDraft(event.target.value)} onBlur={() => dispatch({ type: "patchDraft", patch: { tags: parseList(tagsDraft) } })} /></label>
+                  <p className="equipment-hint">{t("skeletal.equipment.tagsHint")}</p>
                   <label>{t("skeletal.equipment.conflictTags")}<input className="px-input" value={conflictDraft} disabled={busy} onChange={(event) => setConflictDraft(event.target.value)} onBlur={() => dispatch({ type: "patchDraft", patch: { conflictTags: parseList(conflictDraft) } })} /></label>
+                  <p className="equipment-hint">{t("skeletal.equipment.conflictTagsHint")}</p>
                 </div>
               )}
 
@@ -355,6 +487,7 @@ export default function EquipmentWorkspace({
                       placeholder={t("skeletal.equipment.chooseSlot")}
                     />
                   </label>
+                  <p className="equipment-hint">{t("skeletal.equipment.slotHint")}</p>
                   <div className="equipment-slot-grid">
                     {activeBody.slots.map((slot) => {
                       const checked = draft.occupiedSlots.includes(slot.id);
@@ -364,6 +497,7 @@ export default function EquipmentWorkspace({
                             type="checkbox"
                             checked={checked}
                             disabled={busy || slot.id === draft.primarySlot}
+                            title={slot.id === draft.primarySlot ? t("skeletal.equipment.primarySlotLocked") : undefined}
                             onChange={(event) => {
                               const next = event.target.checked
                                 ? [...draft.occupiedSlots, slot.id]
@@ -391,10 +525,15 @@ export default function EquipmentWorkspace({
                           className="px-btn"
                           disabled={busy || !activeBody?.sockets[0]}
                           onClick={() => {
-                            const socket = activeBody!.sockets[0]!;
-                            const attachment = createEmptyAttachment(uid("att"), t("skeletal.equipment.defaultAttachment"), socket.id, materialOptions[0]?.value ?? "mat-placeholder");
+                            const preferred = draft.primarySlot
+                              ? activeBody!.sockets.find((item) => slotIdForSocket(activeBody!, item.id) === draft.primarySlot)
+                              : undefined;
+                            const socket = preferred ?? activeBody!.sockets[0]!;
+                            const attachment = createEmptyAttachment(uid("att"), t("skeletal.equipment.defaultAttachment"), socket.id, materialOptions[0]?.value ?? "mat-placeholder", defaultGearSize);
                             dispatch({ type: "addAttachment", attachment });
-                            setFocus(focusZoomForSocketSemantic(socket.semantic));
+                            if (attachment.materialId !== "mat-placeholder") {
+                              void fitEquipmentToMaterial(attachment.id, attachment.materialId, attachment.imageSlot, attachment.size);
+                            }
                           }}
                         ><Plus size={13} />{t("skeletal.equipment.addAttachment")}</button>
                       </header>
@@ -402,8 +541,6 @@ export default function EquipmentWorkspace({
                         {draft.attachments.map((item) => (
                           <button type="button" key={item.id} className={item.id === state.selectedAttachmentId ? "on" : ""} onClick={() => {
                             dispatch({ type: "selectAttachment", attachmentId: item.id });
-                            const socket = activeBody?.sockets.find((entry) => entry.id === item.socket);
-                            if (socket) setFocus(focusZoomForSocketSemantic(socket.semantic));
                           }}>
                             <strong>{item.name}</strong>
                             <span>{item.socket} · z{item.drawOffset}</span>
@@ -424,7 +561,10 @@ export default function EquipmentWorkspace({
                             <PxSelect
                               value={selectedAttachment.materialId}
                               options={materialOptions.length ? materialOptions : [{ value: selectedAttachment.materialId, label: selectedAttachment.materialId }]}
-                              onChange={(value) => dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { materialId: value } })}
+                              onChange={(value) => {
+                                dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { materialId: value } });
+                                void fitEquipmentToMaterial(selectedAttachment.id, value, selectedAttachment.imageSlot, selectedAttachment.size);
+                              }}
                             />
                           </label>
                           <div className="equipment-transform">
@@ -440,6 +580,7 @@ export default function EquipmentWorkspace({
                             <label>{t("skeletal.equipment.drawOrder")}<input className="px-input" type="number" step="1" value={selectedAttachment.drawOffset} disabled={busy} onChange={(event) => dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { drawOffset: Math.round(+event.target.value || 0) } })} /></label>
                             <label>{t("skeletal.equipment.drawGroup")}<input className="px-input" value={selectedAttachment.drawGroup} disabled={busy} onChange={(event) => dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { drawGroup: event.target.value } })} /></label>
                           </div>
+                          <p className="equipment-hint">{t("skeletal.equipment.drawOrderHint")}</p>
                           <div className="equipment-inline">
                             <button
                               type="button"
@@ -465,18 +606,58 @@ export default function EquipmentWorkspace({
 
               {state.wizardStep === "replacement" && (
                 <div className="equipment-fields">
-                  <label>{t("skeletal.equipment.replacesParts")}<input className="px-input" value={replacesDraft} disabled={busy || draft.visualMode !== "replacement"} onChange={(event) => setReplacesDraft(event.target.value)} onBlur={() => dispatch({ type: "patchDraft", patch: { replacesParts: parseList(replacesDraft) } })} /></label>
-                  <label>{t("skeletal.equipment.hidesSlots")}<input className="px-input" value={hidesDraft} disabled={busy} onChange={(event) => setHidesDraft(event.target.value)} onBlur={() => dispatch({ type: "patchDraft", patch: { hidesSlots: parseList(hidesDraft) } })} /></label>
+                  <p className="equipment-hint">{t("skeletal.equipment.replacementHint")}</p>
+                  <p className="equipment-hint">{t("skeletal.equipment.pickPartsHint")}</p>
+                  <h4>{t("skeletal.equipment.replacesParts")}</h4>
+                  {bindingParts.length
+                    ? <div className="equipment-item-list">
+                      {bindingParts.map((part) => (
+                        <button
+                          type="button"
+                          key={`replace-${part.id}`}
+                          className={draft.replacesParts.includes(part.id) ? "on" : ""}
+                          disabled={busy || draft.visualMode !== "replacement"}
+                          onClick={() => dispatch({ type: "patchDraft", patch: { replacesParts: toggleId(draft.replacesParts, part.id) } })}
+                        >
+                          <strong>{part.label}</strong>
+                          <span>{part.id}</span>
+                        </button>
+                      ))}
+                    </div>
+                    : <p className="equipment-hint">{t("skeletal.equipment.noBindingParts")}</p>}
+                  <p className="equipment-hint">{t("skeletal.equipment.replacesPartsHint")}</p>
+                  <h4>{t("skeletal.equipment.hidesSlots")}</h4>
+                  {bindingParts.length
+                    ? <div className="equipment-item-list">
+                      {bindingParts.map((part) => (
+                        <button
+                          type="button"
+                          key={`hide-${part.id}`}
+                          className={draft.hidesSlots.includes(part.id) ? "on" : ""}
+                          disabled={busy}
+                          onClick={() => dispatch({ type: "patchDraft", patch: { hidesSlots: toggleId(draft.hidesSlots, part.id) } })}
+                        >
+                          <strong>{part.label}</strong>
+                          <span>{part.id}</span>
+                        </button>
+                      ))}
+                    </div>
+                    : <p className="equipment-hint">{t("skeletal.equipment.noBindingParts")}</p>}
+                  <p className="equipment-hint">{t("skeletal.equipment.hidesSlotsHint")}</p>
                   {draft.visualMode !== "replacement" && <p className="equipment-hint">{t("skeletal.equipment.replacementOnlyHint")}</p>}
                 </div>
               )}
 
               {state.wizardStep === "actions" && (
                 <div className="equipment-fields">
+                  <p className="equipment-hint">{t("skeletal.equipment.actionsHint")}</p>
                   <label>{t("skeletal.equipment.actionProfile")}<input className="px-input" value={draft.actionProfile ?? ""} disabled={busy} onChange={(event) => dispatch({ type: "patchDraft", patch: { actionProfile: event.target.value || undefined } })} /></label>
+                  <p className="equipment-hint">{t("skeletal.equipment.actionProfileHint")}</p>
                   <label>{t("skeletal.equipment.actionOverrides")}<input className="px-input" value={overridesDraft} disabled={busy} onChange={(event) => setOverridesDraft(event.target.value)} onBlur={() => dispatch({ type: "setActionOverrides", overrides: parseOverrides(overridesDraft) })} /></label>
+                  <p className="equipment-hint">{t("skeletal.equipment.actionOverridesHint")}</p>
                   {draft.visualMode === "effect" && (
                     <>
+                      <p className="equipment-hint">{t("skeletal.equipment.effectHint")}</p>
                       <div className="equipment-inline">
                         <label>{t("skeletal.equipment.effectEvent")}<input className="px-input" value={effectEvent} disabled={busy} onChange={(event) => setEffectEvent(event.target.value)} /></label>
                         <label>{t("skeletal.equipment.effectId")}<input className="px-input" value={effectId} disabled={busy} onChange={(event) => setEffectId(event.target.value)} /></label>
@@ -548,7 +729,16 @@ export default function EquipmentWorkspace({
                       type="button"
                       key={item.id}
                       className={equipped ? "on" : ""}
-                      onClick={() => dispatch({ type: equipped ? "unequip" : "tryEquip", equipmentId: item.id })}
+                      onClick={() => {
+                        if (item.id !== state.selectedEquipmentId) {
+                          dispatch({ type: "selectEquipment", equipmentId: item.id, keepPane: true });
+                        }
+                        if (equipped && item.id === state.selectedEquipmentId) {
+                          dispatch({ type: "unequip", equipmentId: item.id });
+                          return;
+                        }
+                        if (!equipped) dispatch({ type: "tryEquip", equipmentId: item.id });
+                      }}
                     >
                       <strong>{item.name}</strong>
                       <span>{equipped ? t("skeletal.equipment.equipped") : t("skeletal.equipment.unequipped")}</span>

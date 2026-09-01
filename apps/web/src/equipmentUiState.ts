@@ -43,7 +43,7 @@ export const EQUIPMENT_WIZARD_STEPS: readonly EquipmentWizardStep[] = [
 export type EquipmentUiAction =
   | { type: "setPane"; pane: EquipmentWorkspacePane }
   | { type: "setWizardStep"; step: EquipmentWizardStep }
-  | { type: "selectEquipment"; equipmentId: string | null }
+  | { type: "selectEquipment"; equipmentId: string | null; keepPane?: boolean }
   | { type: "selectAttachment"; attachmentId: string | null }
   | { type: "selectBodyProfile"; bodyProfileId: string }
   | { type: "replaceLibrary"; equipment: EquipmentDefinition[]; selectedId?: string | null }
@@ -55,7 +55,8 @@ export type EquipmentUiAction =
   | { type: "setOccupiedSlots"; slotIds: string[] }
   | { type: "addAttachment"; attachment: EquipmentAttachment }
   | { type: "deleteAttachment"; attachmentId: string }
-  | { type: "patchAttachment"; attachmentId: string; patch: Omit<Partial<EquipmentAttachment>, "rest" | "size" | "pivot"> & { size?: EquipmentAttachment["size"]; pivot?: EquipmentAttachment["pivot"]; rest?: Partial<Transform> } }
+  | { type: "patchAttachment"; attachmentId: string; skipHistory?: boolean; patch: Omit<Partial<EquipmentAttachment>, "rest" | "size" | "pivot"> & { size?: EquipmentAttachment["size"]; pivot?: EquipmentAttachment["pivot"]; rest?: Partial<Transform> } }
+  | { type: "commitCanvasEdit"; before: EquipmentDefinition }
   | { type: "mirrorAttachment"; attachmentId: string; pairId: string; socketId: string }
   | { type: "setEffectBindings"; bindings: EquipmentEffectBinding[] }
   | { type: "setActionOverrides"; overrides: Record<string, string> }
@@ -150,6 +151,68 @@ function emptyLoadout(bodyProfileId: string): CharacterLoadout {
   return { bodyProfileId, equipment: [] };
 }
 
+/** 附件插座对应的身体插槽：sock-head → slot-head，否则按语义 / accepts 匹配。 */
+export function slotIdForSocket(body: BodyProfile, socketId: string): string | undefined {
+  const socket = body.sockets.find((item) => item.id === socketId);
+  if (!socket) return undefined;
+  const renamed = socket.id.replace(/^sock-/, "slot-");
+  if (body.slots.some((slot) => slot.id === renamed)) return renamed;
+  const exact = body.slots.find((slot) => slot.semantic === socket.semantic);
+  if (exact) return exact.id;
+  for (const tag of socket.accepts) {
+    const slot = body.slots.find((item) => item.accepts.includes(tag));
+    if (slot) return slot.id;
+  }
+  return undefined;
+}
+
+function occupancyIsSinglePrimary(draft: EquipmentDefinition): boolean {
+  const unique = [...new Set(draft.occupiedSlots)];
+  return unique.length <= 1;
+}
+
+function retargetDraftToSocket(draft: EquipmentDefinition, body: BodyProfile, socketId: string): EquipmentDefinition {
+  if (!occupancyIsSinglePrimary(draft)) return draft;
+  const slotId = slotIdForSocket(body, socketId);
+  if (!slotId) return draft;
+  if (draft.primarySlot === slotId && draft.occupiedSlots.length === 1 && draft.occupiedSlots[0] === slotId) return draft;
+  const next = cloneEquipment(draft);
+  next.primarySlot = slotId;
+  next.occupiedSlots = [slotId];
+  return next;
+}
+
+function retargetDraftToAttachments(draft: EquipmentDefinition, body: BodyProfile): EquipmentDefinition {
+  const first = draft.attachments[0];
+  if (!first) return draft;
+  return retargetDraftToSocket(draft, body, first.socket);
+}
+
+function withEquippedPrimary(state: EquipmentUiState, equipmentId: string, primarySlot: string): CharacterLoadout {
+  return {
+    ...cloneLoadout(state.previewLoadout),
+    equipment: state.previewLoadout.equipment.map((item) => (
+      item.equipmentId === equipmentId ? { ...item, primarySlot } : item
+    )),
+  };
+}
+
+function applyDraftAndPreview(
+  state: EquipmentUiState,
+  nextDraft: EquipmentDefinition,
+  body: BodyProfile | null,
+  binding: CharacterBinding | null,
+  history: boolean,
+): EquipmentUiState {
+  const base = history ? pushHistory(state, nextDraft) : { ...state, draft: nextDraft };
+  const loadout = withEquippedPrimary(base, nextDraft.id, nextDraft.primarySlot);
+  return { ...base, ...recomputePreview({ ...base, draft: nextDraft }, body, binding, loadout) };
+}
+
+function syncPreview(state: EquipmentUiState, body: BodyProfile | null, binding: CharacterBinding | null): EquipmentUiState {
+  return { ...state, ...recomputePreview(state, body, binding, state.previewLoadout) };
+}
+
 function upsertLibrary(library: EquipmentDefinition[], item: EquipmentDefinition): EquipmentDefinition[] {
   const exists = library.some((entry) => entry.id === item.id);
   return exists
@@ -157,9 +220,10 @@ function upsertLibrary(library: EquipmentDefinition[], item: EquipmentDefinition
     : [...library, cloneEquipment(item)];
 }
 
-function definitionsForPreview(state: EquipmentUiState): EquipmentDefinition[] {
-  if (!state.draft) return state.library.map(cloneEquipment);
-  return upsertLibrary(state.library, state.draft);
+function definitionsForPreview(state: EquipmentUiState, body: BodyProfile | null = null): EquipmentDefinition[] {
+  const list = state.draft ? upsertLibrary(state.library, state.draft) : state.library.map(cloneEquipment);
+  if (!body) return list;
+  return list.map((item) => retargetDraftToAttachments(item, body));
 }
 
 function recomputePreview(
@@ -175,7 +239,7 @@ function recomputePreview(
       conflictIssues: [{ path: "bodyProfileId", message: "BodyProfile 不匹配" }],
     };
   }
-  const definitions = definitionsForPreview(state);
+  const definitions = definitionsForPreview(state, body);
   const validated = validateLoadout(body, definitions, nextLoadout);
   if (!validated.ok || !binding) {
     return {
@@ -228,6 +292,7 @@ export function createEmptyAttachment(
   name: string,
   socket: string,
   materialId = "mat-placeholder",
+  size: [number, number] = [48, 48],
 ): EquipmentAttachment {
   return {
     id,
@@ -235,7 +300,7 @@ export function createEmptyAttachment(
     socket,
     materialId,
     imageSlot: "raw",
-    size: [16, 16],
+    size: [size[0], size[1]],
     pivot: [0.5, 0.5],
     rest: identityTransform(),
     drawGroup: "equipment",
@@ -251,12 +316,15 @@ export function createEquipmentUiState(
 ): EquipmentUiState {
   const selected = library[0] ?? null;
   const bodyId = body?.id ?? "";
+  const draft = selected && body
+    ? retargetDraftToAttachments(cloneEquipment(selected), body)
+    : (selected ? cloneEquipment(selected) : null);
   const base: EquipmentUiState = {
     pane: "library",
     wizardStep: "identity",
     library: library.map(cloneEquipment),
     saved: selected ? cloneEquipment(selected) : null,
-    draft: selected ? cloneEquipment(selected) : null,
+    draft,
     selectedEquipmentId: selected?.id ?? null,
     selectedAttachmentId: selected?.attachments[0]?.id ?? null,
     selectedBodyProfileId: bodyId,
@@ -376,17 +444,23 @@ export function reduceEquipmentUi(
       const selected = action.equipmentId
         ? state.library.find((item) => item.id === action.equipmentId) ?? null
         : null;
-      return {
+      const draft = selected && body
+        ? retargetDraftToAttachments(cloneEquipment(selected), body)
+        : (selected ? cloneEquipment(selected) : null);
+      const next = {
         ...state,
         selectedEquipmentId: selected?.id ?? null,
         saved: selected ? cloneEquipment(selected) : null,
-        draft: selected ? cloneEquipment(selected) : null,
-        selectedAttachmentId: selected?.attachments[0]?.id ?? null,
+        draft,
+        selectedAttachmentId: draft?.attachments[0]?.id ?? selected?.attachments[0]?.id ?? null,
         past: [],
         future: [],
-        pane: selected ? "wizard" : state.pane,
-        wizardStep: "identity",
+        pane: action.keepPane ? state.pane : (selected ? "wizard" : state.pane),
+        wizardStep: action.keepPane ? state.wizardStep : "identity",
       };
+      if (!draft) return next;
+      const loadout = withEquippedPrimary(next, draft.id, draft.primarySlot);
+      return { ...next, ...recomputePreview({ ...next, draft }, body, binding, loadout) };
     }
     case "selectAttachment":
       return { ...state, selectedAttachmentId: action.attachmentId };
@@ -472,13 +546,14 @@ export function reduceEquipmentUi(
     case "setPrimarySlot": {
       if (!state.draft) return state;
       const occupied = new Set(state.draft.occupiedSlots);
+      occupied.delete(state.draft.primarySlot);
       occupied.add(action.slotId);
       const next = {
         ...cloneEquipment(state.draft),
         primarySlot: action.slotId,
         occupiedSlots: [...occupied],
       };
-      return pushHistory(state, next);
+      return applyDraftAndPreview(state, next, body, binding, true);
     }
     case "setOccupiedSlots": {
       if (!state.draft) return state;
@@ -492,27 +567,28 @@ export function reduceEquipmentUi(
       if (!state.draft) return state;
       if (state.draft.visualMode === "none" || state.draft.visualMode === "effect") return state;
       if (state.draft.attachments.some((item) => item.id === action.attachment.id)) return state;
-      const next = {
+      let next = {
         ...cloneEquipment(state.draft),
         attachments: [...state.draft.attachments, structuredClone(action.attachment)],
       };
-      return { ...pushHistory(state, next), selectedAttachmentId: action.attachment.id };
+      if (body) next = retargetDraftToSocket(next, body, action.attachment.socket);
+      return applyDraftAndPreview({ ...state, selectedAttachmentId: action.attachment.id }, next, body, binding, true);
     }
     case "deleteAttachment": {
       if (!state.draft) return state;
       const nextAttachments = state.draft.attachments.filter((item) => item.id !== action.attachmentId);
       const next = { ...cloneEquipment(state.draft), attachments: nextAttachments };
-      return {
+      return syncPreview({
         ...pushHistory(state, next),
         selectedAttachmentId: state.selectedAttachmentId === action.attachmentId
           ? (nextAttachments[0]?.id ?? null)
           : state.selectedAttachmentId,
-      };
+      }, body, binding);
     }
     case "patchAttachment": {
       if (!state.draft) return state;
       if (!state.draft.attachments.some((item) => item.id === action.attachmentId)) return state;
-      const next = {
+      let next = {
         ...cloneEquipment(state.draft),
         attachments: state.draft.attachments.map((item) => {
           if (item.id !== action.attachmentId) return item;
@@ -526,7 +602,20 @@ export function reduceEquipmentUi(
           };
         }),
       };
-      return pushHistory(state, next);
+      if (body && action.patch.socket) next = retargetDraftToSocket(next, body, action.patch.socket);
+      const patched = action.skipHistory
+        ? { ...state, draft: next }
+        : pushHistory(state, next);
+      const loadout = withEquippedPrimary(patched, next.id, next.primarySlot);
+      return { ...patched, ...recomputePreview({ ...patched, draft: next }, body, binding, loadout) };
+    }
+    case "commitCanvasEdit": {
+      if (!state.draft || equipmentEqual(action.before, state.draft)) return state;
+      return {
+        ...state,
+        past: [...state.past, cloneEquipment(action.before)],
+        future: [],
+      };
     }
     case "mirrorAttachment": {
       if (!state.draft) return state;
@@ -543,7 +632,7 @@ export function reduceEquipmentUi(
         ...cloneEquipment(state.draft),
         attachments: [...state.draft.attachments, pair],
       };
-      return { ...pushHistory(state, next), selectedAttachmentId: pair.id };
+      return syncPreview({ ...pushHistory(state, next), selectedAttachmentId: pair.id }, body, binding);
     }
     case "setEffectBindings": {
       if (!state.draft) return state;
@@ -564,7 +653,7 @@ export function reduceEquipmentUi(
     case "setIsolateSelected":
       return { ...state, isolateSelected: action.isolate };
     case "tryEquip": {
-      const definition = definitionsForPreview(state).find((item) => item.id === action.equipmentId);
+      const definition = definitionsForPreview(state, body).find((item) => item.id === action.equipmentId);
       if (!definition) {
         return {
           ...state,
@@ -612,7 +701,7 @@ export function reduceEquipmentUi(
     case "undo": {
       const previous = state.past.at(-1);
       if (!previous) return state;
-      return {
+      return syncPreview({
         ...state,
         draft: cloneEquipment(previous),
         past: state.past.slice(0, -1),
@@ -620,12 +709,12 @@ export function reduceEquipmentUi(
         selectedAttachmentId: previous.attachments.some((item) => item.id === state.selectedAttachmentId)
           ? state.selectedAttachmentId
           : (previous.attachments[0]?.id ?? null),
-      };
+      }, body, binding);
     }
     case "redo": {
       const next = state.future.at(-1);
       if (!next) return state;
-      return {
+      return syncPreview({
         ...state,
         draft: cloneEquipment(next),
         past: state.draft ? [...state.past, cloneEquipment(state.draft)] : state.past,
@@ -633,7 +722,7 @@ export function reduceEquipmentUi(
         selectedAttachmentId: next.attachments.some((item) => item.id === state.selectedAttachmentId)
           ? state.selectedAttachmentId
           : (next.attachments[0]?.id ?? null),
-      };
+      }, body, binding);
     }
     case "markSaved": {
       const saved = cloneEquipment(action.equipment);

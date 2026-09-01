@@ -270,6 +270,10 @@ interface CharacterPreviewProps {
   onTransformAttachmentOffset?: (id: string, patch: { tx?: number; ty?: number; rz?: number; sx?: number; sy?: number; bend?: number; warp?: number[] }) => void;
   onBeginTransform?: () => void;
   onEndTransform?: () => void;
+  /** 允许点击未选中附件（装备试穿）：绑定编辑器默认关掉以免点到重叠肢体。 */
+  pickAttachments?: boolean;
+  /** contents 包住所有附件（绑定编辑）；skeleton 只跟骨骼走，拖装备不会改缩放。 */
+  fitTo?: "contents" | "skeleton";
 }
 
 interface BindingTransformDrag {
@@ -326,7 +330,7 @@ function effectiveWarp(attachment: CharacterBinding["attachments"][number], offs
   return resolved && resolved.points.some((value) => Math.abs(value) > 1e-9) ? resolved : undefined;
 }
 
-export function CharacterPreview({ binding, skeleton, clip, time, selectedAttachmentId, selectedBoneId, showSkeleton = false, transformTool = "translate", socketMarkers, onSelectAttachment, onSelectBone, onSelectSocket, onTransformAttachment, onTransformAttachmentOffset, onBeginTransform, onEndTransform }: CharacterPreviewProps) {
+export function CharacterPreview({ binding, skeleton, clip, time, selectedAttachmentId, selectedBoneId, showSkeleton = false, transformTool = "translate", socketMarkers, onSelectAttachment, onSelectBone, onSelectSocket, onTransformAttachment, onTransformAttachmentOffset, onBeginTransform, onEndTransform, pickAttachments = false, fitTo = "contents" }: CharacterPreviewProps) {
   const t = useT();
   const filterPrefix = useId().replaceAll(":", "");
   const boneName = (bone: Skeleton["bones"][number]) => localizeBoneName(skeleton.id, bone.id, bone.name, t);
@@ -335,6 +339,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
   const offsetMode = !!onTransformAttachmentOffset && !onTransformAttachment;
   // 素材图片在编辑器内被替换后，按 id  bump 版本号破除 <image> 缓存（与素材页同一 WS 模式）
   const [materialV, setMaterialV] = useState<Record<string, number>>({});
+  const [missingMaterials, setMissingMaterials] = useState<Record<string, boolean>>({});
   useEffect(() => wsClient.subscribe((msg) => {
     if (msg.type !== "material_updated") return;
     const id = (msg.payload as { id?: string } | undefined)?.id;
@@ -357,7 +362,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
     const times = clip ? [...keyTimes, ...keyTimes.slice(1).map((end, index) => (keyTimes[index]! + end) / 2)] : keyTimes;
     const points = times.flatMap((sampleTime) => {
       const sampled = sampleMotionClip(previewClip, skeleton, sampleTime, binding.boneRotationOffsets);
-      const attachmentPoints = binding.slots.flatMap((slot) => {
+      const attachmentPoints = fitTo === "contents" ? binding.slots.flatMap((slot) => {
         const attachment = binding.attachments.find((item) => item.id === slot.attachmentId), bone = sampled.worldMatrices[slot.boneId];
         if (!attachment || !bone) return [];
         const restWorld = multiplyMatrices(bone, transformToMatrix(attachment.rest));
@@ -373,7 +378,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
         const extentX = (deform.axis === "horizontal" ? 0 : bendExtent) + warpX;
         const extentY = (deform.axis === "horizontal" ? bendExtent : 0) + warpY;
         return attachmentLocalCorners(attachment.size, attachment.pivot).flatMap((point) => [transformPoint(world, [point[0] - extentX, point[1] - extentY, 0]), transformPoint(world, [point[0] + extentX, point[1] + extentY, 0])]);
-      });
+      }) : [];
       const skeletonPoints = showSkeleton
         ? skeleton.bones.flatMap((bone) => {
           const matrix = sampled.worldMatrices[bone.id];
@@ -396,7 +401,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
     const minY = Math.min(...points.map((point) => point[1])), maxY = Math.max(...points.map((point) => point[1]));
     const pad = Math.max(.2, Math.max(maxX - minX, maxY - minY) * .12);
     return `${minX - pad} ${-(maxY + pad)} ${Math.max(.5, maxX - minX + pad * 2)} ${Math.max(.5, maxY - minY + pad * 2)}`;
-  }, [binding, clip, showSkeleton, skeleton, socketMarkers]);
+  }, [binding, clip, fitTo, showSkeleton, skeleton, socketMarkers]);
   const svgPoint = (svg: SVGSVGElement, clientX: number, clientY: number) => {
     const point = svg.createSVGPoint();
     point.x = clientX;
@@ -405,7 +410,12 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
     return matrix ? point.matrixTransform(matrix.inverse()) : point;
   };
   const beginTransform = (event: React.PointerEvent<SVGGraphicsElement>, attachment: CharacterBinding["attachments"][number], bone: Mat4, world: Mat4, tool = transformTool, warpPoint?: number) => {
-    if (canTransform && attachment.id !== selectedAttachmentId) return;
+    if (attachment.id !== selectedAttachmentId) {
+      event.preventDefault();
+      event.stopPropagation();
+      onSelectAttachment?.(attachment.id);
+      return;
+    }
     onSelectAttachment?.(attachment.id);
     if (!canTransform) return;
     const svg = event.currentTarget.ownerSVGElement;
@@ -584,7 +594,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
     for (let col = 0; col < cols; col++) lines.push(Array.from({ length: rows }, (_, row) => `${nodes[row * cols + col]![0]},${nodes[row * cols + col]![1]}`).join(" "));
     return { nodes, lines };
   })() : undefined;
-  return <svg className={`animation-skeleton binding-preview${canTransform ? " interactive" : ""}`} data-tool={transformTool} data-offset-mode={offsetMode || undefined} viewBox={dragging ? frozenViewBoxRef.current : viewBox} role="img" onPointerMove={moveTransform} onPointerUp={endTransform} onPointerCancel={endTransform}>
+  return <svg className={`animation-skeleton binding-preview${canTransform ? " interactive" : ""}${pickAttachments ? " pick-attachments" : ""}`} data-tool={transformTool} data-offset-mode={offsetMode || undefined} viewBox={dragging ? frozenViewBoxRef.current : viewBox} role="img" onPointerMove={moveTransform} onPointerUp={endTransform} onPointerCancel={endTransform}>
     <defs>{binding.attachments.filter((attachment) => effectiveDeformBend(attachment, pose.attachmentOffsets[attachment.id]) !== undefined).map((attachment) => {
       const deform = attachment.deform ?? DEFAULT_ATTACHMENT_DEFORM;
       const bend = effectiveDeformBend(attachment, pose.attachmentOffsets[attachment.id])!;
@@ -598,11 +608,14 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
       const restWorld = multiplyMatrices(matrix, transformToMatrix(attachment.rest)), offset = attachmentOffsetMatrix(pose.attachmentOffsets[slot.attachmentId]);
       const world = offset ? multiplyMatrices(restWorld, offset) : restWorld, [w, h] = attachment.size, [px] = attachment.pivot;
       const deformed = effectiveDeformBend(attachment, pose.attachmentOffsets[slot.attachmentId]) !== undefined;
+      const canPick = canTransform && (pickAttachments || selectedAttachmentId === attachment.id);
       // 合成顺序：先 warp 位图（warpedUrls 替换 href），后 bend 的 feDisplacementMap filter
       return <g key={slot.id}>
-        <image className={`${selectedAttachmentId === attachment.id ? "selected" : ""}${deformed ? " deformed" : ""}`} href={warpedUrls[attachment.id] ?? materialImageUrl(attachment.materialId, materialV[attachment.materialId], attachment.imageSlot)} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} preserveAspectRatio="none" filter={deformed ? `url(#${filterPrefix}-warp-${attachment.id})` : undefined} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onPointerDown={canTransform && selectedAttachmentId === attachment.id ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />
+        {missingMaterials[attachment.id]
+          ? <rect className={`attachment-fallback${selectedAttachmentId === attachment.id ? " selected" : ""}`} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onPointerDown={canPick ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />
+          : <image className={`${selectedAttachmentId === attachment.id ? "selected" : ""}${deformed ? " deformed" : ""}`} href={warpedUrls[attachment.id] ?? materialImageUrl(attachment.materialId, materialV[attachment.materialId], attachment.imageSlot)} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} preserveAspectRatio="none" filter={deformed ? `url(#${filterPrefix}-warp-${attachment.id})` : undefined} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onError={() => setMissingMaterials((prev) => prev[attachment.id] ? prev : { ...prev, [attachment.id]: true })} onPointerDown={canPick ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />}
       </g>;
-    })}{showSkeleton && <g className="binding-bone-overlay">
+    })}{showSkeleton && <g className="binding-bone-overlay" data-static={onSelectBone ? undefined : ""} style={onSelectBone ? undefined : { pointerEvents: "none" }}>
       {skeleton.bones.map((bone) => {
         const matrix = pose.worldMatrices[bone.id];
         if (!matrix) return null;
@@ -636,7 +649,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
         {warpOverlay.lines.map((line, index) => <polyline className="binding-warp-grid" key={`warp-line-${index}`} points={line} />)}
         {warpOverlay.nodes.map((node, index) => <circle className="binding-warp-point" key={`warp-point-${index}`} cx={node[0]} cy={node[1]} r={handleRadius * .7} onPointerDown={(event) => beginTransform(event, selectedAttachment, selectedBoneMatrix, selectedWorld, "warp", index)}><title>{t("animation.binding.warpPoint")}</title></circle>)}
       </>}
-    </g>}{(socketMarkers?.length ?? 0) > 0 && <g className="body-profile-socket-layer">
+    </g>}{(socketMarkers?.length ?? 0) > 0 && <g className="body-profile-socket-layer" style={canTransform ? { pointerEvents: "none" } : undefined}>
       {socketMarkers!.map((marker) => {
         const bone = pose.worldMatrices[marker.boneId];
         if (!bone) return null;
@@ -931,7 +944,7 @@ export function BindingEditor({ binding, skeleton, materials, materialFolders, b
       </article>
       <aside className="binding-inspector">{selectedAttachment && selectedSlot ? <>
         <header><div><span>{t("animation.binding.selectedPart")}</span><h3>{selectedSlotName}</h3><small>{t("animation.binding.boundTo", { bone: selectedSlotBoneName })}</small></div><button className="px-btn icon danger" title={t("common.delete")} onClick={removeSelected}><Trash2 size={13} /></button></header>
-        <section className="binding-inspector-basics"><label>{t("animation.binding.slotName")}<input className="px-input" value={selectedSlot.name} onFocus={beginContinuousEdit} onBlur={endContinuousEdit} onChange={(event) => patchSlot(selectedSlotIndex, { name: event.target.value })} /></label><label>{t("animation.bone")}<PxSelect value={selectedSlot.boneId} options={skeleton.bones.map((bone) => ({ value: bone.id, label: boneName(bone) }))} onChange={bindSelectedToBone} /></label><label>{t("animation.binding.materialFolder")}<PxSelect value={materialFolder} options={materialFolderOptions} onChange={setMaterialFolder} /></label><label>{t("animation.binding.material")}<PxSelect value={selectedAttachment.materialId} options={materialOptions} onChange={(materialId) => { const imageSlot = materials.find((item) => item.id === materialId)?.processed_path ? "processed" : "raw"; rememberDraft(); patchRegion(selectedAttachment.id, { materialId, imageSlot }); void fitRegionToMaterial(selectedAttachment, materialId, imageSlot, false); }} /></label><label>{t("animation.binding.imageSlot")}<PxSelect value={selectedAttachment.imageSlot} options={[{ value: "raw", label: t("animation.binding.originalImage") }, { value: "processed", label: t("animation.binding.cutoutImage"), disabled: !selectedMaterial?.processed_path }]} onChange={(value) => { const imageSlot = value as "raw" | "processed"; rememberDraft(); patchRegion(selectedAttachment.id, { imageSlot }); void fitRegionToMaterial(selectedAttachment, selectedAttachment.materialId, imageSlot, false); }} /></label><button type="button" className="px-btn binding-fit-aspect" disabled={fittingAspect || !selectedAttachment.materialId} onClick={() => void fitRegionToMaterial(selectedAttachment, selectedAttachment.materialId, selectedAttachment.imageSlot)}>{t(fittingAspect ? "animation.binding.fittingImageAspect" : "animation.binding.fitImageAspect")}</button><button type="button" className="px-btn" disabled={!selectedAttachment.materialId} title={t("animation.binding.editMaterialHint")} onClick={() => openMaterialEditor({ id: selectedAttachment.materialId, name: attachmentName(selectedAttachment), onSaved: () => onMaterialsChanged?.() })}><Pencil size={13} />{t("animation.binding.editMaterial")}</button></section>
+        <section className="binding-inspector-basics"><label>{t("animation.binding.slotName")}<input className="px-input" value={selectedSlot.name} onFocus={beginContinuousEdit} onBlur={endContinuousEdit} onChange={(event) => patchSlot(selectedSlotIndex, { name: event.target.value })} /></label><label>{t("animation.binding.slotId")}<input className="px-input" value={selectedSlot.id} readOnly /></label><label>{t("animation.bone")}<PxSelect value={selectedSlot.boneId} options={skeleton.bones.map((bone) => ({ value: bone.id, label: boneName(bone) }))} onChange={bindSelectedToBone} /></label><label>{t("animation.binding.materialFolder")}<PxSelect value={materialFolder} options={materialFolderOptions} onChange={setMaterialFolder} /></label><label>{t("animation.binding.material")}<PxSelect value={selectedAttachment.materialId} options={materialOptions} onChange={(materialId) => { const imageSlot = materials.find((item) => item.id === materialId)?.processed_path ? "processed" : "raw"; rememberDraft(); patchRegion(selectedAttachment.id, { materialId, imageSlot }); void fitRegionToMaterial(selectedAttachment, materialId, imageSlot, false); }} /></label><label>{t("animation.binding.imageSlot")}<PxSelect value={selectedAttachment.imageSlot} options={[{ value: "raw", label: t("animation.binding.originalImage") }, { value: "processed", label: t("animation.binding.cutoutImage"), disabled: !selectedMaterial?.processed_path }]} onChange={(value) => { const imageSlot = value as "raw" | "processed"; rememberDraft(); patchRegion(selectedAttachment.id, { imageSlot }); void fitRegionToMaterial(selectedAttachment, selectedAttachment.materialId, imageSlot, false); }} /></label><button type="button" className="px-btn binding-fit-aspect" disabled={fittingAspect || !selectedAttachment.materialId} onClick={() => void fitRegionToMaterial(selectedAttachment, selectedAttachment.materialId, selectedAttachment.imageSlot)}>{t(fittingAspect ? "animation.binding.fittingImageAspect" : "animation.binding.fitImageAspect")}</button><button type="button" className="px-btn" disabled={!selectedAttachment.materialId} title={t("animation.binding.editMaterialHint")} onClick={() => openMaterialEditor({ id: selectedAttachment.materialId, name: attachmentName(selectedAttachment), onSaved: () => onMaterialsChanged?.() })}><Pencil size={13} />{t("animation.binding.editMaterial")}</button></section>
         <section className="binding-tuning"><h4>{t("animation.binding.restTransform")}</h4>{sliderField(t("animation.binding.translationX"), selectedAttachment.rest.translation[0], -translationRange, translationRange, .01, (value) => { const translation = [...selectedAttachment.rest.translation] as [number, number, number]; translation[0] = value; patchRegion(selectedAttachment.id, { rest: { ...selectedAttachment.rest, translation } }); })}{sliderField(t("animation.binding.translationY"), selectedAttachment.rest.translation[1], -translationRange, translationRange, .01, (value) => { const translation = [...selectedAttachment.rest.translation] as [number, number, number]; translation[1] = value; patchRegion(selectedAttachment.id, { rest: { ...selectedAttachment.rest, translation } }); })}{sliderField(t("animation.binding.rotation"), zRotationFromQuaternion(selectedAttachment.rest.rotation) * 180 / Math.PI, -180, 180, 1, (value) => patchRegion(selectedAttachment.id, { rest: { ...selectedAttachment.rest, rotation: quaternionFromZRotation(value * Math.PI / 180) } }))}{sliderField(t("animation.binding.scaleX"), selectedAttachment.rest.scale[0], .05, scaleRange, .01, (value) => { const scale = [...selectedAttachment.rest.scale] as [number, number, number]; scale[0] = value; patchRegion(selectedAttachment.id, { rest: { ...selectedAttachment.rest, scale } }); })}{sliderField(t("animation.binding.scaleY"), selectedAttachment.rest.scale[1], .05, scaleRange, .01, (value) => { const scale = [...selectedAttachment.rest.scale] as [number, number, number]; scale[1] = value; patchRegion(selectedAttachment.id, { rest: { ...selectedAttachment.rest, scale } }); })}</section>
         <details className="binding-geometry"><summary>{t("animation.binding.deform")}</summary><label className="binding-order-field">{t("animation.binding.deformAxis")}<PxSelect value={selectedAttachment.deform?.axis ?? "vertical"} options={[{ value: "vertical", label: t("animation.binding.deformVertical") }, { value: "horizontal", label: t("animation.binding.deformHorizontal") }]} onChange={(axis) => { rememberDraft(); patchRegion(selectedAttachment.id, { deform: { ...(selectedAttachment.deform ?? DEFAULT_ATTACHMENT_DEFORM), axis: axis as "vertical" | "horizontal" } }); }} /></label>{sliderField(t("animation.binding.bend"), selectedAttachment.deform?.bend ?? 0, -1, 1, .01, (value) => patchRegion(selectedAttachment.id, { deform: { ...(selectedAttachment.deform ?? DEFAULT_ATTACHMENT_DEFORM), bend: value } }))}{sliderField(t("animation.binding.sway"), selectedAttachment.deform?.sway ?? 0, -1, 1, .01, (value) => patchRegion(selectedAttachment.id, { deform: { ...(selectedAttachment.deform ?? DEFAULT_ATTACHMENT_DEFORM), sway: value } }))}{sliderField(t("animation.binding.frequency"), selectedAttachment.deform?.frequency ?? 2, 0, 10, .1, (value) => patchRegion(selectedAttachment.id, { deform: { ...(selectedAttachment.deform ?? DEFAULT_ATTACHMENT_DEFORM), frequency: value } }))}{sliderField(t("animation.binding.phase"), (selectedAttachment.deform?.phase ?? 0) * 180 / Math.PI, -360, 360, 1, (value) => patchRegion(selectedAttachment.id, { deform: { ...(selectedAttachment.deform ?? DEFAULT_ATTACHMENT_DEFORM), phase: value * Math.PI / 180 } }))}<button type="button" className="px-btn" disabled={!selectedAttachment.deform} onClick={() => { rememberDraft(); patchRegion(selectedAttachment.id, { deform: undefined }); }}>{t("animation.binding.disableDeform")}</button></details>
         <details className="binding-geometry"><summary>{t("animation.binding.freeWarp")}</summary><p className="animation-bone-hint">{t("animation.binding.warpHint")}</p>{selectedAttachment.warp ? <>

@@ -22,6 +22,7 @@ import {
   type WeaponPrimaryHand,
 } from "../weaponUiState";
 import { createWeaponSampleFixtures } from "../weaponFixtures";
+import { bindingWithAssembledLoadout } from "../loadoutPreview";
 import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
 import { CharacterPreview } from "./AnimationAssetsWorkspace";
@@ -182,6 +183,10 @@ export default function WeaponWorkspace({
     value: socket.id,
     label: `${socket.semantic} (${socket.id})`,
   }));
+  const previewBinding = useMemo(() => {
+    if (!binding || !activeBody || !state.legalPreview) return binding;
+    return bindingWithAssembledLoadout(binding, activeBody, state.legalPreview);
+  }, [activeBody, binding, state.legalPreview]);
 
   return (
     <section className="weapon-workspace">
@@ -201,10 +206,10 @@ export default function WeaponWorkspace({
 
       <div className="weapon-layout">
         <div className="weapon-canvas pixel-panel">
-          <div className="weapon-canvas-stage">
-            {binding
+          <div className={`weapon-canvas-stage${state.facing === "left" ? " facing-left" : ""}`}>
+            {previewBinding
               ? <CharacterPreview
-                  binding={binding}
+                  binding={previewBinding}
                   skeleton={skeleton}
                   clip={clip}
                   time={state.previewTime}

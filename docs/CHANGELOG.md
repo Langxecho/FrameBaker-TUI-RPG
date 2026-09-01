@@ -4,6 +4,19 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ## [Unreleased]
 
+### Added
+
+- Equipment try-on and weapon preview now composite assembled loadouts onto the character: attached/replacement gear is visible on socket bones, dual-wield pistols occupy both hands, and two-hand weapons keep a single primary-hand visual. Missing attachment images fall back to a themed placeholder rectangle. New body profiles seed standard head/chest/hand slots and weapon sockets from the current skeleton.
+- Equipment try-on preview now lets you drag an attachment's position, rotation, scale, and pivot on the canvas like character binding, keeping the inspector fields in sync.
+- Changing an equipment primary slot now releases the previous occupancy (head is no longer stuck checked); moving an attachment to another socket retargets single-slot gear so multiple items can be worn together.
+
+### Fixed
+
+- Equipment attachments now stay visible on the canvas while editing (no try-on required), can be clicked to show the body-part transform box, and ignore orange bone dots so drag/rotate/scale handles can appear.
+- Equipment canvas framing stays locked to the skeleton while you drag gear; zoom is a manual slider/wheel, and focus presets no longer auto-switch when selecting a socket.
+- Equipment attachments can tuck under the socket's body part (layer offset -1) instead of always drawing on top of the whole character.
+- The equipment replace/hide step lists character parts to click instead of typing slot IDs; the binding inspector also shows the part slot ID.
+
 ### Removed
 
 - Removed the target-skeleton selector from reference decomposition: it only influenced the generation prompt and grid rows/columns, downstream split, naming, and binding never consumed it, and `targetSkeletonId` was never accepted by the server; the split grid is back to manual rows/columns plus the humanoid default.

@@ -5,6 +5,7 @@ import {
   createEmptyBodyProfile,
   isBodyProfileDirty,
   reduceBodyProfileUi,
+  seedStandardBodyProfile,
 } from "../apps/web/src/bodyProfileUiState";
 
 const transform = {
@@ -102,5 +103,18 @@ describe("body profile ui state", () => {
     expect(isBodyProfileDirty(state)).toBeFalse();
     expect(state.past).toHaveLength(0);
     expect(state.future).toHaveLength(0);
+  });
+
+  test("seeds standard hand slots and weapon sockets from skeleton bones", () => {
+    const profile = seedStandardBodyProfile("body", "Body", skeleton);
+    expect(profile.slots.map((slot) => slot.semantic).sort()).toEqual(expect.arrayContaining(["hand_left", "hand_right", "head"]));
+    const left = profile.sockets.find((socket) => socket.semantic === "weapon_hand_left");
+    const right = profile.sockets.find((socket) => socket.semantic === "weapon_hand_right");
+    expect(left?.boneId).toBe("hand_l");
+    expect(right?.boneId).toBe("hand_r");
+    expect(left?.mirrorSocketId).toBe(right?.id);
+    expect(right?.mirrorSocketId).toBe(left?.id);
+    expect(left?.accepts).toContain("weapon");
+    expect(profile.slots.find((slot) => slot.semantic === "hand_right")?.accepts).toContain("weapon");
   });
 });

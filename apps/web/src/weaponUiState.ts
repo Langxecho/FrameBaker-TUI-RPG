@@ -16,6 +16,7 @@ import {
   type ValidationIssue,
   type WeaponProfile,
 } from "@framebaker/shared";
+import { createEmptyAttachment } from "./equipmentUiState";
 
 export type WeaponHoldMode = WeaponProfile["holdMode"];
 export type WeaponPrimaryHand = WeaponProfile["preferredPrimaryHand"];
@@ -205,6 +206,35 @@ function ensureWeaponProfile(
   };
 }
 
+function primaryWeaponSocketId(body: BodyProfile, hand: WeaponPrimaryHand): string | null {
+  const semantic = hand === "left" ? "weapon_hand_left" : "weapon_hand_right";
+  const fallback = hand === "left" ? "hand_left" : "hand_right";
+  return body.sockets.find((socket) => socket.semantic === semantic)?.id
+    ?? body.sockets.find((socket) => socket.semantic === fallback)?.id
+    ?? null;
+}
+
+function defaultWeaponAttachments(id: string, name: string, body: BodyProfile, hand: WeaponPrimaryHand) {
+  const socket = primaryWeaponSocketId(body, hand);
+  return socket ? [createEmptyAttachment(`att-${id}`, name, socket)] : [];
+}
+
+function retargetWeaponAttachments(
+  draft: EquipmentDefinition,
+  body: BodyProfile,
+  hand: WeaponPrimaryHand,
+) {
+  const socketId = primaryWeaponSocketId(body, hand);
+  if (!socketId) return draft.attachments;
+  if (draft.attachments.length === 0) return defaultWeaponAttachments(draft.id, draft.name, body, hand);
+  if (draft.attachments.length !== 1) return draft.attachments;
+  const current = draft.attachments[0]!;
+  const currentSocket = body.sockets.find((socket) => socket.id === current.socket);
+  const isHand = !!currentSocket && (currentSocket.semantic.includes("hand") || currentSocket.semantic.includes("weapon_hand"));
+  if (!isHand) return draft.attachments;
+  return [{ ...current, socket: socketId }];
+}
+
 export function createEmptyWeapon(
   id: string,
   name: string,
@@ -245,7 +275,7 @@ export function createEmptyWeapon(
     conflictTags: [],
     replacesParts: [],
     hidesSlots: [],
-    attachments: [],
+    attachments: defaultWeaponAttachments(id, name, body, preferredPrimaryHand),
     effectBindings: [],
     actionOverrides: {},
     weapon,
@@ -455,6 +485,7 @@ function applyHoldMode(
     ...cloneEquipment(draft),
     primarySlot: slots.primarySlot,
     occupiedSlots: slots.occupiedSlots,
+    attachments: retargetWeaponAttachments(draft, body, preferred),
     weapon,
   };
 }
@@ -472,6 +503,7 @@ function applyPreferredHand(
     ...cloneEquipment(draft),
     primarySlot: slots.primarySlot,
     occupiedSlots: slots.occupiedSlots,
+    attachments: retargetWeaponAttachments(draft, body, hand),
     weapon,
   };
 }

@@ -35,7 +35,8 @@ export type BodyProfileUiAction =
   | { type: "undo" }
   | { type: "redo" }
   | { type: "markSaved"; profile: BodyProfile }
-  | { type: "replaceProfile"; profile: BodyProfile };
+  | { type: "replaceProfile"; profile: BodyProfile }
+  | { type: "seedStandard"; skeleton: Skeleton };
 
 export interface BodyProfileUiState {
   saved: BodyProfile;
@@ -107,6 +108,67 @@ export function createEmptyBodyProfile(id: string, name: string, skeletonId: str
     mirrorAxis: "x",
     slots: [],
     sockets: [],
+  };
+}
+
+function resolveBoneId(skeleton: Skeleton, names: readonly string[]): string {
+  const semanticMap = skeleton.semanticProfile?.bones ?? {};
+  for (const name of names) {
+    const mapped = semanticMap[name];
+    if (typeof mapped === "string" && skeleton.bones.some((bone) => bone.id === mapped)) return mapped;
+  }
+  for (const name of names) {
+    const bySemantic = skeleton.bones.find((bone) => bone.semantic === name);
+    if (bySemantic) return bySemantic.id;
+  }
+  for (const name of names) {
+    const exact = skeleton.bones.find((bone) => bone.id === name);
+    if (exact) return exact.id;
+  }
+  const lowered = names.map((name) => name.toLowerCase().replace(/[_-]/g, ""));
+  for (const bone of skeleton.bones) {
+    const id = bone.id.toLowerCase().replace(/[_-]/g, "");
+    if (lowered.some((name) => id === name || id.endsWith(name))) return bone.id;
+  }
+  return skeleton.bones[0]?.id ?? "root";
+}
+
+/** 按当前骨架生成头/胸/手等标准插槽与武器插座，便于装备穿戴与双手持武。 */
+export function seedStandardBodyProfile(id: string, name: string, skeleton: Skeleton): BodyProfile {
+  const head = resolveBoneId(skeleton, ["head"]);
+  const chest = resolveBoneId(skeleton, ["chest", "torso"]);
+  const handL = resolveBoneId(skeleton, ["leftWrist", "hand_left", "hand_l"]);
+  const handR = resolveBoneId(skeleton, ["rightWrist", "hand_right", "hand_r"]);
+  const armL = resolveBoneId(skeleton, ["leftShoulder", "arm_left", "upper_l"]);
+  const armR = resolveBoneId(skeleton, ["rightShoulder", "arm_right", "upper_r"]);
+  const restAt = (x = 0, y = 0): Transform => ({ translation: [x, y, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] });
+  return {
+    schemaVersion: EQUIPMENT_SCHEMA_VERSION,
+    id,
+    name,
+    skeletonId: skeleton.id,
+    mirrorAxis: "x",
+    slots: [
+      { id: "slot-head", semantic: "head", capacity: 1, accepts: ["helmet"] },
+      { id: "slot-face", semantic: "face", capacity: 2, accepts: ["eye", "cyberware"] },
+      { id: "slot-hand-l", semantic: "hand_left", capacity: 1, accepts: ["weapon"] },
+      { id: "slot-hand-r", semantic: "hand_right", capacity: 1, accepts: ["weapon"] },
+      { id: "slot-chest", semantic: "chest", capacity: 4, accepts: ["chip", "internal"] },
+      { id: "slot-back", semantic: "back", capacity: 1, accepts: ["device", "backpack"] },
+      { id: "slot-arm-l", semantic: "arm_left", capacity: 1, accepts: ["cyberware", "arm"] },
+      { id: "slot-arm-r", semantic: "arm_right", capacity: 1, accepts: ["cyberware", "arm"] },
+    ],
+    sockets: [
+      { id: "sock-head", semantic: "head", boneId: head, rest: restAt(), accepts: ["helmet"] },
+      { id: "sock-eye-l", semantic: "eye_left", boneId: head, rest: restAt(-4, 12), accepts: ["eye"], mirrorSocketId: "sock-eye-r" },
+      { id: "sock-eye-r", semantic: "eye_right", boneId: head, rest: restAt(4, 12), accepts: ["eye"], mirrorSocketId: "sock-eye-l" },
+      { id: "sock-hand-l", semantic: "weapon_hand_left", boneId: handL, rest: restAt(), accepts: ["weapon"], mirrorSocketId: "sock-hand-r" },
+      { id: "sock-hand-r", semantic: "weapon_hand_right", boneId: handR, rest: restAt(), accepts: ["weapon"], mirrorSocketId: "sock-hand-l" },
+      { id: "sock-chest", semantic: "chest", boneId: chest, rest: restAt(), accepts: ["chip", "effect"] },
+      { id: "sock-back", semantic: "back", boneId: chest, rest: restAt(), accepts: ["device"] },
+      { id: "sock-arm-l", semantic: "arm_left", boneId: armL, rest: restAt(), accepts: ["cyberware"], mirrorSocketId: "sock-arm-r" },
+      { id: "sock-arm-r", semantic: "arm_right", boneId: armR, rest: restAt(), accepts: ["cyberware"], mirrorSocketId: "sock-arm-l" },
+    ],
   };
 }
 
@@ -321,6 +383,14 @@ export function reduceBodyProfileUi(state: BodyProfileUiState, action: BodyProfi
         past: [],
         future: [],
       };
+    case "seedStandard": {
+      const next = seedStandardBodyProfile(state.draft.id, state.draft.name, action.skeleton);
+      return {
+        ...pushHistory(state, next),
+        selectedSlotId: next.slots[0]?.id ?? null,
+        selectedSocketId: next.sockets.find((socket) => socket.semantic === "weapon_hand_right")?.id ?? next.sockets[0]?.id ?? null,
+      };
+    }
     case "replaceProfile":
       return {
         ...state,

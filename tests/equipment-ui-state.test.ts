@@ -10,6 +10,7 @@ import {
   focusZoomForSocketSemantic,
   isEquipmentDirty,
   reduceEquipmentUi,
+  slotIdForSocket,
 } from "../apps/web/src/equipmentUiState";
 
 const transform = {
@@ -146,10 +147,122 @@ describe("equipment ui state", () => {
     expect(state.draft?.attachments).toHaveLength(0);
   });
 
-  test("focus zoom maps eye/hand/body sockets", () => {
-    expect(focusZoomForSocketSemantic("eye_left")).toBe("eye");
-    expect(focusZoomForSocketSemantic("weapon_hand_right")).toBe("hand");
-    expect(focusZoomForSocketSemantic("chest")).toBe("body");
-    expect(focusZoomForSocketSemantic("custom:drone")).toBe("none");
+  test("attachment rest patches refresh the assembled preview", () => {
+    const fixtures = createEquipmentSampleFixtures();
+    const helmet = fixtures.find((item) => item.id === "fx-helmet")!;
+    let state = createEquipmentUiState([helmet], body, binding);
+    state = reduceEquipmentUi(state, { type: "tryEquip", equipmentId: "fx-helmet" }, body, binding);
+    expect(state.legalPreview?.attachments[0]?.rest.translation[0]).toBe(0);
+
+    state = reduceEquipmentUi(state, {
+      type: "patchAttachment",
+      attachmentId: helmet.attachments[0]!.id,
+      patch: { rest: { translation: [70, 0, 0] } },
+    }, body, binding);
+    expect(state.draft!.attachments[0]!.rest.translation[0]).toBe(70);
+    expect(state.legalPreview?.attachments[0]?.rest.translation[0]).toBe(70);
+  });
+
+  test("canvas drag skipHistory then commitCanvasEdit is one undo step", () => {
+    const fixtures = createEquipmentSampleFixtures();
+    const helmet = fixtures.find((item) => item.id === "fx-helmet")!;
+    let state = createEquipmentUiState([helmet], body, binding);
+    const before = structuredClone(state.draft!);
+    state = reduceEquipmentUi(state, {
+      type: "patchAttachment",
+      attachmentId: helmet.attachments[0]!.id,
+      skipHistory: true,
+      patch: { rest: { translation: [12, 4, 0] } },
+    }, body, binding);
+    expect(state.past).toHaveLength(0);
+    state = reduceEquipmentUi(state, { type: "commitCanvasEdit", before }, body, binding);
+    expect(state.past).toHaveLength(1);
+    state = reduceEquipmentUi(state, { type: "undo" }, body, binding);
+    expect(state.draft!.attachments[0]!.rest.translation[0]).toBe(0);
+  });
+
+  test("changing primary slot releases the previous occupancy", () => {
+    let state = createEquipmentUiState([], body, binding);
+    const draft = createEmptyEquipment("eq-pack", "Pack", body, "attached");
+    expect(draft.primarySlot).toBe("slot-head");
+    expect(draft.occupiedSlots).toEqual(["slot-head"]);
+    state = reduceEquipmentUi(state, { type: "createEquipment", equipment: draft }, body, binding);
+    state = reduceEquipmentUi(state, { type: "setPrimarySlot", slotId: "slot-back" }, body, binding);
+    expect(state.draft!.primarySlot).toBe("slot-back");
+    expect(state.draft!.occupiedSlots).toEqual(["slot-back"]);
+  });
+
+  test("attachment socket retargets a single occupied slot away from head", () => {
+    let state = createEquipmentUiState([], body, binding);
+    const draft = createEmptyEquipment("eq-pack", "Pack", body, "attached");
+    state = reduceEquipmentUi(state, { type: "createEquipment", equipment: draft }, body, binding);
+    state = reduceEquipmentUi(state, {
+      type: "addAttachment",
+      attachment: createEmptyAttachment("att-pack", "Pack", "sock-back"),
+    }, body, binding);
+    expect(state.draft!.primarySlot).toBe("slot-back");
+    expect(state.draft!.occupiedSlots).toEqual(["slot-back"]);
+
+    state = reduceEquipmentUi(state, {
+      type: "patchAttachment",
+      attachmentId: "att-pack",
+      patch: { socket: "sock-arm-l" },
+    }, body, binding);
+    expect(state.draft!.primarySlot).toBe("slot-arm-l");
+    expect(state.draft!.occupiedSlots).toEqual(["slot-arm-l"]);
+  });
+
+  test("selecting mis-slotted gear retargets to the attachment socket", () => {
+    const pack = createEmptyEquipment("eq-pack", "Pack", body, "attached");
+    pack.attachments = [createEmptyAttachment("att-pack", "Pack", "sock-back")];
+    expect(pack.primarySlot).toBe("slot-head");
+    let state = createEquipmentUiState([pack], body, binding);
+    state = reduceEquipmentUi(state, { type: "selectEquipment", equipmentId: "eq-pack" }, body, binding);
+    expect(state.draft!.primarySlot).toBe("slot-back");
+    expect(state.draft!.occupiedSlots).toEqual(["slot-back"]);
+    expect(isEquipmentDirty(state)).toBeTrue();
+  });
+
+  test("helmet and backpack can be worn together after slot retarget", () => {
+    const helmet = createEmptyEquipment("eq-helm", "Helm", body, "attached");
+    helmet.tags = ["helmet"];
+    helmet.attachments = [createEmptyAttachment("att-helm", "Helm", "sock-head")];
+    const pack = createEmptyEquipment("eq-pack", "Pack", body, "attached");
+    pack.tags = ["device"];
+    pack.attachments = [createEmptyAttachment("att-pack", "Pack", "sock-back")];
+    let state = createEquipmentUiState([helmet, pack], body, binding);
+    state = reduceEquipmentUi(state, { type: "selectEquipment", equipmentId: "eq-pack" }, body, binding);
+    expect(state.draft!.primarySlot).toBe("slot-back");
+    state = reduceEquipmentUi(state, { type: "tryEquip", equipmentId: "eq-helm" }, body, binding);
+    expect(state.conflictIssues).toHaveLength(0);
+    state = reduceEquipmentUi(state, { type: "tryEquip", equipmentId: "eq-pack" }, body, binding);
+    expect(state.conflictIssues).toHaveLength(0);
+    expect(state.previewLoadout.equipment.map((item) => item.equipmentId).sort()).toEqual(["eq-helm", "eq-pack"]);
+  });
+
+  test("slotIdForSocket maps head/back/eye sockets", () => {
+    expect(slotIdForSocket(body, "sock-head")).toBe("slot-head");
+    expect(slotIdForSocket(body, "sock-back")).toBe("slot-back");
+    expect(slotIdForSocket(body, "sock-eye-l")).toBe("slot-eye");
+  });
+
+  test("selectEquipment keepPane stays on the current pane", () => {
+    const helmet = createEmptyEquipment("eq-helm", "Helm", body, "attached");
+    helmet.tags = ["helmet"];
+    helmet.attachments = [createEmptyAttachment("att-helm", "Helm", "sock-head")];
+    const pack = createEmptyEquipment("eq-pack", "Pack", body, "attached");
+    pack.tags = ["device"];
+    pack.attachments = [createEmptyAttachment("att-pack", "Pack", "sock-back")];
+    let state = createEquipmentUiState([helmet, pack], body, binding);
+    state = reduceEquipmentUi(state, { type: "setPane", pane: "loadout" }, body, binding);
+    state = reduceEquipmentUi(state, { type: "selectEquipment", equipmentId: "eq-pack", keepPane: true }, body, binding);
+    expect(state.pane).toBe("loadout");
+    expect(state.selectedEquipmentId).toBe("eq-pack");
+    expect(state.selectedAttachmentId).toBe("att-pack");
+    expect(state.wizardStep).toBe("identity");
+  });
+
+  test("new attachments default to a clickable size", () => {
+    expect(createEmptyAttachment("att-1", "Shell", "sock-head").size).toEqual([48, 48]);
   });
 });

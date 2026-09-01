@@ -12,10 +12,10 @@ import {
   BODY_PROFILE_STANDARD_SEMANTICS,
   bodyProfileDiagnostics,
   createBodyProfileUiState,
-  createEmptyBodyProfile,
   isBodyProfileDirty,
   normalizeSocketSemantic,
   reduceBodyProfileUi,
+  seedStandardBodyProfile,
   type BodyProfileMode,
 } from "../bodyProfileUiState";
 import { localizeBoneName } from "../builtinAnimationLabels";
@@ -53,8 +53,8 @@ export default function BodyProfileWorkspace({
 }: BodyProfileWorkspaceProps) {
   const t = useT();
   const initial = useMemo(
-    () => profile ?? createEmptyBodyProfile(uid("body"), t("skeletal.bodyProfile.defaultName"), skeleton.id),
-    [profile, skeleton.id, t],
+    () => profile ?? seedStandardBodyProfile(uid("body"), t("skeletal.bodyProfile.defaultName"), skeleton),
+    [profile, skeleton, t],
   );
   const [state, dispatch] = useReducer(reduceBodyProfileUi, undefined, () => createBodyProfileUiState(initial, skeleton));
   const [customSemantic, setCustomSemantic] = useState("");
@@ -81,7 +81,7 @@ export default function BodyProfileWorkspace({
   useEffect(() => { onChangeRef.current?.(state.draft); }, [state.draft]);
 
   useEffect(() => {
-    const next = profile ?? createEmptyBodyProfile(uid("body"), t("skeletal.bodyProfile.defaultName"), skeleton.id);
+    const next = profile ?? seedStandardBodyProfile(uid("body"), t("skeletal.bodyProfile.defaultName"), skeleton);
     dispatch({ type: "replaceProfile", profile: { ...next, skeletonId: skeleton.id } });
   }, [profile, skeleton.id, t]);
 
@@ -220,7 +220,10 @@ export default function BodyProfileWorkspace({
             <section className="body-profile-section">
               <header>
                 <h3>{t("skeletal.bodyProfile.slots")}</h3>
-                <button type="button" className="px-btn" disabled={busy} onClick={() => dispatch({ type: "addSlot", slotId: uid("slot") })}><Plus size={13} />{t("skeletal.bodyProfile.addSlot")}</button>
+                <div className="equipment-inline">
+                  <button type="button" className="px-btn" disabled={busy} onClick={() => dispatch({ type: "seedStandard", skeleton })}>{t("skeletal.bodyProfile.seedStandard")}</button>
+                  <button type="button" className="px-btn" disabled={busy} onClick={() => dispatch({ type: "addSlot", slotId: uid("slot") })}><Plus size={13} />{t("skeletal.bodyProfile.addSlot")}</button>
+                </div>
               </header>
               <div className="body-profile-item-list">
                 {state.draft.slots.map((slot) => (

@@ -4646,6 +4646,9 @@ body.resizing-row * {
 .binding-preview.interactive image:not(.selected) { pointer-events: none; cursor: default; }
 /* 动作编辑的部件偏移模式：允许直接点击画布上的部件进行选中（选中后再拖拽）。 */
 .binding-preview.interactive[data-offset-mode] image:not(.selected) { pointer-events: all; cursor: pointer; }
+/* 装备试穿：未选中附件也可点选，否则永远出不了变换框。 */
+.binding-preview.interactive.pick-attachments image:not(.selected),
+.binding-preview.interactive.pick-attachments .attachment-fallback:not(.selected) { pointer-events: all; cursor: pointer; }
 .binding-preview.interactive image.selected:not(.deformed) { filter: drop-shadow(0 0 3px var(--accent)); }
 .binding-preview.interactive image.selected.deformed { opacity: .92; }
 .binding-pivot { fill: var(--accent); stroke: var(--bg); stroke-width: .025; pointer-events: none; }
@@ -4661,6 +4664,7 @@ body.resizing-row * {
 .binding-bone-overlay line.selected { stroke: var(--accent); stroke-width: 4; stroke-dasharray: none; opacity: 1; }
 .binding-bone-overlay g[role="button"] { cursor: crosshair; outline: none; }
 .binding-bone-node { fill: var(--surface) !important; stroke: var(--accent) !important; stroke-width: 2 !important; vector-effect: non-scaling-stroke; pointer-events: visiblePainted; cursor: crosshair; }
+.binding-bone-overlay[data-static] .binding-bone-node { pointer-events: none !important; cursor: default; }
 .binding-bone-overlay g.selected .binding-bone-node { fill: var(--accent) !important; stroke: var(--text) !important; stroke-width: 3 !important; }
 .binding-canvas-hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 6px; }
 .binding-canvas-hud span { min-width: 0; padding: 6px; display: flex; align-items: center; gap: 5px; color: var(--text-muted); border: 1px solid var(--border); background: var(--bg); }
@@ -4866,12 +4870,13 @@ body.resizing-row * {
 .equipment-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .75fr); gap: 10px; align-items: start; }
 .equipment-canvas, .equipment-inspector { min-width: 0; padding: 12px; border: 2px solid var(--border); background: var(--surface); box-shadow: 3px 3px 0 var(--elevated); }
 .equipment-canvas-stage { min-height: clamp(420px, 54dvh, 640px); border: 2px solid var(--border); background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 0 0 / 18px 18px; overflow: hidden; }
-.equipment-canvas-stage > .binding-preview { width: 100%; height: clamp(420px, 54dvh, 640px); transition: transform .15s ease; transform-origin: center center; }
-.equipment-canvas.focus-eye .equipment-canvas-stage > .binding-preview { transform: scale(2.2) translateY(-12%); }
-.equipment-canvas.focus-hand .equipment-canvas-stage > .binding-preview { transform: scale(1.8) translateY(8%); }
-.equipment-canvas.focus-body .equipment-canvas-stage > .binding-preview { transform: scale(1.45); }
+.equipment-canvas-stage.facing-left, .weapon-canvas-stage.facing-left { transform: scaleX(-1); }
+.binding-preview .attachment-fallback { fill: var(--accent); fill-opacity: .55; stroke: var(--border); stroke-width: .5; }
+.binding-preview .attachment-fallback.selected { stroke: var(--accent); }
+.equipment-canvas-stage > .binding-preview { width: 100%; height: clamp(420px, 54dvh, 640px); transform: scale(var(--eq-zoom, 1)) translateY(var(--eq-pan-y, 0)); transform-origin: center center; }
 .equipment-empty-canvas { display: grid; place-items: center; min-height: clamp(420px, 54dvh, 640px); color: var(--text-muted); padding: 16px; text-align: center; }
 .equipment-follow-time { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; flex: 1 1 220px; color: var(--text-muted); }
+.equipment-inline input[type="range"] { width: 140px; accent-color: var(--accent); }
 .equipment-inspector { display: grid; gap: 12px; align-content: start; }
 .equipment-inspector > label, .equipment-fields > label { display: grid; gap: 4px; color: var(--text-muted); }
 .equipment-meta { justify-content: space-between; color: var(--text-muted); }
