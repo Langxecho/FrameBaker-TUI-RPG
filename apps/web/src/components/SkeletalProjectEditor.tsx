@@ -592,6 +592,7 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               skeleton={skeleton}
               binding={binding}
               clip={clip}
+              materials={materials}
               busy={busy}
               onSaveWeapons={saveEquipment}
             />}

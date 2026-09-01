@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNod
 import { addMotionEvent, ATTACHMENT_TARGET_PREFIX, BUILTIN_ANIMATION_ASSET_IDS, closeMotionLoopSeam, DEFAULT_CUBIC_MOTION_INTERPOLATION, deleteMotionEvent, deleteMotionKeyframe, findMotionSegmentIndex, getBoneEndpoint, isAttachmentTargetId, isBuiltinAnimationAssetId, MOTION_KEY_TIME_EPSILON, multiplyMatrices, quaternionFromZRotation, reparentTransform2d, sampleMotionClip, setMotionSegmentInterpolation, transformPoint, transformToMatrix, upsertMotionKeyframe, zRotationFromQuaternion, type AnimationAsset, type AnimationAssetSummary, type AnyMotionTrack, type AttachmentOffset, type CharacterBinding, type CubicBezierMotionInterpolation, type JsonValue, type Mat4, type Material, type MotionClip, type MotionSegmentInterpolation, type MotionTrack, type MotionTrackV2, type RegionAttachmentWarp, type RootMotionPolicy, type Skeleton } from "@framebaker/shared";
 import { ChevronDown, ChevronRight, Copy, Crosshair, Lock, Move, Pause, Pencil, Play, Plus, Redo2, RotateCcw, RotateCw, Save, Trash2, Undo2, Upload, Waves, ZoomIn } from "lucide-react";
 import { api, materialImageUrl, wsClient, type Folder } from "../api";
+import { attachmentMediaKey, shouldShowAttachmentFallback } from "../attachmentMedia";
 import { attachmentLocalBounds, attachmentLocalCorners, attachmentSvgImageY, fitAttachmentSizeToImage } from "../bindingGeometry";
 import { localizeBoneName, localizeSkeletonName } from "../builtinAnimationLabels";
 import { useT } from "../i18n";
@@ -611,9 +612,12 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
       const canPick = canTransform && (pickAttachments || selectedAttachmentId === attachment.id);
       // 合成顺序：先 warp 位图（warpedUrls 替换 href），后 bend 的 feDisplacementMap filter
       return <g key={slot.id}>
-        {missingMaterials[attachment.id]
+        {shouldShowAttachmentFallback(missingMaterials, attachment)
           ? <rect className={`attachment-fallback${selectedAttachmentId === attachment.id ? " selected" : ""}`} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onPointerDown={canPick ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />
-          : <image className={`${selectedAttachmentId === attachment.id ? "selected" : ""}${deformed ? " deformed" : ""}`} href={warpedUrls[attachment.id] ?? materialImageUrl(attachment.materialId, materialV[attachment.materialId], attachment.imageSlot)} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} preserveAspectRatio="none" filter={deformed ? `url(#${filterPrefix}-warp-${attachment.id})` : undefined} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onError={() => setMissingMaterials((prev) => prev[attachment.id] ? prev : { ...prev, [attachment.id]: true })} onPointerDown={canPick ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />}
+          : <image className={`${selectedAttachmentId === attachment.id ? "selected" : ""}${deformed ? " deformed" : ""}`} href={warpedUrls[attachment.id] ?? materialImageUrl(attachment.materialId, materialV[attachment.materialId], attachment.imageSlot)} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} preserveAspectRatio="none" filter={deformed ? `url(#${filterPrefix}-warp-${attachment.id})` : undefined} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onError={() => {
+            const key = attachmentMediaKey(attachment);
+            setMissingMaterials((prev) => prev[key] ? prev : { ...prev, [key]: true });
+          }} onPointerDown={canPick ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />}
       </g>;
     })}{showSkeleton && <g className="binding-bone-overlay" data-static={onSelectBone ? undefined : ""} style={onSelectBone ? undefined : { pointerEvents: "none" }}>
       {skeleton.bones.map((bone) => {

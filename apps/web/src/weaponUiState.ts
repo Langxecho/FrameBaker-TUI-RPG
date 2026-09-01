@@ -9,6 +9,7 @@ import {
   type BodyProfile,
   type CharacterBinding,
   type CharacterLoadout,
+  type EquipmentAttachment,
   type EquipmentDefinition,
   type Skeleton,
   type Transform,
@@ -17,6 +18,7 @@ import {
   type WeaponProfile,
 } from "@framebaker/shared";
 import { createEmptyAttachment } from "./equipmentUiState";
+import { overlayDraftEquipment } from "./loadoutPreview";
 
 export type WeaponHoldMode = WeaponProfile["holdMode"];
 export type WeaponPrimaryHand = WeaponProfile["preferredPrimaryHand"];
@@ -37,6 +39,9 @@ export type WeaponUiAction =
   | { type: "setSecondaryHandConstraint"; constraint: TwoBoneIkConstraint | null }
   | { type: "patchSecondaryHandConstraint"; patch: Partial<TwoBoneIkConstraint> }
   | { type: "selectGripTarget"; target: WeaponGripTarget }
+  | { type: "selectAttachment"; attachmentId: string | null }
+  | { type: "patchAttachment"; attachmentId: string; skipHistory?: boolean; patch: Omit<Partial<EquipmentAttachment>, "rest" | "size" | "pivot"> & { size?: EquipmentAttachment["size"]; pivot?: EquipmentAttachment["pivot"]; rest?: Partial<Transform> } }
+  | { type: "commitCanvasEdit"; before: EquipmentDefinition }
   | { type: "selectBodyProfile"; bodyProfileId: string }
   | { type: "setPreviewTime"; time: number }
   | { type: "setFacing"; facing: "left" | "right" }
@@ -54,6 +59,7 @@ export interface WeaponUiState {
   saved: EquipmentDefinition | null;
   draft: EquipmentDefinition | null;
   selectedEquipmentId: string | null;
+  selectedAttachmentId: string | null;
   selectedGripTarget: WeaponGripTarget;
   selectedBodyProfileId: string;
   previewLoadout: CharacterLoadout;
@@ -106,6 +112,10 @@ function emptyLoadout(bodyProfileId: string): CharacterLoadout {
   return { bodyProfileId, equipment: [] };
 }
 
+function firstAttachmentId(item: EquipmentDefinition | null): string | null {
+  return item?.attachments[0]?.id ?? null;
+}
+
 function upsertLibrary(library: EquipmentDefinition[], item: EquipmentDefinition): EquipmentDefinition[] {
   const exists = library.some((entry) => entry.id === item.id);
   return exists
@@ -120,6 +130,16 @@ function definitionsForPreview(state: WeaponUiState): EquipmentDefinition[] {
 
 function isWeaponEquipment(item: EquipmentDefinition): boolean {
   return item.weapon !== undefined || item.tags.includes("weapon");
+}
+
+/** 握把编辑叠草稿；兼容预览只显示点选装备的武器，清空后不能把草稿再画回去。 */
+export function assembledForWeaponPane(
+  pane: WeaponWorkspacePane,
+  legalPreview: AssembledLoadout | null,
+  draft: EquipmentDefinition | null,
+  bodyProfileId: string,
+): AssembledLoadout {
+  return overlayDraftEquipment(legalPreview, pane === "preview" ? null : draft, bodyProfileId);
 }
 
 function recomputePreview(
@@ -324,6 +344,7 @@ export function createWeaponUiState(
     saved: selected ? cloneEquipment(selected) : null,
     draft: selected ? cloneEquipment(selected) : null,
     selectedEquipmentId: selected?.id ?? null,
+    selectedAttachmentId: firstAttachmentId(selected),
     selectedGripTarget: "primaryGrip",
     selectedBodyProfileId: bodyId,
     previewLoadout: emptyLoadout(bodyId),
@@ -371,6 +392,14 @@ export function weaponWizardBlockingIssues(
     const boneIds = new Set(skeleton.bones.map((bone) => bone.id));
     if (!boneIds.has(c.upperBoneId) || !boneIds.has(c.lowerBoneId) || !boneIds.has(c.endBoneId)) {
       issues.push({ path: "weapon.secondaryHandConstraint", message: "IK 骨骼不存在" });
+    }
+  }
+  if (!draft.attachments.length) {
+    issues.push({ path: "attachments", message: "武器需要至少一个外观附件" });
+  }
+  for (const [index, attachment] of draft.attachments.entries()) {
+    if (!attachment.materialId || attachment.materialId === "mat-placeholder") {
+      issues.push({ path: `attachments[${index}].materialId`, message: "请选择武器素材图片" });
     }
   }
   const validated = validateEquipmentDefinition(draft, body);
@@ -525,6 +554,7 @@ export function reduceWeaponUi(
       return {
         ...state,
         selectedEquipmentId: selected?.id ?? null,
+        selectedAttachmentId: firstAttachmentId(selected),
         saved: selected ? cloneEquipment(selected) : null,
         draft: selected ? cloneEquipment(selected) : null,
         selectedGripTarget: "primaryGrip",
@@ -542,6 +572,7 @@ export function reduceWeaponUi(
         ...state,
         library: weapons,
         selectedEquipmentId: selected?.id ?? null,
+        selectedAttachmentId: firstAttachmentId(selected),
         saved: selected ? cloneEquipment(selected) : null,
         draft: selected ? cloneEquipment(selected) : null,
         selectedGripTarget: "primaryGrip",
@@ -555,6 +586,7 @@ export function reduceWeaponUi(
         ...state,
         library: nextLibrary,
         selectedEquipmentId: action.equipment.id,
+        selectedAttachmentId: firstAttachmentId(action.equipment),
         saved: null,
         draft: cloneEquipment(action.equipment),
         selectedGripTarget: "primaryGrip",
@@ -574,6 +606,7 @@ export function reduceWeaponUi(
         ...state,
         library: nextLibrary,
         selectedEquipmentId: selected?.id ?? null,
+        selectedAttachmentId: firstAttachmentId(selected),
         saved: selected ? cloneEquipment(selected) : null,
         draft: selected ? cloneEquipment(selected) : null,
         past: [],
@@ -655,6 +688,38 @@ export function reduceWeaponUi(
     }
     case "selectGripTarget":
       return { ...state, selectedGripTarget: action.target };
+    case "selectAttachment":
+      return { ...state, selectedAttachmentId: action.attachmentId };
+    case "patchAttachment": {
+      if (!state.draft) return state;
+      if (!state.draft.attachments.some((item) => item.id === action.attachmentId)) return state;
+      const next = {
+        ...cloneEquipment(state.draft),
+        attachments: state.draft.attachments.map((item) => {
+          if (item.id !== action.attachmentId) return item;
+          const { rest, ...restPatch } = action.patch;
+          return {
+            ...item,
+            ...restPatch,
+            size: action.patch.size ? [...action.patch.size] as EquipmentAttachment["size"] : item.size,
+            pivot: action.patch.pivot ? [...action.patch.pivot] as EquipmentAttachment["pivot"] : item.pivot,
+            rest: patchRest(item.rest, rest),
+          };
+        }),
+      };
+      const patched = action.skipHistory
+        ? { ...state, draft: next, selectedAttachmentId: action.attachmentId }
+        : { ...pushHistory(state, next), selectedAttachmentId: action.attachmentId };
+      return patched;
+    }
+    case "commitCanvasEdit": {
+      if (!state.draft || equipmentEqual(action.before, state.draft)) return state;
+      return {
+        ...state,
+        past: [...state.past, cloneEquipment(action.before)],
+        future: [],
+      };
+    }
     case "selectBodyProfile": {
       const nextLoadout = { ...cloneLoadout(state.previewLoadout), bodyProfileId: action.bodyProfileId };
       const preview = recomputePreview({ ...state, selectedBodyProfileId: action.bodyProfileId }, body, binding, nextLoadout);
@@ -723,6 +788,7 @@ export function reduceWeaponUi(
         draft: cloneEquipment(saved),
         library: upsertLibrary(state.library, saved),
         selectedEquipmentId: saved.id,
+        selectedAttachmentId: firstAttachmentId(saved),
         past: [],
         future: [],
       };
@@ -731,6 +797,7 @@ export function reduceWeaponUi(
       return {
         ...state,
         draft: cloneEquipment(action.equipment),
+        selectedAttachmentId: firstAttachmentId(action.equipment),
         past: [],
         future: [],
       };

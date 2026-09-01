@@ -391,7 +391,7 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 
 - `GET /api/animation-assets?kind=...` 列出 Skeleton 与 MotionClip 动作资产。CharacterBinding 只属于项目，不会由该资产库暴露。
 - `POST /api/animation-assets` 以 `{ asset, folderId? }` 创建资产；`GET`、`PUT`、`DELETE /api/animation-assets/:id` 分别读取、整体替换和删除单项 Skeleton 或 MotionClip。提交 CharacterBinding 会被拒绝。
-- `GET /api/projects/:id/skeletal-document` 读取骨骼项目文档，`PUT` 整体替换。持久化文档为 schema v2，拥有角色 CharacterBinding，以及可选的 `bodyProfiles`、`equipment`、`loadouts`、`actionTemplates`、`stanceProfiles` 和 `runtimePackageSettings`。读取或写入旧 v1 文档时会迁移为空默认值；未知字段与瞬时运行时字段会被清除。项目动作只能引用 `skeletonId` 完全相同的 MotionClip；保存前会校验 BodyProfile、装备、Loadout、动作/姿态引用及素材 ID。
+- `GET /api/projects/:id/skeletal-document` 读取骨骼项目文档，`PUT` 整体替换。持久化文档为 schema v2，拥有角色 CharacterBinding，以及可选的 `bodyProfiles`、`equipment`、`loadouts`、`actionTemplates`、`stanceProfiles` 和 `runtimePackageSettings`。读取或写入旧 v1 文档时会迁移为空默认值；未知字段与瞬时运行时字段会被清除。项目动作只能引用 `skeletonId` 完全相同的 MotionClip；保存前会校验 BodyProfile、装备、Loadout、动作/姿态引用及素材 ID。武器引用了尚不存在的 `stanceProfile` 时会自动登记一条空姿态配置。
 - MotionClip `schemaVersion: 1` 保持轨道级 `step | linear`。MotionClip `schemaVersion: 2` 不再含轨道级 interpolation，每个 key 必须携带 `outInterpolation`：非末尾 key 使用 `{ type: "step" | "linear" }` 或 `{ type: "cubic-bezier", x1, y1, x2, y2 }`，末尾 key 固定为 `null`。贝塞尔控制量必须是 `[0, 1]` 内的有限数值。
 - 读取或保存 v1 不会自动升级；只有用户明确选择曲线时编辑器才升级到 v2。`.fbanim` 包版本与包内 MotionClip schema 版本独立演进。
 

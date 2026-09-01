@@ -1,14 +1,20 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
+  measureSkeletonHeight,
+  quaternionFromZRotation,
+  zRotationFromQuaternion,
   type BodyProfile,
   type CharacterBinding,
   type CharacterLoadout,
   type EquipmentDefinition,
+  type Material,
   type MotionClip,
   type Skeleton,
   type Transform,
 } from "@framebaker/shared";
 import { Crosshair, Plus, Redo2, Save, Trash2, Undo2 } from "lucide-react";
+import { materialImageUrl } from "../api";
+import { fitAttachmentSizeToImage } from "../bindingGeometry";
 import {
   canCompleteWeaponWizard,
   createDefaultSecondaryHandConstraint,
@@ -16,13 +22,14 @@ import {
   createWeaponUiState,
   isWeaponDirty,
   reduceWeaponUi,
+  assembledForWeaponPane,
   weaponWizardBlockingIssues,
   type WeaponGripTarget,
   type WeaponHoldMode,
   type WeaponPrimaryHand,
 } from "../weaponUiState";
 import { createWeaponSampleFixtures } from "../weaponFixtures";
-import { bindingWithAssembledLoadout } from "../loadoutPreview";
+import { attachmentRestFromComposed, bindingWithAssembledLoadout } from "../loadoutPreview";
 import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
 import { CharacterPreview } from "./AnimationAssetsWorkspace";
@@ -41,6 +48,7 @@ export interface WeaponWorkspaceProps {
   skeleton: Skeleton;
   binding?: CharacterBinding;
   clip?: MotionClip;
+  materials?: Material[];
   busy?: boolean;
   onSaveWeapons: (equipment: EquipmentDefinition[], loadouts: CharacterLoadout[]) => Promise<void> | void;
   onRequestClose?: () => void;
@@ -53,6 +61,7 @@ export default function WeaponWorkspace({
   skeleton,
   binding,
   clip,
+  materials = [],
   busy = false,
   onSaveWeapons,
   onRequestClose,
@@ -73,11 +82,24 @@ export default function WeaponWorkspace({
   const dirty = isWeaponDirty(state);
   const draft = state.draft;
   const weapon = draft?.weapon ?? null;
+  const selectedAttachment = draft?.attachments.find((item) => item.id === state.selectedAttachmentId)
+    ?? draft?.attachments[0]
+    ?? null;
   const issues = useMemo(
     () => weaponWizardBlockingIssues(draft, activeBody, skeleton),
     [draft, activeBody, skeleton],
   );
+  const materialOptions = useMemo(
+    () => materials.filter((item) => item.kind === "image").map((item) => ({ value: item.id, label: item.name })),
+    [materials],
+  );
   const [holdModeDraft, setHoldModeDraft] = useState<WeaponHoldMode>("one_hand");
+  const canvasEditBeforeRef = useRef<EquipmentDefinition | null>(null);
+  const fitRequestRef = useRef(0);
+  const defaultWeaponSize = useMemo((): [number, number] => {
+    const span = Math.max(48, measureSkeletonHeight(skeleton) * 0.22);
+    return [span, span];
+  }, [skeleton]);
 
   useEffect(() => {
     dispatch({ type: "replaceLibrary", equipment: weaponLibrary });
@@ -106,9 +128,66 @@ export default function WeaponWorkspace({
       boneId: socket.boneId,
       rest: socket.rest,
       label: socket.semantic,
-      selected: weapon?.secondaryHandConstraint?.targetSocket === socket.id,
+      selected: selectedAttachment?.socket === socket.id || weapon?.secondaryHandConstraint?.targetSocket === socket.id,
     }));
-  }, [activeBody, weapon?.secondaryHandConstraint?.targetSocket]);
+  }, [activeBody, selectedAttachment?.socket, weapon?.secondaryHandConstraint?.targetSocket]);
+
+  const onSelectCanvasAttachment = (attachmentId: string) => {
+    if (!draft?.attachments.some((item) => item.id === attachmentId)) return;
+    dispatch({ type: "selectAttachment", attachmentId });
+  };
+
+  const onTransformCanvasAttachment = (attachmentId: string, patch: Partial<CharacterBinding["attachments"][number]>) => {
+    if (!draft || !activeBody) return;
+    const attachment = draft.attachments.find((item) => item.id === attachmentId);
+    if (!attachment) return;
+    const socket = activeBody.sockets.find((item) => item.id === attachment.socket);
+    if (!socket) return;
+    const restPatch: Partial<Transform> | undefined = patch.rest
+      ? attachmentRestFromComposed(socket.rest, patch.rest)
+      : undefined;
+    dispatch({
+      type: "patchAttachment",
+      attachmentId,
+      skipHistory: true,
+      patch: {
+        ...(patch.size ? { size: [...patch.size] as [number, number] } : {}),
+        ...(patch.pivot ? { pivot: [...patch.pivot] as [number, number] } : {}),
+        ...(restPatch ? { rest: restPatch } : {}),
+      },
+    });
+  };
+
+  const onBeginCanvasTransform = () => {
+    if (draft && !canvasEditBeforeRef.current) canvasEditBeforeRef.current = structuredClone(draft);
+  };
+
+  const onEndCanvasTransform = () => {
+    const before = canvasEditBeforeRef.current;
+    canvasEditBeforeRef.current = null;
+    if (before) dispatch({ type: "commitCanvasEdit", before });
+  };
+
+  const fitWeaponToMaterial = async (attachmentId: string, materialId: string, imageSlot: "raw" | "processed", currentSize: [number, number]) => {
+    if (!materialId || materialId === "mat-placeholder") return;
+    const requestId = ++fitRequestRef.current;
+    try {
+      const response = await fetch(materialImageUrl(materialId, undefined, imageSlot, undefined, true));
+      if (!response.ok) throw new Error(`${response.status}`);
+      const bitmap = await createImageBitmap(await response.blob());
+      if (requestId !== fitRequestRef.current) {
+        bitmap.close();
+        return;
+      }
+      const figure = defaultWeaponSize[1];
+      const base: [number, number] = Math.max(currentSize[0], currentSize[1]) < figure * 0.5 ? [figure, figure] : currentSize;
+      const size = fitAttachmentSizeToImage(base, bitmap.width, bitmap.height);
+      bitmap.close();
+      dispatch({ type: "patchAttachment", attachmentId, patch: { size } });
+    } catch (error) {
+      if (requestId === fitRequestRef.current) notify(t("animation.binding.fitImageAspectFailed", { msg: (error as Error).message }));
+    }
+  };
 
   const requestClose = async () => {
     if (!onRequestClose) return;
@@ -184,9 +263,10 @@ export default function WeaponWorkspace({
     label: `${socket.semantic} (${socket.id})`,
   }));
   const previewBinding = useMemo(() => {
-    if (!binding || !activeBody || !state.legalPreview) return binding;
-    return bindingWithAssembledLoadout(binding, activeBody, state.legalPreview);
-  }, [activeBody, binding, state.legalPreview]);
+    if (!binding || !activeBody) return binding;
+    const assembled = assembledForWeaponPane(state.pane, state.legalPreview, draft, activeBody.id);
+    return bindingWithAssembledLoadout(binding, activeBody, assembled);
+  }, [activeBody, binding, draft, state.legalPreview, state.pane]);
 
   return (
     <section className="weapon-workspace">
@@ -213,8 +293,15 @@ export default function WeaponWorkspace({
                   skeleton={skeleton}
                   clip={clip}
                   time={state.previewTime}
+                  selectedAttachmentId={state.pane === "preview" ? undefined : (selectedAttachment?.id ?? undefined)}
                   showSkeleton
                   socketMarkers={socketMarkers}
+                  onSelectAttachment={state.pane === "preview" ? undefined : onSelectCanvasAttachment}
+                  onTransformAttachment={state.pane === "preview" ? undefined : onTransformCanvasAttachment}
+                  onBeginTransform={state.pane === "preview" ? undefined : onBeginCanvasTransform}
+                  onEndTransform={state.pane === "preview" ? undefined : onEndCanvasTransform}
+                  pickAttachments={state.pane !== "preview"}
+                  fitTo="skeleton"
                 />
               : <div className="weapon-empty-canvas">{t("skeletal.weapon.needBinding")}</div>}
           </div>
@@ -366,6 +453,7 @@ export default function WeaponWorkspace({
                     onChange={(event) => dispatch({ type: "patchWeapon", patch: { stanceProfile: event.target.value } })}
                   />
                 </label>
+                <p className="weapon-hint">{t("skeletal.weapon.stanceHint")}</p>
                 <label>
                   {t("skeletal.weapon.recoilProfile")}
                   <input
@@ -382,6 +470,42 @@ export default function WeaponWorkspace({
                     occupied: draft.occupiedSlots.join(", "),
                   })}
                 </p>
+                <p className="weapon-hint">{t("skeletal.weapon.editorHint")}</p>
+
+                <h4>{t("skeletal.weapon.appearance")}</h4>
+                <p className="weapon-hint">{t("skeletal.weapon.materialHint")}</p>
+                {!materialOptions.length && <p className="weapon-hint">{t("skeletal.weapon.noMaterials")}</p>}
+                {selectedAttachment && (
+                  <div className="weapon-fields">
+                    <label>
+                      {t("skeletal.weapon.material")}
+                      <PxSelect
+                        value={selectedAttachment.materialId === "mat-placeholder" ? "" : selectedAttachment.materialId}
+                        options={materialOptions.length ? materialOptions : [{ value: selectedAttachment.materialId, label: selectedAttachment.materialId }]}
+                        placeholder={t("skeletal.weapon.chooseMaterial")}
+                        onChange={(value) => {
+                          const imageSlot = materials.find((item) => item.id === value)?.processed_path ? "processed" : "raw";
+                          dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { materialId: value, imageSlot } });
+                          void fitWeaponToMaterial(selectedAttachment.id, value, imageSlot, selectedAttachment.size);
+                        }}
+                      />
+                    </label>
+                    <div className="weapon-transform">
+                      <label>X<input type="number" step="0.1" value={selectedAttachment.rest.translation[0]} disabled={busy} onChange={(event) => dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { rest: { translation: [+event.target.value, selectedAttachment.rest.translation[1], selectedAttachment.rest.translation[2]] } } })} /></label>
+                      <label>Y<input type="number" step="0.1" value={selectedAttachment.rest.translation[1]} disabled={busy} onChange={(event) => dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { rest: { translation: [selectedAttachment.rest.translation[0], +event.target.value, selectedAttachment.rest.translation[2]] } } })} /></label>
+                      <label>{t("skeletal.weapon.rotation")}<input type="number" step="1" value={Number(((zRotationFromQuaternion(selectedAttachment.rest.rotation) * 180) / Math.PI).toFixed(2))} disabled={busy} onChange={(event) => dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { rest: { rotation: quaternionFromZRotation((+event.target.value * Math.PI) / 180) } } })} /></label>
+                      <label>{t("skeletal.weapon.visualScale")}<input type="number" step="0.05" value={selectedAttachment.rest.scale[0]} disabled={busy} onChange={(event) => {
+                        const scale = +event.target.value || 1;
+                        dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { rest: { scale: [scale, scale, scale] } } });
+                      }} /></label>
+                    </div>
+                    <label>
+                      {t("skeletal.weapon.drawOrder")}
+                      <input type="number" step="1" value={selectedAttachment.drawOffset} disabled={busy} onChange={(event) => dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { drawOffset: Math.round(+event.target.value || 0) } })} />
+                    </label>
+                    <p className="weapon-hint">{t("skeletal.weapon.drawOrderHint")}</p>
+                  </div>
+                )}
 
                 <h4>{t("skeletal.weapon.grips")}</h4>
                 <div className="weapon-step-tabs">

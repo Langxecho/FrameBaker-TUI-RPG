@@ -7,12 +7,18 @@ This document records features, changes, and bug fixes by release. Main releases
 ### Added
 
 - Equipment try-on and weapon preview now composite assembled loadouts onto the character: attached/replacement gear is visible on socket bones, dual-wield pistols occupy both hands, and two-hand weapons keep a single primary-hand visual. Missing attachment images fall back to a themed placeholder rectangle. New body profiles seed standard head/chest/hand slots and weapon sockets from the current skeleton.
+- Weapon configuration can pick a weapon image from the material library, and save is blocked until a real material is selected so placeholder attachment IDs are not persisted.
+- Weapon appearance now exposes the same layer offset as equipment try-on (0 covers the hand, -1 tucks under it).
 - Equipment try-on preview now lets you drag an attachment's position, rotation, scale, and pivot on the canvas like character binding, keeping the inspector fields in sync.
 - Changing an equipment primary slot now releases the previous occupancy (head is no longer stuck checked); moving an attachment to another socket retargets single-slot gear so multiple items can be worn together.
 
 ### Fixed
 
 - Equipment attachments now stay visible on the canvas while editing (no try-on required), can be clicked to show the body-part transform box, and ignore orange bone dots so drag/rotate/scale handles can appear.
+- New weapons now prompt for a material-library image instead of failing on save with a missing attachment material.
+- Saving a weapon now registers an empty stance stub for a missing stanceProfile instead of rejecting the document.
+- Weapon compatibility preview no longer overlays the in-progress draft, so clear preview actually removes weapons from the canvas.
+- Equipment/weapon preview retries the real image after a placeholder 404 instead of keeping the orange fallback box.
 - Equipment canvas framing stays locked to the skeleton while you drag gear; zoom is a manual slider/wheel, and focus presets no longer auto-switch when selecting a socket.
 - Equipment attachments can tuck under the socket's body part (layer offset -1) instead of always drawing on top of the whole character.
 - The equipment replace/hide step lists character parts to click instead of typing slot IDs; the binding inspector also shows the part slot ID.

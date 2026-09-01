@@ -26,6 +26,45 @@ describe("骨骼项目文档 v2 校验", () => {
     expect(response.status).toBe(400);
   });
 
+  test("registers a stub stance profile when a weapon references one that does not exist yet", async () => {
+    const body = { schemaVersion: 1, id: "body-stance", name: "Body", skeletonId, mirrorAxis: "x", slots: [{ id: "hand", semantic: "hand_left", capacity: 1, accepts: ["weapon"] }], sockets: [{ id: "hand-socket", semantic: "weapon_hand_left", boneId: "root", rest: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] }, accepts: ["weapon"] }] };
+    const response = await request({
+      schemaVersion: 2,
+      projectId,
+      character: null,
+      animations: [],
+      activeAnimationId: null,
+      bodyProfiles: [body],
+      equipment: [{
+        schemaVersion: 1,
+        id: "pistol",
+        name: "Pistol",
+        tags: ["weapon"],
+        visualMode: "none",
+        primarySlot: "hand",
+        occupiedSlots: ["hand"],
+        conflictTags: [],
+        replacesParts: [],
+        hidesSlots: [],
+        attachments: [],
+        weapon: {
+          holdMode: "one_hand",
+          preferredPrimaryHand: "right",
+          mirrorAllowed: true,
+          primaryGrip: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+          stanceProfile: "pistol_one_hand",
+        },
+      }],
+      loadouts: [],
+      actionTemplates: [],
+      stanceProfiles: [],
+      runtimePackageSettings: {},
+    });
+    expect(response.status).toBe(200);
+    const payload = await response.json() as { document: { stanceProfiles: Array<{ id: string }> } };
+    expect(payload.document.stanceProfiles.map((item) => item.id)).toContain("pistol_one_hand");
+  });
+
   test("keeps missing material validation behavior for equipment attachments", async () => {
     const body = { schemaVersion: 1, id: "body", name: "Body", skeletonId, mirrorAxis: "x", slots: [{ id: "hand", semantic: "hand_left", capacity: 1, accepts: ["weapon"] }], sockets: [{ id: "hand-socket", semantic: "weapon_hand_left", boneId: "root", rest: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] }, accepts: ["weapon"] }] };
     const response = await request({ schemaVersion: 2, projectId, character: null, animations: [], activeAnimationId: null, bodyProfiles: [body], equipment: [{ schemaVersion: 1, id: "sword", name: "Sword", tags: ["weapon"], visualMode: "attached", primarySlot: "hand", occupiedSlots: ["hand"], conflictTags: [], replacesParts: [], hidesSlots: [], attachments: [{ id: "blade", name: "Blade", socket: "hand-socket", materialId: "missing", imageSlot: "raw", size: [1, 1], pivot: [0.5, 0.5], rest: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] }, drawGroup: "equipment", drawOffset: 0 }] }], loadouts: [], actionTemplates: [], stanceProfiles: [], runtimePackageSettings: {} });

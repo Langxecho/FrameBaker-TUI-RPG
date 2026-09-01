@@ -8,6 +8,7 @@ import {
   isWeaponDirty,
   reduceWeaponUi,
   resolveWeaponHandSlots,
+  assembledForWeaponPane,
   weaponWizardBlockingIssues,
 } from "../apps/web/src/weaponUiState";
 import { createWeaponFixtureBody, createWeaponSampleFixtures } from "../apps/web/src/weaponFixtures";
@@ -82,10 +83,43 @@ describe("weapon ui state", () => {
         stretch: "forbid",
       },
     }, body, binding, skeleton);
+    state = reduceWeaponUi(state, {
+      type: "patchAttachment",
+      attachmentId: state.draft!.attachments[0]!.id,
+      patch: { materialId: "mat-rifle" },
+    }, body, binding, skeleton);
 
     expect(canCompleteWeaponWizard(state.draft, body, skeleton)).toBeTrue();
     expect(state.draft!.weapon!.secondaryHandConstraint?.targetSocket).toBe("sock-hand-l");
     expect(isWeaponDirty(state)).toBeTrue();
+  });
+
+  test("empty weapon cannot complete until its attachment has a real material", () => {
+    const weapon = createEmptyWeapon("wpn-new", "新武器", body);
+    expect(weapon.attachments[0]?.materialId).toBe("mat-placeholder");
+    expect(canCompleteWeaponWizard(weapon, body, skeleton)).toBeFalse();
+    expect(weaponWizardBlockingIssues(weapon, body, skeleton).some((issue) => issue.path.includes("materialId"))).toBeTrue();
+  });
+
+  test("patchAttachment assigns a material so the wizard can complete", () => {
+    let state = createWeaponUiState([], body, binding, skeleton);
+    const weapon = createEmptyWeapon("wpn-gun", "手枪", body);
+    state = reduceWeaponUi(state, { type: "createWeapon", equipment: weapon }, body, binding, skeleton);
+    const attachmentId = state.draft!.attachments[0]!.id;
+    expect(state.selectedAttachmentId).toBe(attachmentId);
+    state = reduceWeaponUi(state, {
+      type: "patchAttachment",
+      attachmentId,
+      patch: { materialId: "mat-pistol" },
+    }, body, binding, skeleton);
+    expect(state.draft!.attachments[0]!.materialId).toBe("mat-pistol");
+    state = reduceWeaponUi(state, {
+      type: "patchAttachment",
+      attachmentId,
+      patch: { drawOffset: -1 },
+    }, body, binding, skeleton);
+    expect(state.draft!.attachments[0]!.drawOffset).toBe(-1);
+    expect(canCompleteWeaponWizard(state.draft, body, skeleton)).toBeTrue();
   });
 
   test("left and right preferred primary hands resolve opposite occupied slots", () => {
@@ -129,6 +163,21 @@ describe("weapon ui state", () => {
     expect([...(state.legalPreview?.occupiedSlots ?? [])].sort()).toEqual(["slot-hand-l", "slot-hand-r"]);
   });
 
+  test("compatibility preview does not keep the draft weapon after clear", () => {
+    const pistol = createEmptyWeapon("wpn-preview", "Pistol", body, { holdMode: "one_hand", preferredPrimaryHand: "right" });
+    pistol.attachments[0] = { ...pistol.attachments[0]!, materialId: "mat-pistol" };
+    let state = createWeaponUiState([pistol], body, binding, skeleton);
+    state = reduceWeaponUi(state, { type: "tryEquip", equipmentId: "wpn-preview" }, body, binding, skeleton);
+    expect(state.legalPreview?.attachments.length).toBeGreaterThan(0);
+    state = reduceWeaponUi(state, { type: "clearPreview" }, body, binding, skeleton);
+    expect(state.previewLoadout.equipment).toEqual([]);
+    expect(state.legalPreview?.attachments ?? []).toEqual([]);
+    const preview = assembledForWeaponPane("preview", state.legalPreview, state.draft, body.id);
+    const editor = assembledForWeaponPane("editor", state.legalPreview, state.draft, body.id);
+    expect(preview.attachments).toEqual([]);
+    expect(editor.attachments.map((item) => item.id)).toEqual(state.draft!.attachments.map((item) => item.id));
+  });
+
   test("conflict fixture retains previous legal dual-wield preview", () => {
     const fixtures = createWeaponSampleFixtures();
     const pistolR = fixtures.find((item) => item.id === "fx-pistol-r")!;
@@ -156,6 +205,12 @@ describe("weapon ui state", () => {
       patch: { stanceProfile: "pistol_one_hand", mirrorAllowed: true },
     }, body, binding, skeleton);
     expect(state.draft!.occupiedSlots).toEqual(["slot-hand-r"]);
+    const attachmentId = state.draft!.attachments[0]!.id;
+    state = reduceWeaponUi(state, {
+      type: "patchAttachment",
+      attachmentId,
+      patch: { materialId: "mat-blade" },
+    }, body, binding, skeleton);
     expect(weaponWizardBlockingIssues(state.draft, body, skeleton).length).toBe(0);
     expect(isWeaponDirty(state)).toBeTrue();
     state = reduceWeaponUi(state, { type: "markSaved", equipment: state.draft! }, body, binding, skeleton);

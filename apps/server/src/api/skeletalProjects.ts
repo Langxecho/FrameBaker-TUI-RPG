@@ -21,6 +21,19 @@ function assetSkeleton(id: string): Skeleton | null {
 
 function validList(value: unknown, max: number): value is unknown[] { return Array.isArray(value) && value.length <= max; }
 
+/** 第 3 步武器会先写姿态 ID，第 4 步才填动作；保存时补一条空姿态，避免「stanceProfile 不存在」。 */
+function ensureWeaponStanceStubs(document: SkeletalProjectDocument): SkeletalProjectDocument {
+  const stanceProfiles = [...(document.stanceProfiles ?? [])];
+  const ids = new Set(stanceProfiles.map((item) => item.id));
+  for (const item of document.equipment ?? []) {
+    const id = item.weapon?.stanceProfile?.trim();
+    if (!id || !isFbanimV2Id(id) || ids.has(id)) continue;
+    stanceProfiles.push({ id, requiredActions: [], optionalActions: [], constraints: [] });
+    ids.add(id);
+  }
+  return { ...document, stanceProfiles };
+}
+
 function validateDocument(value: unknown, projectId: string): string | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "骨骼项目文档必须是对象";
   const document = value as Partial<SkeletalProjectDocument>;
@@ -127,7 +140,7 @@ export const skeletalProjectsApi = new Elysia({ prefix: "/api" })
     const row = project(params.id);
     if (!row) return status(404, "项目不存在");
     if (row.kind !== "skeletal") return status(409, "逐帧项目不能保存骨骼项目文档");
-    const document = migrateSkeletalProjectDocument(body);
+    const document = ensureWeaponStanceStubs(migrateSkeletalProjectDocument(body));
     const error = validateDocument(document, params.id);
     if (error) return status(400, error);
     db.query("INSERT INTO skeletal_projects (project_id, document, updated_at) VALUES (?, ?, ?) ON CONFLICT(project_id) DO UPDATE SET document = excluded.document, updated_at = excluded.updated_at").run(params.id, JSON.stringify(document), Date.now());
