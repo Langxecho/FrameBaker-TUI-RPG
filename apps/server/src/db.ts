@@ -1,8 +1,9 @@
 import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ensureBuiltinAnimationAssets, normalizeGeneratedAnimationAssetNames } from "./builtinAnimationAssets";
-import type { AttackEffectCell, AttackEffectCellRow, Frame, FrameRow, Material, MaterialRow } from "@framebaker/shared";
+import type { AttackEffectCell, AttackEffectCellRow, Frame, FrameRow, Material, MaterialRow, MediaKind } from "@framebaker/shared";
+import { MEDIA_KINDS } from "@framebaker/shared";
 
 // 仓库根目录（apps/server/src → 根）：storage 固定放在根级，与启动时的 cwd 无关
 export const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
@@ -264,6 +265,37 @@ db.query(
   "UPDATE materials SET source = 'layers' WHERE source = 'api' AND json_valid(metadata) AND json_extract(metadata, '$.provider') = 'imageLayers'"
 ).run();
 
+// v3：统一媒体素材 — 仅为缺少/非法 mediaKind 的行补默认值，不覆盖已有合法 metadata。
+db.transaction(() => {
+  if (db.query("SELECT 1 FROM schema_migrations WHERE version=3").get()) return;
+  db.query(`
+    UPDATE materials
+    SET metadata = json_set(
+      CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END,
+      '$.mediaKind',
+      CASE
+        WHEN lower(COALESCE(raw_path, processed_path, '')) GLOB '*.mp4'
+          OR lower(COALESCE(raw_path, processed_path, '')) GLOB '*.mov'
+          OR lower(COALESCE(raw_path, processed_path, '')) GLOB '*.webm'
+          OR lower(COALESCE(raw_path, processed_path, '')) GLOB '*.avi'
+          THEN 'video'
+        WHEN lower(COALESCE(raw_path, processed_path, '')) GLOB '*.mp3'
+          OR lower(COALESCE(raw_path, processed_path, '')) GLOB '*.wav'
+          OR lower(COALESCE(raw_path, processed_path, '')) GLOB '*.ogg'
+          OR lower(COALESCE(raw_path, processed_path, '')) GLOB '*.flac'
+          OR lower(COALESCE(raw_path, processed_path, '')) GLOB '*.m4a'
+          THEN 'audio'
+        ELSE 'image'
+      END
+    )
+    WHERE NOT (
+      json_valid(metadata)
+      AND json_extract(metadata, '$.mediaKind') IN ('image', 'video', 'audio')
+    )
+  `).run();
+  db.query("INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (3, ?)").run(Date.now());
+})();
+
 export const uid = () => crypto.randomUUID();
 
 export type { FrameRow, MaterialRow };
@@ -302,10 +334,33 @@ export function serializeFrame(f: FrameRow): Frame {
   } as Frame;
 }
 
+function inferMediaKindFromPath(path: string): MediaKind {
+  if (/\.(mp4|mov|webm|avi)$/i.test(path)) return "video";
+  if (/\.(mp3|wav|ogg|flac|m4a)$/i.test(path)) return "audio";
+  return "image";
+}
+
+function resolveMaterialMediaKind(metadata: Record<string, unknown>, path: string): MediaKind {
+  const raw = metadata.mediaKind;
+  if (typeof raw === "string" && (MEDIA_KINDS as readonly string[]).includes(raw)) {
+    return raw as MediaKind;
+  }
+  return inferMediaKindFromPath(path);
+}
+
 export function serializeMaterial(m: MaterialRow): Material {
   const path = m.raw_path ?? m.processed_path ?? "";
-  const kind: Material["kind"] = /\.(mp4|mov|webm|avi)$/i.test(path) ? "video" : "image";
-  return { ...m, metadata: parseJson<Record<string, unknown>>(m.metadata, {}), kind } as Material;
+  const metadata = parseJson<Record<string, unknown>>(m.metadata, {});
+  // mediaKind / kind 同一规则：合法 metadata 优先，否则路径推断；音频不得伪装成 image。
+  const mediaKind = resolveMaterialMediaKind(metadata, path);
+  const kind: Material["kind"] = mediaKind;
+  // 不把服务端绝对路径暴露给客户端；仅公开是否有缩略图。
+  const publicMetadata: Record<string, unknown> = { ...metadata };
+  delete publicMetadata.thumbnailPath;
+  const conventionalThumb = join(STORAGE_ROOT, "materials", m.id, "thumb.png");
+  if (existsSync(conventionalThumb)) publicMetadata.hasThumbnail = true;
+  else delete publicMetadata.hasThumbnail;
+  return { ...m, metadata: publicMetadata, kind, mediaKind } as Material;
 }
 
 export function renameMaterial(id: string, name: string): MaterialRow | null {

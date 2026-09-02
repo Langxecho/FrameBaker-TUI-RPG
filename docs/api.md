@@ -194,19 +194,34 @@ Materials are first generated/uploaded to the library, matted, compared, then im
       "id": "…", "name": "slime #1", "status": "matted", "source": "cli",
       "raw_path": "/abs/storage/materials/…/raw.png",
       "processed_path": "/abs/storage/materials/…/processed.png",
-      "metadata": { "prompt": "pixel slime" }, "created_at": 1785912000000
+      "metadata": { "prompt": "pixel slime" },
+      "kind": "image", "mediaKind": "image", "created_at": 1785912000000
     }
   ]
 }
 ```
 
+`kind` and `mediaKind` are always present and use the same rule (`image` | `video` | `audio`): valid `metadata.mediaKind` wins, otherwise inferred from the file path. Prefer `mediaKind` in new clients; `kind` remains for older UI filters. Absolute server paths such as `metadata.thumbnailPath` are omitted from the public payload; when `storage/materials/<id>/thumb.png` exists, `metadata.hasThumbnail` is `true`.
+
 ### PATCH /api/materials/:id
 
-Rename one image or video material. Request `{ "name": "New material name" }` (trimmed, 1–200 characters) → `{ "material": {…} }`. Returns 404 when the material does not exist and broadcasts `material_updated` on success.
+Rename one image, video, or audio material. Request `{ "name": "New material name" }` (trimmed, 1–200 characters) → `{ "material": {…} }`. Returns 404 when the material does not exist and broadcasts `material_updated` on success.
 
 ### GET /api/materials/:id/image?type=raw|processed&size=64..1024&v=VERSION
 
-Material image/video stream. `type=processed` falls back to raw when no processed file exists. For image materials, the optional integer `size` returns a cached thumbnail whose width and height are each at most that value; invalid or out-of-range values return the original image. Thumbnail generation uses ImageMagick or ffmpeg and gracefully falls back to the original image when neither is available. Responses include `ETag` / `Last-Modified`; URLs with `v` use a one-year immutable cache, while unversioned URLs revalidate. Video responses ignore `size`.
+Material image/video/audio stream (legacy image alias). `type=processed` falls back to raw when no processed file exists. For image materials, the optional integer `size` returns a cached thumbnail whose width and height are each at most that value; invalid or out-of-range values return the original image. Thumbnail generation uses ImageMagick or ffmpeg and gracefully falls back to the original image when neither is available. Responses include `ETag` / `Last-Modified`; URLs with `v` use a one-year immutable cache, while unversioned URLs revalidate. Video/audio responses ignore `size` and may honor `Range` (`206`). Served paths are constrained to `STORAGE_ROOT`.
+
+### GET /api/materials/:id/media?type=raw|processed&size=64..1024&v=VERSION
+
+Unified media stream for image/video/audio materials. Same query semantics as `/image`, with MIME derived from the file extension (e.g. `image/png`, `video/mp4`, `audio/mpeg`). Prefer this path for new clients.
+
+### GET /api/materials/:id/thumbnail?v=VERSION
+
+Serves the generated video poster PNG at `storage/materials/<id>/thumb.png` when present (`Content-Type: image/png`, ETag/Last-Modified, versioned cache with `v`). Returns 404 when the material or poster file is missing. Paths are constrained to `STORAGE_ROOT`; clients must never receive absolute filesystem paths. Public material metadata may include `hasThumbnail: true` instead of any `thumbnailPath`.
+
+### GET /api/materials/:id/download and GET /api/materials/:id/media/download
+
+Same stream as `/media`, plus `Content-Disposition: attachment` using a sanitized material name.
 
 ### POST /api/materials/upload
 
@@ -254,7 +269,7 @@ Deletes processed, restores to `raw` status. Response `{ "material": {…} }`.
 { "ok": true, "count": 2, "frameIds": ["…", "…"] }
 ```
 
-Copies material as unassigned project frame(s) into the left-side frame pool. When a material has a valid matted image, all imported frame image slots use that matted result so downstream operations cannot silently revert to the original; otherwise they use the raw image. The material library still retains the original for explicit compare, restore, rematting, and raw-export actions. Frames enter a timeline only after placement. `source` and metadata are preserved. `count` 1–16, default 1. Broadcasts `frames_changed`.
+Copies material as unassigned project frame(s) into the left-side frame pool. Image materials only: video/audio are rejected (video must be extracted first). When a material has a valid matted image, all imported frame image slots use that matted result so downstream operations cannot silently revert to the original; otherwise they use the raw image. The material library still retains the original for explicit compare, restore, rematting, and raw-export actions. Frames enter a timeline only after placement. `source` and metadata are preserved. `count` 1–16, default 1. Missing material/project → 404. Non-image rejection (and other prepare failures) → **500** with a plain-text message. Broadcasts `frames_changed`.
 
 ### POST /api/materials/batch-delete
 
@@ -262,7 +277,7 @@ Copies material as unassigned project frame(s) into the left-side frame pool. Wh
 
 ### POST /api/materials/batch-import
 
-`{ "ids": ["…", "…"], "projectId": "…" }` → `{ "ok": true, "count": 2 }`. Imports 1 frame each in the given order.
+`{ "ids": ["…", "…"], "projectId": "…" }` → `{ "ok": true, "count": 2, "frameIds": ["…"] }`. Imports 1 frame each in natural material-name order (not request ID order). Image materials only; video/audio and other prepare/target validation failures → **400** plain text. Missing project → 404.
 
 ## Jobs
 
@@ -395,6 +410,71 @@ Ranges: `layers` 1–4 (the current Gitee Qwen-Image-Layered endpoint rejects va
 - MotionClip `schemaVersion: 1` keeps track-level `step | linear`. MotionClip `schemaVersion: 2` removes track-level interpolation and requires every key to carry `outInterpolation`: non-terminal keys use `{ type: "step" | "linear" }` or `{ type: "cubic-bezier", x1, y1, x2, y2 }`, while the terminal key uses `null`. Bézier controls must be finite values in `[0, 1]`.
 - Reading or saving v1 does not upgrade it. The editor upgrades to v2 only when the user explicitly selects a cubic curve. `.fbanim` package versions remain independent from embedded MotionClip schema versions.
 
+## Media Plugins /api/media-plugins
+
+Independent from `GenProvider`. Archives are trusted executable Python packages (`.iap` image / `.vap` video / `.aap` audio). Responses never include secret plaintext.
+
+### GET /api/media-plugins?kind=image_api|video_api|audio_api
+
+Lists installed plugin summaries. Optional `kind` filters. Response `{ "plugins": [MediaPluginSummary…], "installRoot": "…" }`. Invalid query `kind` → Elysia 422 (schema validation).
+
+`MediaPluginSummary` key fields: `id`, `name`, `version`, `kind`, `capabilities`, `configured`, `runnable`.
+
+### GET /api/media-plugins/:kind
+
+Same filtered list for one kind, plus echoes the parsed path `kind`: `{ "plugins": [MediaPluginSummary…], "installRoot": "…", "kind": "image_api|video_api|audio_api" }`. Invalid path kind → 400.
+
+### GET /api/media-plugins/:kind/:pluginId
+
+Non-sensitive detail: `{ "plugin": MediaPluginDetail }`. `MediaPluginDetail` extends summary with `paramsSchema`, `constraints`, `secrets` (`[{ id, label, required, configured }]` — never plaintext values), and `entry` (`{ type, module, function }`). Missing plugin → 404.
+
+### POST /api/media-plugins/import
+
+multipart/form-data: `plugin` (required `.iap`/`.vap`/`.aap` file) + optional `confirm_replace` (`true`/`false`). Validates package structure, rejects Zip Slip / kind–extension mismatch. Success → `{ "plugin": MediaPluginDetail }` (200). Invalid package/extension → 400. Duplicate ID without confirmation → **409** plain-text message (e.g. `插件 {id} 已存在，确认后将覆盖`); response body does not include a machine `code` / `needs_confirmation` field (matches other API 409s).
+
+### PATCH /api/media-plugins/:kind/:pluginId/secrets
+
+`{ "values": { "api_key": "…" } }` → `{ "plugin": MediaPluginDetail }`. Unknown secret keys → 400. Response remains redacted.
+
+### PATCH /api/media-plugins/:kind/:pluginId/params
+
+`{ "defaults": { "size": "512x512" } }` → `{ "plugin": MediaPluginDetail }`. Unknown/invalid parameter keys/types → 400.
+
+### DELETE /api/media-plugins/:kind/:pluginId
+
+Removes the installed plugin directory. Missing → 404. Success → `{ "ok": true }`.
+
+### GET /api/media-plugins/:kind/:pluginId/export
+
+Re-packs the installed plugin directory into a downloadable `.iap` / `.vap` / `.aap` ZIP. **Secret plaintext is always stripped** from every `plugin.json` (`secrets.*.value` cleared) before packaging; response header `X-FrameBaker-Secrets-Stripped: 1|0` indicates whether any non-empty values were removed. Response is the archive bytes with `Content-Type: application/zip` and `Content-Disposition: attachment; filename="<pluginId>.<ext>"`. Missing → 404. Invalid installed package → 400. Re-importing an exported package requires re-entering secrets.
+
+### POST /api/media-plugins/:kind/:pluginId/test
+
+Synchronous connectivity test: runs the plugin against a temporary `media-plugin-runs/test_*` directory, validates outputs, then deletes the temp dir. **Never creates materials or queue jobs** (`archived: false`). Optional body `{ "prompt"?, "params"?, "durationSeconds"? }` — when provided, `durationSeconds` must be a number **0.1–600** (same bounds as generation; `null` omits the hint). Success → `{ "result": { "ok": true, "kind", "pluginId", "mediaKind", "latencyMs", "outputCount", "archived": false } }`. Plugin runtime failure → `{ "result": { "ok": false, "error", "code?", …, "archived": false } }` (HTTP 200). Missing plugin → 404. Unrunnable / invalid params / out-of-range duration → 400. May incur provider charges; UI should confirm before calling.
+
+## Media Generation /api/media-generation
+
+### POST /api/media-generation
+
+Creates async queue jobs only (does not execute the plugin inline):
+
+```json
+{
+  "kind": "image_api",
+  "pluginId": "demo_img",
+  "prompt": "pixel slime",
+  "references": ["material-id"],
+  "params": { "size": "1024x1024" },
+  "count": 1,
+  "durationSeconds": 6,
+  "folderId": null,
+  "projectId": null,
+  "name": "slime"
+}
+```
+
+`count` optional integer **1–16** (default 1). `durationSeconds` optional number **0.1–600** (video/audio duration hint). Optional `folderId` targets a materials folder (`null` = ungrouped). Success → `{ "jobId": "…", "jobIds": ["…"] }` (image/audio may create one job per count; video is one job). Validation failures (empty prompt, unknown params, invalid reference types/paths, unrunnable plugin, unsupported mode, reference-count overflow, non-frame `projectId`, out-of-range count/duration) → 400. Missing plugin, missing `projectId`, or missing reference material IDs → 404. Optional `projectId` is image-only and must target an existing `frame` project. Job types: `media_plugin_image` / `media_plugin_video` / `media_plugin_audio`. On success the job `progress` becomes `完成 materialIds=["…"]` and `job_done` WS payload includes `materialIds` / `results` so clients bind previews to the exact job without guessing latest materials. References must be material IDs (no local paths). Manifest constraints (`max_reference_images` / `max_reference_audios` / `supports_*`) are enforced before enqueue. Secrets are never echoed.
+
 ## Other
 
 - `GET /api/health` → `{ "ok": true, "name": "FrameBaker" }`
@@ -416,12 +496,19 @@ Ranges: `layers` 1–4 (the current Gitee Qwen-Image-Layered endpoint rejects va
     "providers": [
       { "id": "…", "name": "OpenAI", "type": "api", "models": ["gpt-image-1"], "configured": true }
     ]
+  },
+  "mediaPlugins": {
+    "pythonAvailable": true,
+    "pythonPath": "…/.venv-media/…",
+    "installedCount": 0,
+    "installRoot": "…/storage/media-plugins",
+    "hint": null
   }
 }
 ```
 
-  `engine`: `custom-cli` (settings page matting.cliTemplate or `FRAMEBAKER_MATTING_CLI`) / `rembg-bundled` (`.venv-matting` bundled) / `rembg-path` (found in PATH) / `none` (not installed, matting only copies raw, `hint` contains install instructions). `model` is rembg model name (settings page matting.model → `FRAMEBAKER_MATTING_MODEL` → default `u2net`); `modelCached` indicates model file exists in `storage/models` (uncached models auto-download on first matting). `imageLayers` reports the standalone image-layer service state without exposing its API key. `gen.providers` is a summary of all generation providers (no apiKey; model capability lists feed generation dialogs, `configured` indicates key fields are complete, `video` indicates video generation support — CLI/DashScope/MiniMax only, mapping in shared constant `PROVIDER_VIDEO_SUPPORT`).
-- `GET /api/doctor` → health check: checks storage directory writable / ffmpeg / matting engine & model cache / standalone image-layer service / each generation provider (CLI validates command existence; OpenAI-compatible sends `GET /models`, Gemini sends `GET /v1beta/models`, DashScope sends `GET /compatible-mode/v1/models` for connectivity test; MiniMax has no probe endpoint, field validation only) → `{ "checks": [{ "id", "ok", "label", "detail" }] }`.
+  `engine`: `custom-cli` (settings page matting.cliTemplate or `FRAMEBAKER_MATTING_CLI`) / `rembg-bundled` (`.venv-matting` bundled) / `rembg-path` (found in PATH) / `none` (not installed, matting only copies raw, `hint` contains install instructions). `model` is rembg model name (settings page matting.model → `FRAMEBAKER_MATTING_MODEL` → default `u2net`); `modelCached` indicates model file exists in `storage/models` (uncached models auto-download on first matting). `imageLayers` reports the standalone image-layer service state without exposing its API key. `gen.providers` is a summary of all generation providers (no apiKey; model capability lists feed generation dialogs, `configured` indicates key fields are complete, `video` indicates video generation support — CLI/DashScope/MiniMax only, mapping in shared constant `PROVIDER_VIDEO_SUPPORT`). `mediaPlugins` reports `.venv-media` availability and installed plugin count without credentials.
+- `GET /api/doctor` → health check: checks storage directory writable / ffmpeg / matting engine & model cache / standalone image-layer service / each generation provider (CLI validates command existence; OpenAI-compatible sends `GET /models`, Gemini sends `GET /v1beta/models`, DashScope sends `GET /compatible-mode/v1/models` for connectivity test; MiniMax has no probe endpoint, field validation only) / media-plugin Python (`.venv-media`) / installed media-plugin count → `{ "checks": [{ "id", "ok", "label", "detail" }] }`.
 - `POST /api/provider/test` → API provider connectivity test (uses current form values, no need to save first): `{ "type"?, "apiBaseUrl", "apiKey", "apiModel?" }`; api sends `GET {baseUrl}/models` + Bearer, gemini sends `GET {baseUrl}/v1beta/models` (x-goog-api-key), dashscope sends `GET {baseUrl}/compatible-mode/v1/models` + Bearer, returns `{ "ok", "status", "latencyMs", "modelsFound" }` (401/403 = authentication failure); minimax has no lightweight probe endpoint, field validation only with explanation in `note`.
 - `POST /api/provider/models` → API provider model list (settings page "Fetch Models", uses current form values, no need to save first): `{ "type", "apiBaseUrl", "apiKey" }` → `{ "ok", "models": ["…"] }`; endpoints same source as connectivity test (api `/models`, dashscope `/compatible-mode/v1/models`, gemini `/v1beta/models` strips `models/` prefix; minimax best-effort tries `/v1/models`); failure returns `{ "ok": false, "error" }`, frontend keeps manual input.
 - `POST /api/enhance-prompt` → prompt enhancement (enhancer model configured in settings page, OpenAI-compatible `chat/completions`, enhancement system prompt built in server-side): `{ "enhancerId"?, "prompt", "style"?, "mediaKind"?, "referenceImageCount"? }` → `{ "enhanced", "enhancerName" }`. `style` selects pixel/anime/illustration/3d/realistic/general rules and examples; `mediaKind` selects image/video guidance; `referenceImageCount` (0–10) selects text-to-generation, single-reference, or ordered Image 1…N multi-reference semantics. The frontend forwards current selections and clears stale comparisons when they change. Invalid conversational/clarification responses are corrected once, then rejected with a clear error.
@@ -493,8 +580,8 @@ Copy and paste the following to your AI agent to get started:
 ```
 FrameBaker is running at http://localhost:3000 with an MCP server at /mcp (Streamable HTTP).
 Connect to it and use `list_projects` to get started.
-Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, matting_material, list_jobs, get_config, and 40 more.
-All tools manage pixel-art animation projects — frames, materials, generation, matting, folders, jobs, and settings.
+Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, list_media_plugins, get_media_plugin, generate_with_media_plugin, matting_material, list_jobs, get_config, and 40 more (51 total).
+All tools manage pixel-art animation projects — frames, materials, generation, media plugins, matting, folders, jobs, and settings.
 ```
 
 ### Handshake (2025-era Clients)
@@ -522,13 +609,26 @@ After handshake, send `notifications/initialized` notification (no response need
 | `delete_frame` | Delete a frame |
 | `clear_frame_cell` | Clear a timeline cell without deleting reusable asset files |
 | `get_timeline` | Get tracks, steps, image cells, and independent effect cells |
+| `create_track` | Append a compositing track to an animation axis |
+| `update_track` | Update a track name, visibility, or lock state |
+| `delete_track` | Delete a non-primary, non-sole track and its cells |
+| `reorder_tracks` | Set the exact order of all tracks on an axis |
+| `create_step` | Append a shared timeline step |
+| `update_step` | Update shared step duration |
+| `delete_step` | Delete a shared step and every frame/effect cell in it |
+| `reorder_steps` | Set the exact order of all shared steps on an axis |
+| `move_frame_cell` | Place a reusable frame asset or move a timeline cell (`copy`/`swap`) |
+| `place_frames_batch` | Copy multiple reusable frame assets onto a track starting at a step |
 | `upsert_attack_effect` | Create or replace an attack effect in any track × step cell |
 | `duplicate_frame` | Duplicate frame 1–16 copies |
 | `reorder_frames` | Reorder frames |
 | `generate_frames` | Generate frames for a project (AI provider) |
 | `generate_materials` | Generate materials (AI provider) |
+| `list_media_plugins` | List installed `.iap`/`.vap`/`.aap` media plugins (optional `kind`: image\|video\|audio\|all); returns summaries/configured/runnable — never secret values |
+| `get_media_plugin` | Get one installed media plugin detail (params schema, constraints, secret configuration status only — no plaintext secrets) |
+| `generate_with_media_plugin` | Create async media-plugin generation jobs; `references` must be material IDs only (no local paths); returns `jobId`/`jobIds` |
 | `list_materials` | List all materials |
-| `rename_material` | Rename one image or video material |
+| `rename_material` | Rename one image, video, or audio material |
 | `matting_material` | Single material background removal |
 | `split_material_layers` | Split an image material with the standalone image-layer service |
 | `batch_matting` | Batch background removal |

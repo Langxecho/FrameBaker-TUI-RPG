@@ -194,24 +194,39 @@ provider 解析：传了 `providerId` 按 id 找（找不到 400）；缺省用�
       "id": "…", "name": "slime #1", "status": "matted", "source": "cli",
       "raw_path": "/abs/storage/materials/…/raw.png",
       "processed_path": "/abs/storage/materials/…/processed.png",
-      "metadata": { "prompt": "pixel slime" }, "created_at": 1785912000000
+      "metadata": { "prompt": "pixel slime" },
+      "kind": "image", "mediaKind": "image", "created_at": 1785912000000
     }
   ]
 }
 ```
 
+`kind` 与 `mediaKind` 始终返回，规则相同（`image` | `video` | `audio`）：有效的 `metadata.mediaKind` 优先，否则按文件路径推断。新客户端请优先读 `mediaKind`；`kind` 仍供旧 UI 过滤使用。公开响应会省略 `metadata.thumbnailPath` 等服务端绝对路径；若存在 `storage/materials/<id>/thumb.png`，则返回 `metadata.hasThumbnail: true`。
+
 ### PATCH /api/materials/:id
 
-重命名单个图片或视频素材。请求 `{ "name": "新素材名称" }`（自动去除首尾空格，长度 1–200）→ `{ "material": {…} }`。素材不存在时返回 404；成功后广播 `material_updated`。
+重命名单个图片、视频或音频素材。请求 `{ "name": "新素材名称" }`（自动去除首尾空格，长度 1–200）→ `{ "material": {…} }`。素材不存在时返回 404；成功后广播 `material_updated`。
 
 ### GET /api/materials/:id/image?type=raw|processed&size=64..1024&v=VERSION
 
-素材图片/视频流。`type=processed` 且无 processed 时回退 raw。图片素材可通过可选整数参数 `size` 获取宽高均不超过该值的缓存缩略图；参数非法或越界时返回原图。缩略图使用 ImageMagick 或 ffmpeg，两者均不可用时无损回退原图。响应包含 `ETag` / `Last-Modified`；带 `v` 的版本化 URL 使用一年 immutable 缓存，未带版本时执行重新验证。视频响应忽略 `size`。
+素材图片/视频/音频流（兼容旧 image 别名）。`type=processed` 且无 processed 时回退 raw。图片素材可通过可选整数参数 `size` 获取宽高均不超过该值的缓存缩略图；参数非法或越界时返回原图。缩略图使用 ImageMagick 或 ffmpeg，两者均不可用时无损回退原图。响应包含 `ETag` / `Last-Modified`；带 `v` 的版本化 URL 使用一年 immutable 缓存，未带版本时执行重新验证。视频/音频响应忽略 `size`，并在可行时支持 `Range`（`206`）。媒体路径必须落在 `STORAGE_ROOT` 内。
+
+### GET /api/materials/:id/media?type=raw|processed&size=64..1024&v=VERSION
+
+统一媒体流入口（图片/视频/音频）。查询语义与 `/image` 相同，Content-Type 按扩展名推断（如 `image/png`、`video/mp4`、`audio/mpeg`）。新客户端请优先使用此路径。
+
+### GET /api/materials/:id/thumbnail?v=VERSION
+
+在存在时返回视频首帧海报 PNG（`storage/materials/<id>/thumb.png`，`Content-Type: image/png`，支持 ETag/Last-Modified；带 `v` 时走版本化缓存）。素材或海报缺失返回 404。路径必须落在 `STORAGE_ROOT` 内；客户端不得收到绝对文件系统路径。公开素材元数据可用 `hasThumbnail: true`，不再返回 `thumbnailPath`。
+
+### GET /api/materials/:id/download 与 GET /api/materials/:id/media/download
+
+与 `/media` 相同的流式响应，并附加 `Content-Disposition: attachment`（文件名由素材名净化得到）。
 
 ### POST /api/materials/upload
 
 multipart/form-data：`file` + 可选 `processedFile`、`metadata`（JSON 对象字符串；也兼容 Elysia multipart 自动解析后的对象）、`autoMatting`(`"true"`)、`fps`（视频抽帧，默认 8）。传 `processedFile` 时素材同时保存 raw/processed 两个槽位并标记 `status=matted`；网格拆分用它保留真实前后对比。
-PNG/JPG 等单图 → 直接生成 1 个素材，响应 `{ "materialId": "…" }；GIF/MP4 → 队列拆帧每帧一个素材，响应 `{ "jobId": "…" }`。
+PNG/JPG 等单图 → 直接生成 1 个素材，响应 `{ "materialId": "…" }`；GIF/MP4 → 队列拆帧每帧一个素材，响应 `{ "jobId": "…" }`。
 
 ```bash
 curl -F "file=@slime.png" http://localhost:3000/api/materials/upload
@@ -254,7 +269,7 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 { "ok": true, "count": 2, "frameIds": ["…", "…"] }
 ```
 
-把素材复制为待编排项目帧并放入左侧帧池。素材存在有效抠图结果时，导入帧的全部图片槽位都使用抠图图，避免后续操作静默退回原图；否则使用原图。素材库仍保留原图，仅用于明确的原图对比、还原抠图、重新抠图及原图导出。只有完成 placement 后才进入时间轴。`source` 与 metadata 均保留。`count` 1–16，默认 1。广播 `frames_changed`。
+把素材复制为待编排项目帧并放入左侧帧池。仅支持图片素材：视频/音频会被拒绝（视频需先抽帧）。素材存在有效抠图结果时，导入帧的全部图片槽位都使用抠图图，避免后续操作静默退回原图；否则使用原图。素材库仍保留原图，仅用于明确的原图对比、还原抠图、重新抠图及原图导出。只有完成 placement 后才进入时间轴。`source` 与 metadata 均保留。`count` 1–16，默认 1。素材/项目不存在 → 404。非图片拒绝（及其他准备失败）→ **500** 纯文本错误信息。广播 `frames_changed`。
 
 ### POST /api/materials/batch-delete
 
@@ -262,7 +277,7 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 
 ### POST /api/materials/batch-import
 
-`{ "ids": ["…", "…"], "projectId": "…" }` → `{ "ok": true, "count": 2 }`。按给定顺序各导入 1 帧。
+`{ "ids": ["…", "…"], "projectId": "…" }` → `{ "ok": true, "count": 2, "frameIds": ["…"] }`。按素材名称自然序各导入 1 帧（非请求 ID 顺序）。仅图片素材；视频/音频及其他准备/目标校验失败 → **400** 纯文本。项目不存在 → 404。
 
 ## 任务
 
@@ -395,6 +410,71 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 - MotionClip `schemaVersion: 1` 保持轨道级 `step | linear`。MotionClip `schemaVersion: 2` 不再含轨道级 interpolation，每个 key 必须携带 `outInterpolation`：非末尾 key 使用 `{ type: "step" | "linear" }` 或 `{ type: "cubic-bezier", x1, y1, x2, y2 }`，末尾 key 固定为 `null`。贝塞尔控制量必须是 `[0, 1]` 内的有限数值。
 - 读取或保存 v1 不会自动升级；只有用户明确选择曲线时编辑器才升级到 v2。`.fbanim` 包版本与包内 MotionClip schema 版本独立演进。
 
+## 媒体插件 /api/media-plugins
+
+独立于 `GenProvider`。插件包是可信可执行 Python 归档（`.iap` 生图 / `.vap` 生视频 / `.aap` 生音频）。所有响应都不包含密钥明文。
+
+### GET /api/media-plugins?kind=image_api|video_api|audio_api
+
+列出已安装插件摘要。可选 `kind` 过滤。响应 `{ "plugins": [MediaPluginSummary…], "installRoot": "…" }`。非法 query `kind` → Elysia 422（schema 校验）。
+
+`MediaPluginSummary` 关键字段：`id`、`name`、`version`、`kind`、`capabilities`、`configured`、`runnable`。
+
+### GET /api/media-plugins/:kind
+
+按类型列出插件，并回显解析后的路径 `kind`：`{ "plugins": [MediaPluginSummary…], "installRoot": "…", "kind": "image_api|video_api|audio_api" }`。非法路径 kind → 400。
+
+### GET /api/media-plugins/:kind/:pluginId
+
+返回非敏感详情：`{ "plugin": MediaPluginDetail }`。`MediaPluginDetail` 在摘要基础上增加 `paramsSchema`、`constraints`、`secrets`（`[{ id, label, required, configured }]`，不含明文）、`entry`（`{ type, module, function }`）。缺失 → 404。
+
+### POST /api/media-plugins/import
+
+multipart/form-data：`plugin`（必需，`.iap`/`.vap`/`.aap`）+ 可选 `confirm_replace`（`true`/`false`）。校验包结构，拒绝 Zip Slip 与扩展名/kind 不匹配。成功 → `{ "plugin": MediaPluginDetail }`（200）。非法包/扩展名 → 400。同 ID 未确认覆盖 → **409** 纯文本（如 `插件 {id} 已存在，确认后将覆盖`）；响应体不含机器可读的 `code` / `needs_confirmation` 字段（与其他 API 的 409 风格一致）。
+
+### PATCH /api/media-plugins/:kind/:pluginId/secrets
+
+`{ "values": { "api_key": "…" } }` → `{ "plugin": MediaPluginDetail }`。未知密钥 → 400。响应仍脱敏。
+
+### PATCH /api/media-plugins/:kind/:pluginId/params
+
+`{ "defaults": { "size": "512x512" } }` → `{ "plugin": MediaPluginDetail }`。未知/类型错误参数 → 400。
+
+### DELETE /api/media-plugins/:kind/:pluginId
+
+删除已安装插件目录。缺失 → 404。成功 → `{ "ok": true }`。
+
+### GET /api/media-plugins/:kind/:pluginId/export
+
+将已安装插件目录重新打包为可下载的 `.iap` / `.vap` / `.aap` ZIP。**始终剥离密钥明文**（清空每个 `plugin.json` 中的 `secrets.*.value`）；响应头 `X-FrameBaker-Secrets-Stripped: 1|0` 表示是否移除过非空密钥。响应为归档字节，`Content-Type: application/zip`，`Content-Disposition: attachment; filename="<pluginId>.<ext>"`。缺失 → 404。已安装包无效 → 400。重新导入导出包后需重新填写密钥。
+
+### POST /api/media-plugins/:kind/:pluginId/test
+
+同步连通测试：在临时目录 `media-plugin-runs/test_*` 执行插件，校验产出后清理。**不会创建素材或队列任务**（`archived: false`）。可选 body `{ "prompt"?, "params"?, "durationSeconds"? }`——若提供，`durationSeconds` 须为数字 **0.1–600**（与生成接口一致；`null` 表示不传时长提示）。成功 → `{ "result": { "ok": true, "kind", "pluginId", "mediaKind", "latencyMs", "outputCount", "archived": false } }`。插件运行失败 → `{ "result": { "ok": false, "error", "code?", …, "archived": false } }`（HTTP 200）。插件缺失 → 404。不可运行 / 参数非法 / 时长越界 → 400。可能产生供应商费用；UI 调用前应确认。
+
+## 媒体生成 /api/media-generation
+
+### POST /api/media-generation
+
+仅创建异步队列任务，不内联执行插件：
+
+```json
+{
+  "kind": "image_api",
+  "pluginId": "demo_img",
+  "prompt": "pixel slime",
+  "references": ["material-id"],
+  "params": { "size": "1024x1024" },
+  "count": 1,
+  "durationSeconds": 6,
+  "folderId": null,
+  "projectId": null,
+  "name": "slime"
+}
+```
+
+`count` 可选整数 **1–16**（默认 1）。`durationSeconds` 可选数字 **0.1–600**（视频/音频时长提示）。可选 `folderId` 指定素材文件夹（`null` = 未分组）。成功 → `{ "jobId": "…", "jobIds": ["…"] }`（图片/音频可按 count 拆任务；视频固定 1 个任务）。校验失败（空 prompt、未知参数、非法参考类型/路径、插件不可运行、不支持的模式、参考数量超限、非逐帧 `projectId`、count/duration 越界）→ 400。插件缺失、`projectId` 不存在或参考素材 ID 不存在 → 404。可选 `projectId` 仅图片可用，且必须指向已存在的 `frame` 项目。任务类型：`media_plugin_image` / `media_plugin_video` / `media_plugin_audio`。成功后 `job.progress` 形如 `完成 materialIds=["…"]`，且 `job_done` WS 载荷含 `materialIds` / `results`，客户端据此绑定结果，禁止猜测最新素材。参考项必须是素材 ID（禁止本地路径）。入队前强制校验 manifest 约束（`max_reference_images` / `max_reference_audios` / `supports_*`）。密钥不会回显。
+
 ## 其他
 
 - `GET /api/health` → `{ "ok": true, "name": "FrameBaker" }`
@@ -416,12 +496,19 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
     "providers": [
       { "id": "…", "name": "OpenAI", "type": "api", "models": ["gpt-image-1"], "configured": true }
     ]
+  },
+  "mediaPlugins": {
+    "pythonAvailable": true,
+    "pythonPath": "…/.venv-media/…",
+    "installedCount": 0,
+    "installRoot": "…/storage/media-plugins",
+    "hint": null
   }
 }
 ```
 
-  `engine`：`custom-cli`（设置页 matting.cliTemplate 或 `FRAMEBAKER_MATTING_CLI`）/ `rembg-bundled`（`.venv-matting` 内置）/ `rembg-path`（PATH 中找到）/ `none`（未安装，抠图仅复制原图，`hint` 为安装提示）。`model` 为 rembg 模型名（设置页 matting.model → `FRAMEBAKER_MATTING_MODEL` → 默认 `u2net`），`modelCached` 表示模型文件已在 `storage/models`（未缓存首次抠图自动下载）。`imageLayers` 只返回独立图片分层服务的可用状态，不暴露 API Key。`gen.providers` 为全部生成 provider 的摘要（不含 apiKey；模型能力列表供生成弹窗使用，`configured` 表示关键字段齐备，`video` 表示支持视频生成——仅 cli/dashscope/minimax，映射见共享常量 `PROVIDER_VIDEO_SUPPORT`）。
-- `GET /api/doctor` → 体检：逐项检查存储目录可写 / ffmpeg / 抠图引擎与模型缓存 / 独立图片分层服务 / 每个生成 provider（CLI 校验命令存在；OpenAI 兼容实发 `GET /models`、Gemini 实发 `GET /v1beta/models`、百炼实发 `GET /compatible-mode/v1/models` 联通测试；MiniMax 无探测端点仅校验字段）→ `{ "checks": [{ "id", "ok", "label", "detail" }] }`。
+  `engine`：`custom-cli`（设置页 matting.cliTemplate 或 `FRAMEBAKER_MATTING_CLI`）/ `rembg-bundled`（`.venv-matting` 内置）/ `rembg-path`（PATH 中找到）/ `none`（未安装，抠图仅复制原图，`hint` 为安装提示）。`model` 为 rembg 模型名（设置页 matting.model → `FRAMEBAKER_MATTING_MODEL` → 默认 `u2net`），`modelCached` 表示模型文件已在 `storage/models`（未缓存首次抠图自动下载）。`imageLayers` 只返回独立图片分层服务的可用状态，不暴露 API Key。`gen.providers` 为全部生成 provider 的摘要（不含 apiKey；模型能力列表供生成弹窗使用，`configured` 表示关键字段齐备，`video` 表示支持视频生成——仅 cli/dashscope/minimax，映射见共享常量 `PROVIDER_VIDEO_SUPPORT`）。`mediaPlugins` 报告 `.venv-media` 可用性与已安装插件数量，不含任何凭证。
+- `GET /api/doctor` → 体检：逐项检查存储目录可写 / ffmpeg / 抠图引擎与模型缓存 / 独立图片分层服务 / 每个生成 provider（CLI 校验命令存在；OpenAI 兼容实发 `GET /models`、Gemini 实发 `GET /v1beta/models`、百炼实发 `GET /compatible-mode/v1/models` 联通测试；MiniMax 无探测端点仅校验字段）/ 媒体插件 Python（`.venv-media`）/ 已安装媒体插件数量 → `{ "checks": [{ "id", "ok", "label", "detail" }] }`。
 - `POST /api/provider/test` → API provider 联通测试（用表单当前值，不要求已保存）：`{ "type"?, "apiBaseUrl", "apiKey", "apiModel?" }`；api 实发 `GET {baseUrl}/models` + Bearer、gemini 实发 `GET {baseUrl}/v1beta/models`（x-goog-api-key）、dashscope 实发 `GET {baseUrl}/compatible-mode/v1/models` + Bearer，返回 `{ "ok", "status", "latencyMs", "modelsFound" }`（401/403 判定为认证失败）；minimax 无轻量探测端点，仅校验字段并在 `note` 说明。
 - `POST /api/provider/models` → API provider 模型列表（设置页「获取模型」，用表单当前值拉取，不要求已保存）：`{ "type", "apiBaseUrl", "apiKey" }` → `{ "ok", "models": ["…"] }`；端点与联通测试同源（api `/models`、dashscope `/compatible-mode/v1/models`、gemini `/v1beta/models` 去 `models/` 前缀；minimax 为 best-effort 试 `/v1/models`），失败返回 `{ "ok": false, "error" }`，前端保持手填。
 - `POST /api/enhance-prompt` → 提示词加强（设置页配置的加强模型，OpenAI 兼容 `chat/completions`，系统模板内置于服务端）：`{ "enhancerId"?, "prompt", "style"?, "mediaKind"?, "referenceImageCount"? }` → `{ "enhanced", "enhancerName" }`。`style` 选择像素/动漫/插画/3D/写实/不限风格的规则与示例；`mediaKind` 区分图片和视频；`referenceImageCount`（0–10）区分文生、单引用图和按 Image 1…N 排序的多引用图语义。前端传入当前选择，选择变化时清除旧对比；聊天回答或澄清问题会自动纠正一次，仍无效则明确报错。
@@ -493,8 +580,8 @@ claude mcp add framebaker --transport http http://localhost:3000/mcp
 ```
 FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable HTTP）。
 请连接并调用 list_projects 开始。
-可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、matting_material、list_jobs、get_config 等共 48 个。
-覆盖功能：像素动画项目、帧、素材、AI 生成、抠图、文件夹、任务与系统设置。
+可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、list_media_plugins、get_media_plugin、generate_with_media_plugin、matting_material、list_jobs、get_config 等共 51 个。
+覆盖功能：像素动画项目、帧、素材、AI 生成、媒体插件查询/生成、抠图、文件夹、任务与系统设置。
 ```
 
 ### 握手（2025-era 客户端）
@@ -522,13 +609,26 @@ FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable
 | `delete_frame` | 删除帧 |
 | `clear_frame_cell` | 清空时间轴单元格但不删除可复用资产文件 |
 | `get_timeline` | 获取轨道、步骤、图片单元格和独立特效单元格 |
+| `create_track` | 向动画轴追加一条合成轨道 |
+| `update_track` | 更新轨道名称、可见性或锁定状态 |
+| `delete_track` | 删除非主轨且非唯一轨道及其单元格 |
+| `reorder_tracks` | 设置轴上全部轨道的精确顺序 |
+| `create_step` | 追加一个共享时间轴步骤 |
+| `update_step` | 更新共享步骤时长 |
+| `delete_step` | 删除共享步骤及其全部帧/特效单元格 |
+| `reorder_steps` | 设置轴上全部共享步骤的精确顺序 |
+| `move_frame_cell` | 放置可复用帧资产或移动时间轴单元格（`copy`/`swap`） |
+| `place_frames_batch` | 从某步骤起将多个可复用帧资产批量拷贝到轨道 |
 | `upsert_attack_effect` | 在任意轨道×步骤单元格创建或替换攻击特效 |
 | `duplicate_frame` | 复制帧 1–16 份 |
 | `reorder_frames` | 重排帧顺序 |
 | `generate_frames` | 为项目生成帧（AI provider） |
 | `generate_materials` | 生成素材（AI provider） |
+| `list_media_plugins` | 列出已安装的 `.iap`/`.vap`/`.aap` 媒体插件（可选 `kind`：image\|video\|audio\|all）；返回摘要/configured/runnable——永不返回密钥明文 |
+| `get_media_plugin` | 获取单个已安装媒体插件详情（参数 schema、约束、密钥配置状态；不返回密钥明文） |
+| `generate_with_media_plugin` | 创建异步媒体插件生成任务；`references` 仅允许素材 ID（禁止本地路径）；返回 `jobId`/`jobIds` |
 | `list_materials` | 列出全部素材 |
-| `rename_material` | 重命名单个图片或视频素材 |
+| `rename_material` | 重命名单个图片、视频或音频素材 |
 | `matting_material` | 单素材抠图 |
 | `split_material_layers` | 使用独立图片分层服务拆分素材图层 |
 | `batch_matting` | 批量抠图 |

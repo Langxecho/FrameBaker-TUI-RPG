@@ -2,8 +2,12 @@ node_modules/
 storage/
 coverage/
 .venv-matting/
+.venv-media/
 .zcode/
 *.log
 .DS_Store
 .aider*
 .agents/
+__pycache__/
+*.py[cod]
+*$py.class

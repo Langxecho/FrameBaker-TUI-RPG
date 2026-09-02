@@ -4,6 +4,10 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ## [Unreleased]
 
+### Added
+
+- Added an independent media plugin system for `.iap` / `.vap` / `.aap` packages parallel to `GenProvider`: Zip Slip-safe install under `storage/media-plugins`, trusted-code UI warning, secrets/params settings, `/generate` three-tab center, unified image/video/audio materials, async queue jobs with cancel that kills the Python child and cleans `storage/media-plugin-runs`, `.venv-media` setup scripts (`scripts/setup_media.sh` / `setup_media.ps1`, base dep `requests` only), optional `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`, and MCP query/generate tools only (`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`; material IDs only — no install/delete/secrets/local paths).
+
 ### Removed
 
 - Removed the target-skeleton selector from reference decomposition: it only influenced the generation prompt and grid rows/columns, downstream split, naming, and binding never consumed it, and `targetSkeletonId` was never accepted by the server; the split grid is back to manual rows/columns plus the humanoid default.

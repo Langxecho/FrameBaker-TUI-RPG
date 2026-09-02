@@ -77,14 +77,14 @@
 - **Cassette Futurism 双主题** —— 深色 Magnetic Night / 浅色 Beige Terminal；默认跟随系统，三态切换（跟随系统/浅色/深色）
 - **实时同步** —— WebSocket 广播任务进度与帧/素材变更
 - **可调布局** —— 拖拽分隔条调整帧列表宽度与时间轴高度（自动持久化）
-- **MCP 服务端** —— 内置 [Model Context Protocol](https://modelcontextprotocol.io) 端点（`POST /mcp`，Streamable HTTP），暴露 48 个工具，让 AI 助手（Claude Desktop、Cursor、Windsurf）程序化管理项目、帧、素材、生成、抠图、任务与设置
+- **MCP 服务端** —— 内置 [Model Context Protocol](https://modelcontextprotocol.io) 端点（`POST /mcp`，Streamable HTTP），暴露 51 个工具，让 AI 助手（Claude Desktop、Cursor、Windsurf）程序化管理项目、帧、素材、生成、抠图、任务与设置
 
 ## 系统要求
 
 - **Windows 10/11、macOS 或 Linux** —— Windows 已在真机通过服务启动、前端加载、API、SQLite 存储及 ffmpeg 体检验证
 - **Bun 1.3+** —— 必需；安装后需重新打开终端，确保 `bun --version` 可用
 - **ffmpeg** —— 仅 GIF/MP4 拆帧需要，PNG 导入和其他编辑功能不依赖它
-- **uv（推荐）或 Python 3** —— 仅安装内置抠图引擎时需要；uv 可自动下载隔离的 Python，无需预装系统 Python
+- **uv（推荐）或 Python 3** —— 安装内置抠图引擎和/或媒体插件运行时时需要（`.venv-matting` / `.venv-media`）；uv 可自动下载隔离的 Python，无需预装系统 Python
 - 支持 WebGL 的现代浏览器（PixiJS v8 画布）
 
 ### Windows 前置环境（PowerShell）
@@ -128,6 +128,13 @@ bun start        # 生产
   创建 `.venv-matting/` 并安装 `rembg[cli,cpu]`（或 `rembg[cli,gpu]`）；Windows 上优先使用 uv 管理 Python 3.12。u2net 模型在首次抠图时自动下载到 `storage/models`。不安装则抠图退化为 passthrough（复制原图并给出警告）。
 
   **GPU 模式**需要 NVIDIA 显卡和匹配版本的 CUDA Toolkit。`onnxruntime-gpu` 版本必须与 CUDA 版本对应（如 onnxruntime-gpu 1.16 ↔ CUDA 11.8，1.17+ ↔ CUDA 12.x）。如果遇到 DLL 加载错误，请检查 CUDA 是否安装且版本匹配。CPU 和 GPU 之间切换：删除 `.venv-matting/` 后用对应参数重新运行脚本。
+- **媒体插件运行时**（可选；导入/运行 `.iap` / `.vap` / `.aap` 前需要）：
+  ```bash
+  ./scripts/setup_media.sh
+  # Windows（PowerShell）：
+  powershell -ExecutionPolicy Bypass -File scripts\setup_media.ps1
+  ```
+  创建 `.venv-media/` 并仅安装基础运行时依赖（`requests`）。插件自带的依赖安装命令首期**不会**自动执行——若插件需要额外包，请自行装进 `.venv-media`。跳过安装则媒体插件不可运行（config/doctor/任务返回 `PYTHON_RUNTIME_UNAVAILABLE`）。插件包是可信可执行 Python；只导入你信任的来源（无操作系统级沙箱）。
 - 类型检查：`bun run typecheck`
 - 单元测试：`bun run test`
 - 核心单测覆盖率报告：`bun run test:coverage`（当前覆盖共享规则、帧几何与 ZIP 导出）
@@ -146,11 +153,11 @@ bun start        # 生产
 
 5. **PowerShell 环境变量语法** —— 用 `$env:PORT=8080; bun dev`（分号分隔，不是 `&&`）。旧版 PowerShell 不支持 `&&` 操作符。macOS/Linux 用 Bash 语法 `PORT=8080 bun dev`。
 
-6. **PowerShell 脚本执行策略** —— `setup_matting.ps1` 需要 `-ExecutionPolicy Bypass`（如 `powershell -ExecutionPolicy Bypass -File scripts\setup_matting.ps1`）。脚本以纯 ASCII 编写，兼容 Windows PowerShell 5.1（无需 UTF-8 BOM）。
+6. **PowerShell 脚本执行策略** —— `setup_matting.ps1` / `setup_media.ps1` 需要 `-ExecutionPolicy Bypass`（如 `powershell -ExecutionPolicy Bypass -File scripts\setup_matting.ps1`）。脚本以纯 ASCII 编写，兼容 Windows PowerShell 5.1（无需 UTF-8 BOM）。
 
-7. **Microsoft Store 的 `python.exe` 不是真正的 Python** —— Windows 自带的「应用执行别名」`python.exe` 会打开 Microsoft Store 而非运行 Python。请从 [python.org](https://www.python.org/downloads/) 安装（勾选「Add to PATH」），或安装 [uv](https://docs.astral.sh/uv/)（可自动下载隔离 Python，无需系统安装）。`setup_matting.ps1` 优先使用 uv，仅在没有 uv 时才回退 PATH 中的 Python。
+7. **Microsoft Store 的 `python.exe` 不是真正的 Python** —— Windows 自带的「应用执行别名」`python.exe` 会打开 Microsoft Store 而非运行 Python。请从 [python.org](https://www.python.org/downloads/) 安装（勾选「Add to PATH」），或安装 [uv](https://docs.astral.sh/uv/)（可自动下载隔离 Python，无需系统安装）。`setup_matting.ps1` / `setup_media.ps1` 优先使用 uv，仅在没有 uv 时才回退 PATH 中的 Python。
 
-8. **Windows 脚本路径用反斜杠** —— 在 PowerShell 或 cmd 中运行脚本时用 `scripts\setup_matting.ps1`，不要用正斜杠 `scripts/setup_matting.ps1`。
+8. **Windows 脚本路径用反斜杠** —— 在 PowerShell 或 cmd 中运行脚本时用 `scripts\setup_matting.ps1` / `scripts\setup_media.ps1`，不要用正斜杠。
 
 ## 抠图引擎解析顺序
 
@@ -163,6 +170,16 @@ bun start        # 生产
 
 rembg 调用形式为 `rembg i -m <MODEL> input output`；模型默认 `u2net`，统一缓存在 `storage/models`（自动注入 `U2NET_HOME`）。
 
+## 媒体插件运行时
+
+独立于 `GenProvider`。使用 `.iap` / `.vap` / `.aap` 插件前，每个环境安装一次：
+
+1. 运行 `scripts/setup_media.sh` 或 `scripts\setup_media.ps1`，创建 `<repo>/.venv-media` 并安装 `requests`。
+2. 在「设置 → 媒体插件」导入插件（可信代码警告）。包安装到 `storage/media-plugins/`。
+3. 在 `/generate` 或 MCP `generate_with_media_plugin` 生成（异步任务；取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs/`）。
+
+若缺少 `.venv-media`，`GET /api/config` 会报告 `mediaPlugins.pythonAvailable=false` 并给出安装提示；生成/测试端点以 `PYTHON_RUNTIME_UNAVAILABLE` 拒绝。
+
 ## 环境变量
 
 | 变量 | 说明 |
@@ -171,6 +188,8 @@ rembg 调用形式为 `rembg i -m <MODEL> input output`；模型默认 `u2net`�
 | `FRAMEBAKER_GEN_CLI` | 生成 CLI 模板，占位符 `{prompt}` `{output}` `{index}` `{reference}`。例：`FRAMEBAKER_GEN_CLI='mygen --prompt "{prompt}" --ref {reference} -o {output}' bun dev`。`{reference}` 为界面里选择的引用图（素材或项目帧，服务端按 id 解析路径防注入）——选了引用图但模板缺 `{reference}`，或模板有 `{reference}` 但没选，创建任务时直接 400 |
 | `FRAMEBAKER_MATTING_CLI` | 自定义抠图 CLI 模板，占位符 `{input}` `{output}`（可选 `{model}`），优先于内置 rembg |
 | `FRAMEBAKER_MATTING_MODEL` | rembg 模型名，默认 `u2net`（如 `birefnet-general-lite`、`isnet-general-use`） |
+| `FRAMEBAKER_MEDIA_PYTHON` | 可选：媒体插件 Python 可执行文件的绝对路径（覆盖 `.venv-media` 探测） |
+| `FRAMEBAKER_MEDIA_PLUGIN_ROOT` | 可选：媒体插件安装根目录的绝对路径（默认 `STORAGE_ROOT/media-plugins`） |
 
 ## 项目结构
 
@@ -196,7 +215,7 @@ Bun workspaces monorepo：
 
 FrameBaker 内置 MCP 服务端，让 AI 助手通过 [Model Context Protocol](https://modelcontextprotocol.io) 控制全部功能。
 
-**端点：** `POST /mcp`（Streamable HTTP，JSON-RPC 2.0，协议版本 `2024-11-05`）
+**端点：** `POST /mcp`（Streamable HTTP，JSON-RPC 2.0，自动兼容 2025-era 和 2026-07-28 协议）
 
 启动服务（`bun dev` 或 `bun start`），然后在 AI 客户端中配置：
 

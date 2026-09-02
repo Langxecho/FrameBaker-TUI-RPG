@@ -17,6 +17,7 @@ import { askConfirm, notify } from "../notice";
 import { t, useT } from "../i18n";
 import PxSelect from "./PxSelect";
 import PxSuggest from "./PxSuggest";
+import MediaPluginSettings from "./MediaPluginSettings";
 
 /** 编辑草稿：模型按能力分栏，用逗号分隔文本编辑，保存时才拆成数组；CLI 为结构化字段（免模板） */
 interface ProviderDraft {
@@ -1044,6 +1045,8 @@ export default function SettingsPage() {
           </motion.button>
         </div>
       </section>
+
+      <MediaPluginSettings />
 
       {/* ===== 体检 ===== */}
       <section className="settings-sec">

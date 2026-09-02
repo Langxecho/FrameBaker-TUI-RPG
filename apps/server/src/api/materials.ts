@@ -10,7 +10,14 @@ import { checkImageReferenceSupport, checkVideoSupport, resolveReferencePaths } 
 import { getImageLayerSettings, imageLayerConfigured } from "../provider";
 import { broadcast } from "../ws";
 import { appendFramePool, importFrameCellsToTarget, validateFrameImportTarget, type NewFrameCell } from "../timeline";
-import { getThumbnailPath, isImagePath, parseThumbnailSize, serveMediaFile } from "../media";
+import {
+  assertStorageMediaPath,
+  getThumbnailPath,
+  isImagePath,
+  mediaContentTypeForPath,
+  parseThumbnailSize,
+  serveMediaFile,
+} from "../media";
 import { beginProjectUndo } from "../undo";
 
 function baseName(filename: string): string {
@@ -56,7 +63,7 @@ export function sortMaterialsByFrameNumber(materials: MaterialRow[]): MaterialRo
 }
 
 /** 把素材复制为项目帧追加到末尾；有抠图结果时两个槽位都以抠图图为准，返回新帧 id */
-function importMaterialToProject(m: MaterialRow, projectId: string): string {
+export function importMaterialToProject(m: MaterialRow, projectId: string): string {
   const cell = prepareMaterialFrame(m, projectId);
   appendFramePool(projectId, cell);
   return cell.id;
@@ -66,8 +73,12 @@ function prepareMaterialFrame(m: MaterialRow, projectId: string): NewFrameCell {
   const processedSrc = m.processed_path && existsSync(m.processed_path) ? m.processed_path : null;
   const inputSrc = processedSrc ?? (m.raw_path && existsSync(m.raw_path) ? m.raw_path : null);
   if (!inputSrc) throw new Error(`素材文件缺失: ${m.id}`);
-  if (/\.(mp4|mov|webm|avi)$/i.test(inputSrc)) {
+  const mediaKind = serializeMaterial(m).mediaKind;
+  if (mediaKind === "video") {
     throw new Error(`「${m.name}」是视频素材，请先抽帧再导入项目`);
+  }
+  if (mediaKind !== "image") {
+    throw new Error(`「${m.name}」是音频等非图片素材，不能导入项目`);
   }
   const frameId = uid();
   const rawDir = join(STORAGE_ROOT, "projects", projectId, "raw");
@@ -91,40 +102,82 @@ function prepareMaterialFrame(m: MaterialRow, projectId: string): NewFrameCell {
   return { id: frameId, raw_path: rawPath, processed_path: procPath, status: "ready", source: m.source, metadata: JSON.stringify(metadata) };
 }
 
-/** 素材图片/视频流式返回，processed 缺失回退 raw */
-const materialImageHandler = ({
+function resolveMaterialMediaPath(
+  m: NonNullable<ReturnType<typeof getMaterial>>,
+  query: { type?: string; strict?: string },
+): { path: string } | { error: string; code: number } {
+  let path: string | null = query.type === "raw" ? m.raw_path : m.processed_path;
+  if (query.strict === "1" && (!path || !existsSync(path))) return { error: "指定图片槽位不存在", code: 404 };
+  if (!path || !existsSync(path)) path = m.raw_path;
+  if (!path || !existsSync(path)) return { error: "文件不存在", code: 404 };
+  try {
+    return { path: assertStorageMediaPath(path) };
+  } catch {
+    return { error: "文件不存在", code: 404 };
+  }
+}
+
+/** 视频首帧海报：仅允许 materials/<id>/thumb.png（STORAGE_ROOT 内）。 */
+function resolveMaterialThumbnailPath(
+  m: NonNullable<ReturnType<typeof getMaterial>>,
+): { path: string } | { error: string; code: number } {
+  const thumb = join(STORAGE_ROOT, "materials", m.id, "thumb.png");
+  if (!existsSync(thumb)) return { error: "缩略图不存在", code: 404 };
+  try {
+    return { path: assertStorageMediaPath(thumb) };
+  } catch {
+    return { error: "缩略图不存在", code: 404 };
+  }
+}
+
+function materialDownloadName(m: NonNullable<ReturnType<typeof getMaterial>>, path: string): string {
+  const ext = path.includes(".") ? path.slice(path.lastIndexOf(".")) : "";
+  const base = (m.name || m.id).replace(/[\\/:*?"<>|]+/g, "_").trim() || m.id;
+  return `${base}${ext}`;
+}
+
+/** 素材图片/视频/音频流式返回，processed 缺失回退 raw */
+const materialMediaHandler = ({
   params,
   query,
   request,
   status,
+  download = false,
 }: {
   params: { id: string };
   query: { type?: string; strict?: string; size?: string };
   request: Request;
   status: (code: number, msg: string) => unknown;
+  download?: boolean;
 }) => {
   const m = getMaterial(params.id);
   if (!m) return status(404, "素材不存在");
-  let path: string | null = query.type === "raw" ? m.raw_path : m.processed_path;
-  if (query.strict === "1" && (!path || !existsSync(path))) return status(404, "指定图片槽位不存在");
-  if (!path || !existsSync(path)) path = m.raw_path;
-  if (!path || !existsSync(path)) return status(404, "文件不存在");
-  const lower = path.toLowerCase();
-  const contentType = lower.endsWith(".mp4")
-    ? "video/mp4"
-    : lower.endsWith(".webm")
-      ? "video/webm"
-      : lower.endsWith(".mov")
-        ? "video/quicktime"
-        : "image/png";
+  const resolved = resolveMaterialMediaPath(m, query);
+  if ("error" in resolved) return status(resolved.code, resolved.error);
+  const path = resolved.path;
+  const contentType = mediaContentTypeForPath(path);
   const size = parseThumbnailSize(query.size);
   if (size && contentType.startsWith("image/") && isImagePath(path)) {
-    return getThumbnailPath(path, size).then((thumbnail) =>
-      serveMediaFile(thumbnail ?? path!, request, "image/png")
-    );
+    return getThumbnailPath(path, size).then((thumbnail) => {
+      const thumb = thumbnail ? assertStorageMediaPath(thumbnail) : path;
+      return serveMediaFile(thumb, request, "image/png", download ? { downloadName: materialDownloadName(m, path) } : undefined);
+    });
   }
-  return serveMediaFile(path, request, contentType);
+  return serveMediaFile(
+    path,
+    request,
+    contentType,
+    download ? { downloadName: materialDownloadName(m, path) } : undefined,
+  );
 };
+
+/** 兼容旧 image 别名 */
+const materialImageHandler = (args: {
+  params: { id: string };
+  query: { type?: string; strict?: string; size?: string };
+  request: Request;
+  status: (code: number, msg: string) => unknown;
+}) => materialMediaHandler(args);
 
 export const materialsApi = new Elysia({ prefix: "/api" })
   // 素材列表（按创建时间倒序）
@@ -144,9 +197,20 @@ export const materialsApi = new Elysia({ prefix: "/api" })
     },
     { body: t.Object({ name: t.String({ minLength: 1, maxLength: 200 }) }) }
   )
-  // 素材图片，processed 缺失回退 raw（.png 后缀别名：让 Pixi Assets 按扩展名命中 parser）
+  // 素材媒体流：image 别名保留；/media 为统一入口；/download 附加 Content-Disposition
   .get("/materials/:id/image", materialImageHandler)
   .get("/materials/:id/image.png", materialImageHandler)
+  .get("/materials/:id/media", materialMediaHandler)
+  .get("/materials/:id/download", (args) => materialMediaHandler({ ...args, download: true }))
+  .get("/materials/:id/media/download", (args) => materialMediaHandler({ ...args, download: true }))
+  // 视频首帧海报（STORAGE_ROOT/materials/<id>/thumb.png）；不接受任意路径
+  .get("/materials/:id/thumbnail", ({ params, request, status }) => {
+    const m = getMaterial(params.id);
+    if (!m) return status(404, "素材不存在");
+    const resolved = resolveMaterialThumbnailPath(m);
+    if ("error" in resolved) return status(resolved.code, resolved.error);
+    return serveMediaFile(resolved.path, request, "image/png");
+  })
   // 上传素材：单图 → 直接入库；GIF/MP4 → 队列拆帧，每帧一个素材
   .post(
     "/materials/upload",

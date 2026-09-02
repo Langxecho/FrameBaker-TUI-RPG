@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- 新增独立于 `GenProvider` 的媒体插件体系，支持 `.iap` / `.vap` / `.aap`：Zip Slip 安全安装到 `storage/media-plugins`、可信代码 UI 警告、密钥/参数设置、`/generate` 三标签生成中心、统一图/视/音素材、异步队列任务（取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs`）、`.venv-media` 安装脚本（`scripts/setup_media.sh` / `setup_media.ps1`，基础依赖仅 `requests`）、可选环境变量 `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`，以及仅查询/生成的 MCP 工具（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`；只接受素材 ID——禁止安装/删除/改密钥/本地路径）。
+
 ### 移除
 
 - 移除了参考图拆分中的目标骨架选择器：它只影响生成提示词与网格行列，下游切分、命名与绑定均不消费，且 `targetSkeletonId` 从未被服务端接收；拆分网格恢复为手动行列 + 人形默认值。

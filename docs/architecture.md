@@ -5,18 +5,21 @@
 ```
                         ┌──────────────────────────────────────────────┐
                         │              Browser (React 19)               │
-                        │  TopNav (Projects/Materials/Settings)         │
+                        │  TopNav (Projects/Materials/Generate/Settings)│
                         │  ProjectList   Editor ─ FrameEditor(PixiJS)  │
                         │  Timeline(DnD) PlaybackBar    ImportModal     │
                         │  MaterialsPage MaterialModal(comparison/crop) │
+                        │  MotionsPage (/motions direct route)          │
+                        │  MediaGenerationPage (/generate three tabs)   │
                         │  CropModal ─ imageops/ (Web Worker image ops) │
-│  JobPanel (right-side persistent job queue, WS-driven)  │
+                        │  JobPanel (right-side persistent job queue)   │
                         │        │ fetch /api        │ WebSocket /ws   │
                         └────────┼───────────────────┼────────────────┘
                                  │                   │
 ┌────────────────────────────────▼───────────────────▼────────────────┐
 │                    Bun.serve (apps/server/src/index.ts)             │
-│  routes: "/" "/project/:id" "/materials" "/settings" → HTML import  │
+│  routes: "/" "/project/:id" "/materials" "/motions" "/generate"    │
+│          "/settings" → HTML import                                  │
 │  fetch:  /ws → server.upgrade ──────► ws.ts (client set broadcast)  │
 │          rest → Elysia app (app.ts)                                │
 │                                                                     │
@@ -27,19 +30,25 @@
 │   ├─ api/import.ts     Upload/extract / generate → create job       │
 │   │                    (project frames)                             │
 │   ├─ api/materials.ts  Material CRUD/matting/batch matting/crop/     │
-│   │                    import to project                            │
+│   │                    import to project (unified image/video/audio)│
+│   ├─ api/mediaPlugins.ts  .iap/.vap/.aap install/settings/export   │
+│   ├─ api/mediaGeneration.ts  async media-plugin generation enqueue │
 │   ├─ api/settings.ts   Settings table read/write (layout/theme/     │
 │   │                    lang/genProviders/matting allowlist)          │
 │   └─ /api/jobs(/:id)   Job list (panel initial load) / single query │
 │                                                                     │
 │  mcp/ (MCP server: POST /mcp JSON-RPC 2.0 Streamable HTTP)         │
-│       48 tools directly operating db/internal modules for AI agents │
+│       51 tools directly operating db/internal modules for AI agents │
 │                                                                     │
 │  provider.ts (multi-gen provider / matting config: settings > env)  │
 │  providerAdapter.ts (generation validation/execution adapter +      │
 │                      provider model detection)                      │
+│  mediaPlugins/ (independent from GenProvider: paths/registry/       │
+│                 manifest/installer/secrets/runner/service)          │
+│  python/media_plugin_runner.py + aigc_bench_plugin_runtime/         │
+│                 (JSON-file CLI bridge under .venv-media)            │
 │  doctor.ts (health check + API connectivity: /api/doctor            │
-│             /api/provider/test)                                     │
+│             /api/provider/test; includes .venv-media)               │
 │  queue.ts (in-memory queue, concurrency 2; JobTarget = project |   │
 │            materials)                                               │
 │   ├─ jobs/extract.ts   extract_frames / generate_frames             │
@@ -49,17 +58,21 @@
 │   │                    │   polling → mp4)                           │
 │   │                    └─ generatedArtifacts.ts (classify & commit   │
 │   │                       frames/materials)                         │
+│   ├─ jobs/mediaPlugin.ts  media_plugin_image|video|audio            │
 │   └─ jobs/matting.ts   matting (frame | material; engine detection   │
 │                        below)                                       │
 │                                                                     │
 │  db.ts (bun:sqlite, WAL) ── jobs/frames/projects/materials tables   │
 └───────────────────────────────┬─────────────────────────────────────┘
                                 │ read/write (absolute paths via import.meta.dir)
-                        ┌───────▼────────┐        ┌────────────┐
-                        │ storage/ (root) │        │ ffmpeg/CLI │
-                        │ framebaker.db  │        │ external   │
-                        │ projects/...   │        │ processes  │
-                        │ materials/...  │        └────────────┘
+                        ┌───────▼────────┐        ┌────────────────────┐
+                        │ storage/ (root) │        │ ffmpeg / CLI /     │
+                        │ framebaker.db  │        │ .venv-media Python │
+                        │ projects/...   │        │ (plugin runner)    │
+                        │ materials/...  │        └────────────────────┘
+                        │ media-plugins/ │
+                        │ media-plugin-  │
+                        │   runs/        │
                         └────────────────┘
 
          packages/shared: front/back shared types & constants (no build, exports point to src/index.ts)
@@ -71,7 +84,7 @@
 | --- | --- | --- |
 | `@framebaker/server` | `apps/server` | Elysia API + job queue + SQLite; also serves frontend via Bun fullstack mode |
 | `@framebaker/web` | `apps/web` | React 19 + PixiJS v8 frontend, `index.html` as bundle entry, fonts in `public/fonts` |
-| `@framebaker/shared` | `packages/shared` | `Frame`/`Project`/`Job`/`Material`/`FramePatch`/enums (FRAME_STATUSES, FRAME_SOURCES, JOB_TYPES, JOB_STATUSES, MATERIAL_STATUSES, GEN_PROVIDER_TYPES, WS_EVENTS) / SOURCE_COLORS / `GenProviderSettings` / `MattingSettings` / API response types |
+| `@framebaker/shared` | `packages/shared` | `Frame`/`Project`/`Job`/`Material`/`FramePatch`/enums (FRAME_STATUSES, FRAME_SOURCES, JOB_TYPES incl. `media_plugin_*`, JOB_STATUSES, MATERIAL_STATUSES, GEN_PROVIDER_TYPES, MEDIA_PLUGIN_KINDS, WS_EVENTS) / SOURCE_COLORS / `GenProviderSettings` / `MattingSettings` / `MediaPlugin*` contracts / API response types |
 
 Root `tsconfig.base.json` provides shared compilerOptions (strict, moduleResolution: bundler, noEmit); each app's `tsconfig.json` extends it and adds its own lib/jsx/types.
 
@@ -87,9 +100,9 @@ Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy an
 
 ## Key Design
 
-- **HTML import fullstack**: `apps/server/src/index.ts` does `import index from "../../web/index.html"`, `Bun.serve`'s `routes` mounts it at `/` and `/project/:id`; the editor page frontend reads `location.pathname` to restore project context (no router library). In development mode (`NODE_ENV !== "production"`), each request re-bundles with HMR support.
+- **HTML import fullstack**: `apps/server/src/index.ts` does `import index from "../../web/index.html"`, `Bun.serve`'s `routes` mounts it at `/`, `/project/:id`, `/materials`, `/motions`, `/generate`, and `/settings`; the frontend reads `location.pathname` to restore page/project context (no router library). In development mode (`NODE_ENV !== "production"`), each request re-bundles with HMR support (Windows keeps a stable frontend bundle; server still restarts under bun --watch).
 - **storage independent of cwd**: `db.ts` uses `import.meta.dir` to traverse three levels up to find the repo root, `STORAGE_ROOT = <root>/storage`; DB columns `raw_path`/`processed_path` store absolute paths. Running from root `bun dev` or from within `apps/server` both point to the same location.
-- **Job queue**: `queue.ts` in-memory FIFO, concurrency limit 2; job status persisted to SQLite (queued/running/done/error/cancelled + progress/error), payloads (staging paths, prompts, etc.) only in memory — unfinished jobs are not recovered after restart; on startup, orphaned queued/running jobs are marked as error ("server restarted, job interrupted"). `POST /api/jobs/:id/cancel` can cancel queued/running jobs (AbortSignal → `runCmd` kills process / API polling interrupted). All state changes broadcast via `ws.ts`; frontend `JobPanel` (right-side persistent panel mounted at App root) shows progress via WS `job_*` events + `GET /api/jobs(/:id)` fallback polling; queued/running can be cancelled. Scheduler dependency is one-way: `queue.ts` calls `jobs/*` workers; matting jobs after extraction/generation are queued via narrow callbacks injected by the scheduler — workers never reverse-depend on queue.
+- **Job queue**: `queue.ts` in-memory FIFO, concurrency limit 2; job status persisted to SQLite (queued/running/done/error/cancelled + progress/error), payloads (staging paths, prompts, etc.) only in memory — unfinished jobs are not recovered after restart; on startup, orphaned queued/running jobs are marked as error ("server restarted, job interrupted"). `POST /api/jobs/:id/cancel` can cancel queued/running jobs (AbortSignal → `runCmd` kills process / API polling interrupted / media-plugin Python child killed + run dir cleaned). All state changes broadcast via `ws.ts`; frontend `JobPanel` (right-side persistent panel mounted at App root) shows progress via WS `job_*` events + `GET /api/jobs(/:id)` fallback polling; queued/running can be cancelled. Scheduler dependency is one-way: `queue.ts` calls `jobs/*` workers; matting jobs after extraction/generation are queued via narrow callbacks injected by the scheduler — workers never reverse-depend on queue.
 - **WS broadcast**: `ws.ts` maintains a client Set, `broadcast(type, payload)` sends JSON; event names defined centrally in shared `WS_EVENTS`. Frontend on receiving `frame_updated/frames_reordered/frames_changed/job_done` re-fetches frame list; on `material_updated/materials_changed` re-fetches material list.
 - **Material source semantics**: image-layer outputs use the shared `layers` source and “Layers” badge rather than the generic `api` source. Startup migration identifies legacy outputs by `metadata.provider=imageLayers` and relabels them.
 - **Frame extraction numbering**: ffmpeg extracts to `staging/extract_<uuid>/frame_%04d.png`, then scans the raw directory for the current highest number and renumbers sequentially into `raw/frame_XXXX.png`; multiple imports don't overwrite each other; `duplicate` generates `dup_<uuid>.png` which doesn't match the scan pattern and won't be accidentally collected.
@@ -109,6 +122,7 @@ Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy an
 - **Frame transform geometry** (`apps/web/src/frameGeometry.ts`): centralizes center-anchor, offset, rotation, scale axis-aligned bounding box, fit-to-view, and rotation normalization; Pixi `FrameEditor` and Canvas `export.ts` are two render adapters sharing the same geometric semantics.
 - **Import workflow** (`apps/web/src/hooks/useImportWorkflow.ts`): project import and material import share file state transitions, sequential upload, job polling, partial failure, timer cleanup, and completion summary; the two modals only provide their own FormData/API adapters; crop phase handled by `useCropQueue`.
 - **Web client boundaries**: `apps/web/src/api.ts` remains the compatibility facade for typed HTTP API methods and shared response types; media URL builders live in `api/mediaUrls.ts`, while the reconnecting application WebSocket client lives in `api/ws.ts`. New transport concerns should be added to their owning module instead of growing the facade.
+- **Independent media plugin system** (`.iap` / `.vap` / `.aap`, parallel to `GenProvider` — do not merge execution paths): Bun owns discovery, Zip Slip-safe install under `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`, settings (secrets/params; secrets never echoed), API, queue jobs (`media_plugin_image|video|audio`), material archival (`source=media-plugin:<plugin-id>`, `metadata.mediaKind`), `/generate` UI, and MCP query/generate tools. Python is only a controlled JSON-file subprocess: `apps/server/src/python/media_plugin_runner.py` + copied `aigc_bench_plugin_runtime/` load trusted `provider.py` from `.venv-media` (`scripts/setup_media.sh` / `setup_media.ps1`; base dep `requests` only — plugin-declared deps are **not** auto-installed in v1). Communication is `request.json` / `result.json` under `storage/media-plugin-runs/<run-id>/` (no argv escaping of prompts/params). Cancel/timeout best-effort terminates the Python process tree (`Bun.spawn().kill()`; on Windows also `taskkill /PID <pid> /T /F` when a PID is available — Bun has no portable process-group API) and `cleanupMediaPluginRunDir` removes the run directory; failed/cancelled runs must not leave plugin outputs or secret plaintext in storage. Result handling rejects `file:` / non-http(s) downloads, requires local `image_path`/`video_path`/`audio_path` already under the run `outputDir` (no arbitrary absolute-path copy), bounds download and ZIP compressed/uncompressed sizes, preserves fractional `durationSeconds`, and keeps Python stderr/traceback server-log-only (jobs/MCP get stable safe codes). Archives are **trusted executable code** (UI warning required); path containment, package validation, timeouts, and secret redaction are provided — **no OS-level sandbox**. Missing `.venv-media` → `PYTHON_RUNTIME_UNAVAILABLE` / `GET /api/config.mediaPlugins.pythonAvailable=false` with setup hint; generation/test refuse to run. Optional overrides: `FRAMEBAKER_MEDIA_PYTHON`, `FRAMEBAKER_MEDIA_PLUGIN_ROOT`. MCP exposes only `list_media_plugins`, `get_media_plugin`, `generate_with_media_plugin` (material IDs only — no install/delete/secrets/local paths/arbitrary Python). HTTP details in `docs/api.md` § Media Plugins / Media Generation.
 - **Generation provider adapter & artifact submission**: `providerAdapter.ts` resolves provider in real-time per job, encapsulates config/model/capability validation, CLI argv, API/CLI output dispatch, and doctor's model detection; `jobs/generatedArtifacts.ts` handles artifact allocation, media classification, frame/material/video commit, staging cleanup, broadcast, and auto-matting finalization. `jobs/extract.ts` only coordinates "output → commit"; API vendor protocols remain in `jobs/generateApi.ts`.
 
 ## Data Flows
@@ -119,11 +133,11 @@ Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy an
 AI client → POST /mcp { jsonrpc, method: "initialize" }
   → server returns protocolVersion/capabilities/serverInfo + Mcp-Session-Id
   → client sends notifications/initialized
-  → tools/list returns 48 tools
+  → tools/list returns 51 tools
   → tools/call { name, arguments } → direct db ops → returns { content: [{ type:"text", text:JSON }] }
 ```
 
-`mcp/` tools directly call `db` / `queue.ts` / `providerAdapter.ts` / `enhance.ts` / `doctor.ts`; logic is consistent with corresponding `/api/*` handlers but without HTTP self-calls.
+`mcp/` tools directly call `db` / `queue.ts` / `providerAdapter.ts` / `enhance.ts` / `doctor.ts` / `mediaPlugins/*`; logic is consistent with corresponding `/api/*` handlers but without HTTP self-calls. Media-plugin MCP tools are query/generate only (no install, delete, secret/param updates, local paths, or arbitrary Python).
 
 ### Import (GIF/MP4/Single Image)
 
@@ -215,11 +229,12 @@ Database tables (`apps/server/src/db.ts`, created on startup with CREATE TABLE I
 
 ## Frontend Pages & Components
 
-- `App.tsx`: `/` project list ↔ `/project/:id` editor ↔ `/materials` material library ↔ `/settings` settings page (history.pushState + popstate); globally suppresses browser native context menu (preserves input/textarea for paste; frames use custom ContextMenu)
-- `TopNav`: primary nav (Projects / Materials / Settings) + theme toggle (three-state: follow system / light / dark) + language toggle (zh/en, `LangToggle`); editor page has its own top bar and doesn't show this
-- `SettingsPage`: generation provider list management (CLI / API multiple coexisting, add/remove/edit + save + API test connection), matting config (CLI template / default model datalist + cache status), doctor (health check result list)
+- `App.tsx`: `/` project list ↔ `/project/:id` editor ↔ `/materials` material library ↔ `/motions` motion workbench ↔ `/generate` generation center ↔ `/settings` settings page (history.pushState + popstate); globally suppresses browser native context menu (preserves input/textarea for paste; frames use custom ContextMenu)
+- `TopNav`: primary nav (Projects / Materials / Generate / Settings) + theme toggle (three-state: follow system / light / dark) + language toggle (zh/en, `LangToggle`); `/motions` remains a direct route (not a TopNav tab); editor page has its own top bar and doesn't show this
+- `MediaGenerationPage` + `MediaPluginForm` / `MediaReferencePicker` / `MediaResultPreview`: `/generate` three tabs (image/video/audio); dynamic `params_schema` form; references are material IDs only; enqueue via `/api/media-generation`, JobPanel + `job_done.materialIds` bind results
+- `SettingsPage`: generation provider list management (CLI / API multiple coexisting, add/remove/edit + save + API test connection), **media plugin settings** (`MediaPluginSettings`: import `.iap/.vap/.aap`, trusted-code warning, secrets/params/test/export/delete), matting config (CLI template / default model datalist + cache status), doctor (health check result list)
 - `ProjectList`: pixel card grid (motion stagger entrance, hover lift), new/delete modals
-- `MaterialsPage`: material library page — left directory tree (`FolderTree`) + right card grid (source color badge per provider, bottom-left "matted" badge, checkbox + Cmd/Shift multi-select, drag into folders), batch bar (delete / import to project / batch matting raw-only / cancel)
+- `MaterialsPage`: material library page — left directory tree (`FolderTree`) + right card grid (All/Image/Video/Audio filter; source color badge per provider / `media-plugin:<id>`, video poster + players, audio players, bottom-left "matted" badge for images, checkbox + Cmd/Shift multi-select, drag into folders), batch bar (delete / import to project [images only] / batch matting raw-only / cancel)
 - `ProjectList`: project list same left-tree-right-grid layout, new projects land in current folder
 - `FolderTree`: All / Ungrouped + multi-level folder CRUD / HTML5 DnD
 - `MaterialModal`: material detail — raw/matted comparison slider (pointer drag clip ratio), matting/restore, crop (CropModal, operates on currently displayed image slot), grid split (GridSplitModal: multi-cell sprite sheet split by rows × columns into individual materials, grid line preview, reuses imageops cropImage + `/api/materials/upload` single-image commit, original preserved), multi-action generation (ActionGenModal: uses current material as reference image, per shared `ACTION_PRESETS` action presets calls `/api/materials/generate` per action, optional `name` as "material_action" naming, one generation job per action), import to project (select project + copy count), delete (confirmation)

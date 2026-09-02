@@ -16,6 +16,10 @@ export const materialImageUrl = (
 export const materialFileUrl = (id: string, v?: number, type: "raw" | "processed" = "raw") =>
   `/api/materials/${id}/image?type=${type}${v ? `&v=${v}` : ""}`;
 
+/** 素材视频海报 URL（服务端 materials/<id>/thumb.png；仅 API 相对路径） */
+export const materialThumbnailUrl = (id: string, v?: number) =>
+  `/api/materials/${id}/thumbnail${v ? `?v=${v}` : ""}`;
+
 /** 项目缩略图 URL（前端渲染上传的 PNG；v 用于更新后破缓存） */
 export const projectThumbnailUrl = (id: string, v?: number) =>
   `/api/projects/${id}/thumbnail${v ? `?v=${v}` : ""}`;

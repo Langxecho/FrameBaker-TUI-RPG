@@ -7,13 +7,17 @@ Pixel-art frame-by-frame animation editor (Bun fullstack). Material import (GIF/
 ```
 apps/
   server/        @framebaker/server — Elysia API + job queue + bun:sqlite; Bun.serve hosts frontend
+                 mediaPlugins/ + python/media_plugin_runner.py (independent .iap/.vap/.aap system)
   web/           @framebaker/web   — React 19 + pixi.js v8 + motion + lucide-react; index.html is the bundle entry; HTTP facade in src/api.ts, media URLs in src/api/mediaUrls.ts, WS client in src/api/ws.ts
 packages/
   shared/        @framebaker/shared — shared types/constants for front & back (no build, exports point directly to src/index.ts)
 docs/            architecture / API / roadmap / changelog documentation
-scripts/         environment setup + synchronized SemVer version management + fbanim fixture sync
+scripts/         environment setup (setup_matting / setup_media) + synchronized SemVer version management + fbanim fixture sync
 tests/           bun tests; canonical fbanim-v3 fixtures under tests/fixtures/fbanim-v3/
+.venv-media/     gitignored Python env for media plugins (scripts/setup_media.*)
+.venv-matting/   gitignored Python env for rembg matting (scripts/setup_matting.*)
 storage/         generated at runtime (gitignored), resolves to repo root regardless of startup cwd
+                 includes media-plugins/ and media-plugin-runs/
 ```
 
 Cross-repo fbanim-v3 fixtures: FrameBaker owns checked-in bytes under `tests/fixtures/fbanim-v3/` (`manifest.json` lists eleven contract IDs; only `available` packages ship). Sync exact bytes to the terminal engine with `bun scripts/sync_fbanim_fixtures.ts --target <tui-rpg-terminal-engine-root>`. Do not invent missing fixture packages.
@@ -51,6 +55,7 @@ No test framework; verification = typecheck + curl smoke tests (see examples in 
 - MCP server is in `apps/server/src/mcp/` (using `@modelcontextprotocol/server` SDK v2, mounted at `/mcp`, Streamable HTTP transport, auto-compatible with 2025-era and 2026-07-28 protocols); tools registered via `McpServer.registerTool()` (Zod v4 inputSchema), directly operating `db` / internal modules (no HTTP self-calls), keeping logic consistent with corresponding `/api/*` handlers; when adding/modifying API features, update MCP tools in sync.
 - `storage/` and `node_modules/` are gitignored; clean up storage and /tmp temp files after smoke testing.
 
+- **Independent media plugins** (`.iap` image / `.vap` video / `.aap` audio): parallel to `GenProvider` — do not merge provider execution paths. Install roots are `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`; ephemeral runs under `STORAGE_ROOT/media-plugin-runs/` (cleaned after job/test). Bun spawns `apps/server/src/python/media_plugin_runner.py` via `.venv-media` with JSON request/result files — never shell-escape prompts/params. Archives are trusted executable `provider.py` (UI must warn; no OS sandbox). Setup: `scripts/setup_media.sh` / `scripts/setup_media.ps1` (ASCII + `-ExecutionPolicy Bypass` on Windows; base dep `requests` only; do not auto-install plugin-declared deps). Missing runtime → `PYTHON_RUNTIME_UNAVAILABLE` and generation/test refuse. MCP: `list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin` only (material IDs; no install/delete/secrets/local paths). Job cancel/timeout best-effort terminates the Python process tree (`Bun.spawn().kill()` plus Windows `taskkill /T /F` when PID is available; Bun has no portable process-group kill) and deletes the run dir. Result URLs reject `file:` and non-http(s); local `image_path`/`video_path`/`audio_path` must already be under the current run `outputDir` (no arbitrary absolute-path copy). Runner stderr/traceback is server-log-only (truncated/redacted); jobs/MCP get stable safe codes/messages. Downloads are size-bounded; ZIP install enforces compressed/uncompressed budgets; video/audio `durationSeconds` preserves fractions.
 ## Environment Variables
 
 - `PORT` (default 3000)
@@ -59,3 +64,6 @@ No test framework; verification = typecheck + curl smoke tests (see examples in 
 - `FRAMEBAKER_MATTING_MODEL`: rembg model name (default `u2net`); **fallback only** — settings page matting.model takes priority; model cache in `storage/models` (U2NET_HOME).
 - `FRAMEBAKER_QUEUE_CONCURRENCY`: job queue parallelism (default `2`, clamped 1–16); **fallback only** — settings page `queueConcurrency` (read in real-time on each `pump()`, so changes take effect immediately for new jobs) takes priority; current value exposed via `GET /api/config`.
 - Matting engine: without CLI configured, uses `.venv-matting` bundled rembg installed by `scripts/setup_matting.sh` (Windows: `scripts/setup_matting.ps1`) (POSIX: `bin/rembg`, Windows: `Scripts/rembg.exe`; gitignored), then PATH rembg, then passthrough copy as last resort; detection results visible via `GET /api/config` (resolved in real-time on each request).
+- `FRAMEBAKER_MEDIA_PYTHON`: optional absolute path to the media-plugin Python executable (overrides `.venv-media` discovery).
+- `FRAMEBAKER_MEDIA_PLUGIN_ROOT`: optional absolute install root for media plugins (default `STORAGE_ROOT/media-plugins`).
+- Media-plugin Python: `.venv-media` installed by `scripts/setup_media.sh` (Windows: `scripts/setup_media.ps1`; POSIX `bin/python`, Windows `Scripts/python.exe`; gitignored). Unavailable → `GET /api/config.mediaPlugins.pythonAvailable=false` / doctor check fail / jobs error `PYTHON_RUNTIME_UNAVAILABLE` with setup hint.

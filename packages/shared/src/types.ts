@@ -20,7 +20,15 @@ export const FRAME_SOURCES = [
 ] as const;
 export type FrameSource = (typeof FRAME_SOURCES)[number];
 
-export const JOB_TYPES = ["extract_frames", "generate_frames", "matting", "image_layers"] as const;
+export const JOB_TYPES = [
+  "extract_frames",
+  "generate_frames",
+  "matting",
+  "image_layers",
+  "media_plugin_image",
+  "media_plugin_video",
+  "media_plugin_audio",
+] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
 /** Qwen-Image-Layered /images/layers 当前服务端允许的单次图层数 */
@@ -32,6 +40,39 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export const MATERIAL_STATUSES = ["raw", "matted"] as const;
 export type MaterialStatus = (typeof MATERIAL_STATUSES)[number];
+
+/** 统一媒体素材类型（图片 / 视频 / 音频） */
+export const MEDIA_KINDS = ["image", "video", "audio"] as const;
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+
+/** 媒体插件包类型（与安装目录名一致） */
+export const MEDIA_PLUGIN_KINDS = ["image_api", "video_api", "audio_api"] as const;
+export type MediaPluginKind = (typeof MEDIA_PLUGIN_KINDS)[number];
+
+/** 媒体插件归档扩展名映射 */
+export const MEDIA_PLUGIN_ARCHIVE_EXTENSIONS = {
+  image_api: ".iap",
+  video_api: ".vap",
+  audio_api: ".aap",
+} as const satisfies Record<MediaPluginKind, `.${string}`>;
+
+export function mediaPluginArchiveExtension(kind: MediaPluginKind): (typeof MEDIA_PLUGIN_ARCHIVE_EXTENSIONS)[MediaPluginKind] {
+  return MEDIA_PLUGIN_ARCHIVE_EXTENSIONS[kind];
+}
+
+export function parseMediaKind(value: unknown): MediaKind {
+  if (typeof value === "string" && (MEDIA_KINDS as readonly string[]).includes(value)) {
+    return value as MediaKind;
+  }
+  throw new Error(`Invalid media kind: ${String(value)}`);
+}
+
+export function parseMediaPluginKind(value: unknown): MediaPluginKind {
+  if (typeof value === "string" && (MEDIA_PLUGIN_KINDS as readonly string[]).includes(value)) {
+    return value as MediaPluginKind;
+  }
+  throw new Error(`Invalid media plugin kind: ${String(value)}`);
+}
 
 export const FOLDER_KINDS = ["material", "project", "animation"] as const;
 export type FolderKind = (typeof FOLDER_KINDS)[number];
@@ -392,6 +433,14 @@ export interface ServerConfig {
   promptEnhancers: Array<{ id: string; name: string; model: string }>;
   /** 任务队列并发数（settings.queueConcurrency 优先，env 兜底，默认 2） */
   queueConcurrency: number;
+  /** 独立媒体插件运行时诊断（不含密钥） */
+  mediaPlugins: {
+    pythonAvailable: boolean;
+    pythonPath: string | null;
+    installedCount: number;
+    installRoot: string;
+    hint: string | null;
+  };
 }
 
 /**
@@ -830,15 +879,86 @@ export interface Material {
   folder_id: string | null;
   metadata: Record<string, unknown>;
   created_at: number;
-  /** 由路径推断：视频素材不可抠图/剪裁，需先抽帧 */
-  kind: "image" | "video";
+  /**
+   * 与 mediaKind 同源：有效 metadata.mediaKind 优先，否则按路径推断。
+   * 旧前端只认 image|video；audio 显式保留以便 `kind === "image"` 不会误收音频。
+   * 新代码请优先读 mediaKind。
+   */
+  kind: MediaKind;
+  /** 统一媒体类型；旧记录缺省按 image */
+  mediaKind: MediaKind;
 }
 
 /** DB 行形态 */
-export interface MaterialRow extends Omit<Material, "status" | "source" | "metadata"> {
+export interface MaterialRow extends Omit<Material, "status" | "source" | "metadata" | "kind" | "mediaKind"> {
   status: string;
   source: string;
   metadata: string;
+}
+
+// ===== 媒体插件（独立于 GenProvider）=====
+
+export type MediaPluginParamType = "string" | "integer" | "number" | "boolean" | "enum" | "json";
+
+export interface MediaPluginParamSchema {
+  type: MediaPluginParamType | string;
+  label?: string;
+  default?: unknown;
+  enum?: Array<string | number | boolean>;
+  required?: boolean;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface MediaPluginSecretSummary {
+  id: string;
+  label: string;
+  required: boolean;
+  configured: boolean;
+}
+
+export interface MediaPluginEntry {
+  type: string;
+  module: string;
+  function: string;
+}
+
+export interface MediaPluginSummary {
+  id: string;
+  name: string;
+  version: string;
+  kind: MediaPluginKind;
+  capabilities: string[];
+  configured: boolean;
+  runnable: boolean;
+}
+
+export interface MediaPluginDetail extends MediaPluginSummary {
+  paramsSchema: Record<string, MediaPluginParamSchema>;
+  constraints: Record<string, unknown>;
+  secrets: MediaPluginSecretSummary[];
+  entry: MediaPluginEntry;
+}
+
+export interface MediaPluginGenerationRequest {
+  kind: MediaPluginKind;
+  pluginId: string;
+  prompt: string;
+  references?: string[];
+  params?: Record<string, unknown>;
+  count?: number;
+  durationSeconds?: number;
+  folderId?: string | null;
+  projectId?: string | null;
+  name?: string;
+}
+
+export interface MediaPluginResult {
+  materialId: string;
+  mediaKind: MediaKind;
+  url?: string | null;
+  path?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 // ===== 固定人形动作（humanoid-v1） =====

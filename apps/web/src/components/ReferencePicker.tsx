@@ -124,7 +124,7 @@ export default function ReferencePicker<T extends ReferenceSelection[] | Referen
                   <div key={m.id} className={`mat-pick ${selectedValues.some((item) => item.kind === "material" && item.id === m.id) ? "on" : ""}`} title={m.name} onClick={() => pick({ kind: "material", id: m.id })}>
                     <img src={materialImageUrl(m.id, v, "processed", 256)} alt="" draggable={false} loading="lazy" decoding="async" />
                     <span className={`mat-dot ${m.status}`} />
-                    {m.kind !== "video" && (
+                    {m.kind === "image" && (
                       <IconBtn
                         className="mat-pick-edit"
                         title={t("materialEdit.action")}

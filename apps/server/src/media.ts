@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, extname, join, resolve } from "node:path";
 import { STORAGE_ROOT } from "./db";
 import { runCmd } from "./jobs/run";
+import { isPathInside } from "./mediaPlugins/paths";
 
 const THUMBNAIL_ROOT = join(STORAGE_ROOT, "thumbnails");
 const THUMBNAIL_MIN = 64;
@@ -106,11 +107,77 @@ function entityTag(path: string): { etag: string; lastModified: string } {
   };
 }
 
-/** 为图片响应提供条件请求和版本化缓存；v 参数存在时允许长期 immutable 缓存。 */
+export function mediaContentTypeForPath(path: string): string {
+  const ext = extname(path).toLowerCase();
+  switch (ext) {
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".webp":
+      return "image/webp";
+    case ".gif":
+      return "image/gif";
+    case ".mp4":
+      return "video/mp4";
+    case ".webm":
+      return "video/webm";
+    case ".mov":
+      return "video/quicktime";
+    case ".avi":
+      return "video/x-msvideo";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".wav":
+      return "audio/wav";
+    case ".flac":
+      return "audio/flac";
+    case ".ogg":
+      return "audio/ogg";
+    case ".m4a":
+      return "audio/mp4";
+    case ".aac":
+      return "audio/aac";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+export function assertStorageMediaPath(path: string): string {
+  const resolved = resolve(path);
+  if (!isPathInside(resolved, STORAGE_ROOT)) {
+    throw new Error("媒体路径未落在 STORAGE_ROOT 内");
+  }
+  return resolved;
+}
+
+function parseByteRange(header: string | null, size: number): { start: number; end: number } | null {
+  if (!header) return null;
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(header.trim());
+  if (!match) return null;
+  const startText = match[1] ?? "";
+  const endText = match[2] ?? "";
+  if (!startText && !endText) return null;
+  let start = startText ? Number(startText) : 0;
+  let end = endText ? Number(endText) : size - 1;
+  if (!startText && endText) {
+    const suffix = Number(endText);
+    if (!Number.isFinite(suffix) || suffix <= 0) return null;
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  }
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= size) return null;
+  end = Math.min(end, size - 1);
+  return { start, end };
+}
+
+/** 为媒体响应提供条件请求、版本化缓存；视频/音频支持基础 Range。 */
 export function serveMediaFile(
   path: string,
   request: Request,
-  contentType: string
+  contentType: string,
+  options?: { downloadName?: string },
 ): Response {
   const { etag, lastModified } = entityTag(path);
   const versioned = new URL(request.url).searchParams.has("v");
@@ -120,11 +187,34 @@ export function serveMediaFile(
     "Cache-Control": cacheControl,
     ETag: etag,
     "Last-Modified": lastModified,
+    "Accept-Ranges": "bytes",
   });
+  if (options?.downloadName) {
+    const safe = options.downloadName.replace(/["\r\n]/g, "_");
+    headers.set("Content-Disposition", `attachment; filename="${safe}"`);
+  }
   if (request.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
+
+  const size = statSync(path).size;
+  const range = parseByteRange(request.headers.get("range"), size);
+  if (range && (contentType.startsWith("video/") || contentType.startsWith("audio/"))) {
+    const { start, end } = range;
+    headers.set("Content-Range", `bytes ${start}-${end}/${size}`);
+    headers.set("Content-Length", String(end - start + 1));
+    return new Response(Bun.file(path).slice(start, end + 1), { status: 206, headers });
+  }
+
   return new Response(Bun.file(path), { headers });
 }
 
 export function isImagePath(path: string): boolean {
-  return /\.(?:png|jpe?g|webp)$/i.test(basename(path));
+  return /\.(?:png|jpe?g|webp|gif)$/i.test(basename(path));
+}
+
+export function isVideoPath(path: string): boolean {
+  return /\.(?:mp4|webm|mov|avi)$/i.test(basename(path));
+}
+
+export function isAudioPath(path: string): boolean {
+  return /\.(?:mp3|wav|flac|ogg|m4a|aac)$/i.test(basename(path));
 }
