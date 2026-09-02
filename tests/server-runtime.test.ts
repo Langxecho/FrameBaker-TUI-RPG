@@ -153,10 +153,10 @@ describe("SQLite 实体转换", () => {
   test("素材按扩展名推断媒体类型，并优先使用原始路径", () => {
     expect(serializeMaterial({
       id: "video", name: "视频", raw_path: "/tmp/demo.MP4", processed_path: "/tmp/demo.png", status: "raw", source: "upload", folder_id: null, metadata: "{}", created_at: 1,
-    }).kind).toBe("video");
+    })).toMatchObject({ kind: "video", mediaKind: "video" });
     expect(serializeMaterial({
       id: "image", name: "图片", raw_path: null, processed_path: "/tmp/matted.png", status: "matted", source: "upload", folder_id: null, metadata: '{"ok":true}', created_at: 1,
-    })).toMatchObject({ kind: "image", metadata: { ok: true } });
+    })).toMatchObject({ kind: "image", mediaKind: "image", metadata: { ok: true } });
   });
 
   test("读取实体和下一帧序号使用项目范围", () => {

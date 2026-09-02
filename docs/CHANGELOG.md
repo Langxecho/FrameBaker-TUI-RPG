@@ -6,6 +6,7 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ### Added
 
+- Added an independent media plugin system for `.iap` / `.vap` / `.aap` packages parallel to `GenProvider`: Zip Slip-safe install under `storage/media-plugins`, trusted-code UI warning, secrets/params settings, `/generate` three-tab center, unified image/video/audio materials, async queue jobs with cancel that kills the Python child and cleans `storage/media-plugin-runs`, `.venv-media` setup scripts (`scripts/setup_media.sh` / `setup_media.ps1`, base dep `requests` only), optional `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`, and MCP query/generate tools only (`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`; material IDs only — no install/delete/secrets/local paths).
 - Equipment try-on and weapon preview now composite assembled loadouts onto the character: attached/replacement gear is visible on socket bones, dual-wield pistols occupy both hands, and two-hand weapons keep a single primary-hand visual. Missing attachment images fall back to a themed placeholder rectangle. New body profiles seed standard head/chest/hand slots and weapon sockets from the current skeleton.
 - Weapon configuration can pick a weapon image from the material library, and save is blocked until a real material is selected so placeholder attachment IDs are not persisted.
 - Weapon appearance now exposes the same layer offset as equipment try-on (0 covers the hand, -1 tucks under it).

@@ -1,0 +1,122 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import type { MediaPluginResult } from "@framebaker/shared";
+import { JobCancelledError } from "./run";
+import { getMediaPlugin } from "../mediaPlugins/registry";
+import { mediaPluginKindRoot, mediaPluginRunsRoot } from "../mediaPlugins/paths";
+import { cleanupMediaPluginRunDir, runMediaPluginPython } from "../mediaPlugins/runner";
+import {
+  archiveMaterializedOutputs,
+  downloadUrlToOutput,
+  materializeRunnerOutputs,
+  readPluginVersion,
+  resolveMediaPluginReferences,
+} from "../mediaPlugins/service";
+import { MediaPluginServiceError, type MediaPluginJobPayload } from "../mediaPlugins/types";
+
+export type { MediaPluginJobPayload };
+
+/** 执行媒体插件任务：校验 → Python runner → 产出校验 → 归档。 */
+export async function runMediaPluginJob(
+  payload: MediaPluginJobPayload,
+  report: (progress: string) => void,
+  signal?: AbortSignal,
+): Promise<MediaPluginResult[]> {
+  if (signal?.aborted) throw new JobCancelledError();
+
+  const detail = getMediaPlugin(payload.kind, payload.pluginId);
+  if (!detail) {
+    throw new MediaPluginServiceError("PLUGIN_NOT_FOUND", `插件不存在: ${payload.kind}/${payload.pluginId}`, 404);
+  }
+
+  report(`正在准备插件 ${payload.pluginId}`);
+  const refs = resolveMediaPluginReferences(payload.kind, payload.references);
+  // Python runtime 扫描的是 kind 根目录（其下每个 plugin_id 子目录），不是单个插件目录
+  const pluginRoot = mediaPluginKindRoot(payload.kind);
+  const outputDir = join(mediaPluginRunsRoot(), `${payload.pluginId}_${Date.now()}_${payload.batchIndex}`);
+  mkdirSync(outputDir, { recursive: true });
+
+  try {
+    if (signal?.aborted) throw new JobCancelledError();
+    report("正在调用插件");
+
+    const runnerPayload = await runMediaPluginPython(
+      {
+        kind: payload.kind,
+        pluginId: payload.pluginId,
+        pluginRoot,
+        prompt: payload.prompt,
+        imageUrls: refs.imageUrls,
+        audioUrls: refs.audioUrls,
+        durationSeconds: payload.durationSeconds,
+        params: payload.params ?? {},
+        outputDir,
+        bridgeTimeoutMs: payload.bridgeTimeoutMs,
+      },
+      { signal, bridgeTimeoutMs: payload.bridgeTimeoutMs },
+    );
+
+    if (signal?.aborted) throw new JobCancelledError();
+    if (!runnerPayload.ok) {
+      const code = runnerPayload.code || "PLUGIN_RUNTIME_ERROR";
+      const message = runnerPayload.error || "插件运行失败";
+      throw new MediaPluginServiceError(
+        code === "PLUGIN_RUNTIME_TIMEOUT" ? "PLUGIN_RUNTIME_TIMEOUT" : "PLUGIN_RUNTIME_ERROR",
+        message.startsWith(code) ? message : `${code}: ${message}`,
+        code === "PLUGIN_RUNTIME_TIMEOUT" ? 504 : 500,
+      );
+    }
+
+    report("正在整理输出");
+    const materialized = materializeRunnerOutputs({
+      kind: payload.kind,
+      pluginId: payload.pluginId,
+      result: runnerPayload.result,
+      outputDir,
+    });
+
+    const localPaths: string[] = [];
+    for (let i = 0; i < materialized.paths.length; i++) {
+      const item = materialized.paths[i]!;
+      if (item.startsWith("url:")) {
+        const url = item.slice(4);
+        const filename =
+          materialized.mediaKind === "image"
+            ? `result_${i + 1}.png`
+            : materialized.mediaKind === "video"
+              ? "result.mp4"
+              : "result.mp3";
+        report(`正在下载结果 ${i + 1}/${materialized.paths.length}`);
+        localPaths.push(await downloadUrlToOutput(url, outputDir, filename, signal));
+      } else {
+        localPaths.push(item);
+      }
+    }
+
+    if (signal?.aborted) throw new JobCancelledError();
+    report("正在归档素材");
+    const version = readPluginVersion(payload.kind, payload.pluginId);
+    const archived = archiveMaterializedOutputs({
+      mediaKind: materialized.mediaKind,
+      paths: localPaths,
+      name: payload.name,
+      pluginId: payload.pluginId,
+      pluginVersion: version,
+      prompt: payload.prompt,
+      params: payload.params ?? {},
+      references: refs.ids,
+      folderId: payload.folderId,
+      projectId: payload.projectId,
+      providerMetadata: materialized.providerMetadata,
+      batchCount: payload.batchCount,
+      batchIndex: payload.batchIndex,
+    });
+    return archived.map((item) => ({
+      materialId: item.materialId,
+      mediaKind: item.mediaKind,
+      metadata: { batchIndex: payload.batchIndex, batchCount: payload.batchCount },
+    }));
+  } finally {
+    cleanupMediaPluginRunDir(outputDir);
+  }
+}

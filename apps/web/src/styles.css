@@ -1709,7 +1709,7 @@ input[type="range"] {
   padding: 1px 5px;
   font-size: 10px;
   line-height: 1.3;
-  color: #1a1d21;
+  color: var(--accent-contrast);
   max-width: 46%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1726,14 +1726,72 @@ input[type="range"] {
   font-size: 10px;
   line-height: 1.3;
   background: var(--success);
-  color: #1a1d21;
+  color: var(--accent-contrast);
   max-width: 46%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
 }
-.mat-badge-video {
+.mat-thumb-audio {
+  width: 100%;
+  height: 100%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--cyan) 55%, transparent) 0 2px,
+      transparent 2px 6px
+    ),
+    var(--elevated);
+  image-rendering: pixelated;
+}
+.mat-media-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.mat-media-filter strong {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.mat-media-filter .import-tabs {
+  margin: 0;
+}
+.mat-card .thumb video,
+.mat-card .thumb img.mat-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+.mat-card-duration {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.mat-audio-wrap,
+.mat-video-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mat-audio-wrap audio {
+  width: 100%;
+}
+.mat-media-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+@media (max-width: 720px) {
+  .mat-media-filter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+.mat-badge-video,
+.mat-badge-audio {
   position: absolute;
   bottom: 4px;
   left: 4px;
@@ -1741,13 +1799,18 @@ input[type="range"] {
   padding: 1px 5px;
   font-size: 10px;
   line-height: 1.3;
-  background: var(--cyan);
-  color: #1a1d21;
+  color: var(--accent-contrast);
   max-width: 46%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
+}
+.mat-badge-video {
+  background: var(--cyan);
+}
+.mat-badge-audio {
+  background: var(--purple);
 }
 .mat-video-wrap {
   display: flex;
@@ -5032,3 +5095,187 @@ body.resizing-row * {
 .binding-warp-grid { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; opacity: .8; }
 .binding-warp-point { fill: var(--surface); stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: all; cursor: move; }
 .binding-warp-point:hover { fill: var(--accent); stroke: var(--text); }
+
+/* ===== 媒体插件生成中心 / 设置 ===== */
+.media-generate-page .media-generate-tabs {
+  margin-bottom: 14px;
+}
+.media-generate-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 16px;
+  align-items: start;
+}
+.card-panel {
+  padding: 14px;
+  background: var(--elevated);
+  box-shadow:
+    0 -3px 0 0 var(--border),
+    0 3px 0 0 var(--border),
+    -3px 0 0 0 var(--border),
+    3px 0 0 0 var(--border);
+}
+.media-generate-form,
+.media-generate-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.media-plugin-form,
+.media-plugin-params {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.media-json-editor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 84px;
+}
+.field-error {
+  color: var(--error);
+  font-size: 12px;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: bold;
+  margin-top: 4px;
+}
+.media-job-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.media-job-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface);
+  box-shadow:
+    0 -2px 0 0 var(--border),
+    0 2px 0 0 var(--border),
+    -2px 0 0 0 var(--border),
+    2px 0 0 0 var(--border);
+  font-size: 12px;
+}
+.media-result-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.media-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.media-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.media-result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--surface);
+  box-shadow:
+    0 -2px 0 0 var(--border),
+    0 2px 0 0 var(--border),
+    -2px 0 0 0 var(--border),
+    2px 0 0 0 var(--border);
+}
+.media-result-body img,
+.media-result-body video,
+.media-result-body audio {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: var(--bg);
+}
+.media-result-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.media-result-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-plugin-settings .media-plugin-filter {
+  margin: 10px 0;
+}
+.media-plugin-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.media-plugin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--elevated);
+  box-shadow:
+    0 -3px 0 0 var(--border),
+    0 3px 0 0 var(--border),
+    -3px 0 0 0 var(--border),
+    3px 0 0 0 var(--border);
+}
+.media-plugin-card.active {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.media-plugin-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.media-plugin-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.media-plugin-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.media-plugin-detail {
+  margin-top: 14px;
+}
+.media-plugin-form .field input[type="checkbox"],
+.media-plugin-detail .field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.media-plugin-card button:focus-visible,
+.media-generate-page button:focus-visible,
+.media-plugin-settings button:focus-visible,
+.media-plugin-form select:focus-visible,
+.media-plugin-form input:focus-visible,
+.media-plugin-form textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 960px) {
+  .media-generate-layout {
+    grid-template-columns: 1fr;
+  }
+  .media-plugin-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

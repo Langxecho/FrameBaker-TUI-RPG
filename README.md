@@ -77,14 +77,14 @@ Scene layering reconstructs a flat image as independently editable, hideable, an
 - **Cassette Futurism themes** — dark "Magnetic Night" / light "Beige Terminal"; follows system preference until you pick one (tri-state toggle)
 - **Live sync** — WebSocket broadcasts for job progress and frame/material changes
 - **Adjustable layout** — drag the split dividers to resize the frame list and timeline (persisted)
-- **MCP server** — built-in [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`POST /mcp`, Streamable HTTP) exposing 48 tools for AI assistants (Claude Desktop, Cursor, Windsurf) to manage projects, frames, materials, generation, matting, jobs, and settings programmatically
+- **MCP server** — built-in [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`POST /mcp`, Streamable HTTP) exposing 51 tools for AI assistants (Claude Desktop, Cursor, Windsurf) to manage projects, frames, materials, generation, matting, jobs, and settings programmatically
 
 ## System Requirements
 
 - **Windows 10/11, macOS, or Linux** — Windows has been verified on real hardware for server startup, frontend serving, APIs, SQLite storage, and ffmpeg detection
 - **Bun 1.3+** — required; reopen your terminal after installation and verify that `bun --version` works
 - **ffmpeg** — only required for GIF/MP4 frame extraction; PNG imports and editing do not need it
-- **uv (recommended) or Python 3** — only needed for the bundled matting engine; uv can download an isolated Python without a system Python installation
+- **uv (recommended) or Python 3** — needed for the bundled matting engine and/or media-plugin runtime (`.venv-matting` / `.venv-media`); uv can download an isolated Python without a system Python installation
 - A modern browser with WebGL (PixiJS v8 canvas)
 
 ### Windows prerequisites (PowerShell)
@@ -128,6 +128,13 @@ bun start        # production
   Creates `.venv-matting/` and installs `rembg[cli,cpu]` (or `rembg[cli,gpu]`); on Windows it prefers uv-managed Python 3.12. The u2net model downloads automatically to `storage/models` on first use. Skipping this leaves matting in passthrough mode (copies the original image with a warning).
 
   **GPU mode** requires an NVIDIA GPU and a matching CUDA Toolkit installation. `onnxruntime-gpu` version must align with your CUDA version (e.g. onnxruntime-gpu 1.16 ↔ CUDA 11.8, 1.17+ ↔ CUDA 12.x). If you get DLL load errors, verify CUDA is installed and the version matches. To switch between CPU and GPU, delete `.venv-matting/` and re-run the script with the other flag.
+- **Media plugin runtime** (optional; required before importing/running `.iap` / `.vap` / `.aap`):
+  ```bash
+  ./scripts/setup_media.sh
+  # Windows (PowerShell):
+  powershell -ExecutionPolicy Bypass -File scripts\setup_media.ps1
+  ```
+  Creates `.venv-media/` and installs only the base runtime dependency (`requests`). Plugin-declared dependencies are **not** auto-installed in v1 — install them into `.venv-media` yourself if a plugin needs them. Skipping this leaves media plugins unrunnable (`PYTHON_RUNTIME_UNAVAILABLE` in config/doctor/jobs). Plugin archives are trusted executable Python; import only packages you trust (no OS-level sandbox).
 - Type check: `bun run typecheck`
 - Unit tests: `bun run test`
 - Core unit-test coverage report: `bun run test:coverage` (currently covers shared rules, frame geometry, and ZIP export)
@@ -146,11 +153,11 @@ The project runs on Windows but there are several platform-specific things to be
 
 5. **PowerShell environment variables** — Use `$env:PORT=8080; bun dev` (semicolon, not `&&`). The `&&` operator is not supported in older PowerShell versions. Bash syntax `PORT=8080 bun dev` works on macOS/Linux.
 
-6. **PowerShell execution policy for setup scripts** — `setup_matting.ps1` requires `-ExecutionPolicy Bypass` (e.g. `powershell -ExecutionPolicy Bypass -File scripts\setup_matting.ps1`). The script is written in ASCII to be parseable by Windows PowerShell 5.1 without a UTF-8 BOM.
+6. **PowerShell execution policy for setup scripts** — `setup_matting.ps1` / `setup_media.ps1` require `-ExecutionPolicy Bypass` (e.g. `powershell -ExecutionPolicy Bypass -File scripts\setup_matting.ps1`). The script is written in ASCII to be parseable by Windows PowerShell 5.1 without a UTF-8 BOM.
 
-7. **Microsoft Store `python.exe` is not a real Python** — Windows ships an "App execution alias" called `python.exe` that opens the Microsoft Store instead of running Python. Install Python from [python.org](https://www.python.org/downloads/) (and check "Add to PATH"), or install [uv](https://docs.astral.sh/uv/) which can download an isolated Python without a system install. `setup_matting.ps1` prefers uv and only falls back to PATH Python when uv is absent.
+7. **Microsoft Store `python.exe` is not a real Python** — Windows ships an "App execution alias" called `python.exe` that opens the Microsoft Store instead of running Python. Install Python from [python.org](https://www.python.org/downloads/) (and check "Add to PATH"), or install [uv](https://docs.astral.sh/uv/) which can download an isolated Python without a system install. `setup_matting.ps1` / `setup_media.ps1` prefer uv and only fall back to PATH Python when uv is absent.
 
-8. **Backslash paths for Windows scripts** — Use `scripts\setup_matting.ps1`, not `scripts/setup_matting.ps1`, when running from PowerShell or cmd.
+8. **Backslash paths for Windows scripts** — Use `scripts\setup_matting.ps1` / `scripts\setup_media.ps1`, not forward-slash paths, when running from PowerShell or cmd.
 
 ## Matting Engine Resolution
 
@@ -163,6 +170,16 @@ Detected on demand (see `GET /api/config`):
 
 rembg runs as `rembg i -m <MODEL> input output`; the model defaults to `u2net` and is cached in `storage/models` (`U2NET_HOME` is injected).
 
+## Media Plugin Runtime
+
+Independent from `GenProvider`. Install once per environment when using `.iap` / `.vap` / `.aap` plugins:
+
+1. Run `scripts/setup_media.sh` or `scripts\setup_media.ps1` to create `<repo>/.venv-media` and install `requests`.
+2. Import plugins in Settings → Media Plugins (trusted-code warning). Packages install under `storage/media-plugins/`.
+3. Generate from `/generate` or MCP `generate_with_media_plugin` (async jobs; cancel kills the Python child and cleans `storage/media-plugin-runs/`).
+
+If `.venv-media` is missing, `GET /api/config` reports `mediaPlugins.pythonAvailable=false` with a setup hint and generation/test endpoints refuse with `PYTHON_RUNTIME_UNAVAILABLE`.
+
 ## Environment Variables
 
 | Variable | Description |
@@ -171,6 +188,8 @@ rembg runs as `rembg i -m <MODEL> input output`; the model defaults to `u2net` a
 | `FRAMEBAKER_GEN_CLI` | Generator CLI template; placeholders `{prompt}` `{output}` `{index}` `{reference}`. Example: `FRAMEBAKER_GEN_CLI='mygen --prompt "{prompt}" --ref {reference} -o {output}' bun dev`. `{reference}` resolves to the reference image picked in the UI (a material or project frame, resolved server-side by id — picking one while the template lacks `{reference}`, or vice versa, fails fast with HTTP 400) |
 | `FRAMEBAKER_MATTING_CLI` | Custom matting CLI template; placeholders `{input}` `{output}` (optional `{model}`). Takes precedence over the bundled rembg |
 | `FRAMEBAKER_MATTING_MODEL` | rembg model name, default `u2net` (e.g. `birefnet-general-lite`, `isnet-general-use`) |
+| `FRAMEBAKER_MEDIA_PYTHON` | Optional absolute path to the media-plugin Python executable (overrides `.venv-media` discovery) |
+| `FRAMEBAKER_MEDIA_PLUGIN_ROOT` | Optional absolute install root for media plugins (default `STORAGE_ROOT/media-plugins`) |
 
 ## Project Structure
 
@@ -196,7 +215,7 @@ Bun workspaces monorepo:
 
 FrameBaker includes a built-in MCP server that lets AI assistants control the full application via the [Model Context Protocol](https://modelcontextprotocol.io).
 
-**Endpoint:** `POST /mcp` (Streamable HTTP, JSON-RPC 2.0, protocol version `2024-11-05`)
+**Endpoint:** `POST /mcp` (Streamable HTTP, JSON-RPC 2.0, auto-compatible with 2025-era and 2026-07-28 protocols)
 
 Start the server (`bun dev` or `bun start`), then configure your AI client:
 

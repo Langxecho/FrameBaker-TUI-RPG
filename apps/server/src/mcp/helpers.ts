@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { mkdirSync, copyFileSync } from "node:fs";
 import type { FolderKind } from "@framebaker/shared";
-import { db, uid, STORAGE_ROOT, nextFrameIdx } from "../db";
+import { db, uid, STORAGE_ROOT, nextFrameIdx, serializeMaterial } from "../db";
 import type { MaterialRow } from "@framebaker/shared";
 import { appendFramePool } from "../timeline";
 
@@ -88,8 +88,12 @@ export function importMaterialToProject(m: MaterialRow, projectId: string): stri
   const processedSrc = m.processed_path && existsSync(m.processed_path) ? m.processed_path : null;
   const inputSrc = processedSrc ?? (m.raw_path && existsSync(m.raw_path) ? m.raw_path : null);
   if (!inputSrc) throw new Error(`素材文件缺失: ${m.id}`);
-  if (/\.(mp4|mov|webm|avi)$/i.test(inputSrc)) {
+  const mediaKind = serializeMaterial(m).mediaKind;
+  if (mediaKind === "video") {
     throw new Error(`「${m.name}」是视频素材，请先抽帧再导入项目`);
+  }
+  if (mediaKind !== "image") {
+    throw new Error(`「${m.name}」是音频等非图片素材，不能导入项目`);
   }
   const frameId = uid();
   const rawDir = join(STORAGE_ROOT, "projects", projectId, "raw");

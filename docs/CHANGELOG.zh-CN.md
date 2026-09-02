@@ -6,6 +6,7 @@
 
 ### 新增
 
+- 新增独立于 `GenProvider` 的媒体插件体系，支持 `.iap` / `.vap` / `.aap`：Zip Slip 安全安装到 `storage/media-plugins`、可信代码 UI 警告、密钥/参数设置、`/generate` 三标签生成中心、统一图/视/音素材、异步队列任务（取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs`）、`.venv-media` 安装脚本（`scripts/setup_media.sh` / `setup_media.ps1`，基础依赖仅 `requests`）、可选环境变量 `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`，以及仅查询/生成的 MCP 工具（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`；只接受素材 ID——禁止安装/删除/改密钥/本地路径）。
 - 装备试穿与武器预览现会把装配结果叠到角色上：附加/替换装备显示在插座骨骼，双持手枪分别占用左右手，双手武器保留主手单件视觉。附件图片缺失时回退为主题色占位矩形。新建身体语义会按当前骨架填充头/胸/手等标准插槽与武器插座。
 - 武器配置可选择素材库里的武器图，未选真实素材时禁止保存，避免附件引用不存在的占位 ID。
 - 武器外观可调图层偏移（与装备试穿相同：0 盖住手，-1 压到手下面）。

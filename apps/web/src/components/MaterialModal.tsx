@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Bone, Crop, Film, Grid3x3, Layers3, MoveHorizontal, Pencil, PersonStanding, RefreshCw, Send, Trash2, Undo2, Wand2, X } from "lucide-react";
-import { api, materialFileUrl, materialImageUrl, type Material, type Project } from "../api";
+import { Bone, Crop, Download, Film, Grid3x3, Layers3, MoveHorizontal, Pencil, PersonStanding, RefreshCw, Send, Trash2, Undo2, Wand2, X } from "lucide-react";
+import { api, materialDownloadUrl, materialFileUrl, materialImageUrl, type Material, type Project } from "../api";
 import { getLocale, useT } from "../i18n";
 import { useModalEscClose } from "../hooks/useModalEscClose";
+import {
+  formatMaterialDuration,
+  materialActionAvailability,
+  materialDurationSeconds,
+} from "../mediaMaterialUiState";
 import { askConfirm, notify } from "../notice";
 import { SOURCE_LABEL_KEYS } from "../sourceLabel";
 import { useServerConfig } from "../config";
@@ -34,7 +39,12 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
   const t = useT();
   const openMaterialEditor = useMaterialEditor();
   useModalEscClose(onClose);
-  const isVideo = m.kind === "video";
+  const mediaKind = m.mediaKind ?? m.kind;
+  const isVideo = mediaKind === "video";
+  const isAudio = mediaKind === "audio";
+  const isImage = mediaKind === "image";
+  const actions = materialActionAvailability(mediaKind);
+  const duration = materialDurationSeconds(m.metadata);
   const guidedSkeletalSplit = m.metadata.intent === "skeletal-parts" || m.metadata.intent === "skeletal-decompose";
   const [pos, setPos] = useState(50);
   const [busy, setBusy] = useState(false);
@@ -151,6 +161,10 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
       notify(t("msg.extract_frames_first_then_import_those_materials"), "info");
       return;
     }
+    if (isAudio) {
+      notify(t("msg.audio_cannot_import_to_project"), "info");
+      return;
+    }
     if (!showImport && projects === null) {
       api.listProjects().then(setProjects).catch((e) => notify(t("msg.load_project_failed_msg", { msg: e.message })));
     }
@@ -185,9 +199,18 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
         {isVideo ? (
           <div className="mat-video-wrap">
             {!showExtract && (
-              <VideoPlayer src={materialFileUrl(m.id, v, "raw")} />
+              <VideoPlayer src={materialFileUrl(m.id, v, "raw")} videoKey={`${m.id}:${v}`} />
             )}
+            <div className="mat-video-actions">
+              {duration != null && (
+                <div className="hint">{t("msg.material_duration", { duration: formatMaterialDuration(duration) })}</div>
+              )}
+              <a className="px-btn" href={materialDownloadUrl(m.id, v, "raw")} download>
+                <Download size={14} /> {t("msg.download_material")}
+              </a>
+            </div>
             <div className="hint">{t("msg.video_no_extract_during_gen_split_to_images_here_then_ma")}</div>
+            <div className="mat-media-hint">{t("msg.materials_image_only_actions")}</div>
             {showFullFps && (
               <>
                 <div className="form-row">
@@ -204,6 +227,17 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
                 <MattingOption checked={extractMatte} onChange={setExtractMatte} />
               </>
             )}
+          </div>
+        ) : isAudio ? (
+          <div className="mat-audio-wrap">
+            <audio controls src={materialFileUrl(m.id, v, "raw")} preload="metadata" />
+            {duration != null && (
+              <div className="hint">{t("msg.material_duration", { duration: formatMaterialDuration(duration) })}</div>
+            )}
+            <a className="px-btn" href={materialDownloadUrl(m.id, v, "raw")} download>
+              <Download size={14} /> {t("msg.download_material")}
+            </a>
+            <div className="mat-media-hint">{t("msg.materials_image_only_actions")}</div>
           </div>
         ) : m.processed_path ? (
           <div
@@ -238,9 +272,9 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
 
         <div className="mat-meta">
           <span>{t("msg.source")} {t(SOURCE_LABEL_KEYS[m.source] ?? m.source)}</span>
-          <span>{isVideo ? t("msg.video") : m.status === "matted" ? t("msg.matted_431ee1") : t("msg.original")}</span>
+          <span>{isVideo ? t("msg.video") : isAudio ? t("msg.audio") : m.status === "matted" ? t("msg.matted_431ee1") : t("msg.original")}</span>
           <span>{new Date(m.created_at).toLocaleString(getLocale())}</span>
-          {!isVideo && (
+          {isImage && (
             <span className={`engine-status ${engineAvailable ? "ok" : "bad"}`}>
               <span className="dot" />
               {engine == null
@@ -286,7 +320,7 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
                 </motion.button>
               )}
             </>
-          ) : (
+          ) : isImage ? (
             <>
               <motion.button type="button" whileTap={{ scale: 0.95 }} className="px-btn accent-cyan" disabled={busy} onClick={doMatting}>
                 <Wand2 size={14} /> {m.status === "matted" ? t("msg.re_matte") : t("msg.run_matting")}
@@ -374,10 +408,22 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
                 <RefreshCw size={14} /> {t("msg.character_eight_view")}
               </motion.button>
             </>
+          ) : null}
+          {actions.importToProject ? (
+            <motion.button type="button" whileTap={{ scale: 0.95 }} className="px-btn accent" disabled={busy} onClick={openImport}>
+              <Send size={14} /> {t("msg.import_to_project")}
+            </motion.button>
+          ) : (
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.95 }}
+              className="px-btn"
+              disabled
+              title={t("msg.materials_image_only_actions")}
+            >
+              <Send size={14} /> {t("msg.import_to_project")}
+            </motion.button>
           )}
-          <motion.button type="button" whileTap={{ scale: 0.95 }} className="px-btn accent" disabled={busy} onClick={openImport}>
-            <Send size={14} /> {t("msg.import_to_project")}
-          </motion.button>
           <div style={{ flex: 1 }} />
           <IconBtn className="danger" title={t("msg.delete_material")} disabled={busy} onClick={() => void doDelete()}>
             <Trash2 size={15} />

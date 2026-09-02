@@ -23,6 +23,13 @@ async function fetchConfig(): Promise<ServerConfig | null> {
         })),
       },
       promptEnhancers: Array.isArray(raw.promptEnhancers) ? raw.promptEnhancers : [],
+      mediaPlugins: {
+        pythonAvailable: Boolean(raw.mediaPlugins?.pythonAvailable),
+        pythonPath: raw.mediaPlugins?.pythonPath ?? null,
+        installedCount: typeof raw.mediaPlugins?.installedCount === "number" ? raw.mediaPlugins.installedCount : 0,
+        installRoot: raw.mediaPlugins?.installRoot ?? "",
+        hint: raw.mediaPlugins?.hint ?? null,
+      },
     };
     cache = cfg;
     listeners.forEach((l) => l(cfg));

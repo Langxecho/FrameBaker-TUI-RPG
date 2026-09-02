@@ -16,6 +16,7 @@ import { register as registerFolderTools } from "./tools/folders";
 import { register as registerJobTools } from "./tools/jobs";
 import { register as registerSystemTools } from "./tools/system";
 import { register as registerTimelineTools } from "./tools/timeline";
+import { register as registerMediaPluginTools } from "./tools/mediaPlugins";
 
 export const mcpHandler = createMcpHandler(() => {
   const server = new McpServer({ name: "framebaker", version: serverPackage.version });
@@ -27,5 +28,6 @@ export const mcpHandler = createMcpHandler(() => {
   registerFolderTools(server);
   registerJobTools(server);
   registerSystemTools(server);
+  registerMediaPluginTools(server);
   return server;
 });

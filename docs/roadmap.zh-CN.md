@@ -27,7 +27,8 @@
 - 素材搜索：项目导入弹窗素材库 Tab 按素材名 / prompt 本地过滤
 - AI 视频生成逐帧切割：生成弹窗「图片 / 视频」切换——CLI 产物按魔数检测自动拆帧（任何模式）、百炼（万相）与 MiniMax 视频 API 异步任务轮询 → mp4 → ffmpeg 按 fps 抽帧入库
 - 帧右键菜单：通用 `ContextMenu` 组件（视口边缘收拢、Esc/外点/滚动关闭）；帧列表/时间轴右键——单帧菜单（关键帧/时长 ±1/剪裁/复制/删除），多选内右键出批量菜单（复用 BatchBar handler）
-- **MCP 服务端**：内置 Model Context Protocol 端点（`POST /mcp`，Streamable HTTP + JSON-RPC 2.0，协议版本 `2024-11-05`），48 个工具覆盖项目/帧/素材/生成/抠图/文件夹/任务/系统配置全功能；工具直接操作 db 与内部模块（零 HTTP 自调用开销）；兼容 Claude Desktop / Cursor / Windsurf 等 AI 客户端
+- **MCP 服务端**：内置 Model Context Protocol 端点（`POST /mcp`，Streamable HTTP + JSON-RPC 2.0，自动兼容 2025-era 和 2026-07-28 协议），51 个工具覆盖项目/帧/素材/生成/抠图/文件夹/任务/系统配置/媒体插件查询与生成（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`）；工具直接操作 db 与内部模块（零 HTTP 自调用开销）；兼容 Claude Desktop / Cursor / Windsurf 等 AI 客户端
+- **独立媒体插件**（`.iap` / `.vap` / `.aap`）：与 `GenProvider` 并行——Zip Slip 安全安装到 `storage/media-plugins`、可信代码 UI 警告、密钥/参数设置、`/generate` 三标签生成中心、统一图/视/音素材、异步队列任务（取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs`）、`.venv-media` 由 `scripts/setup_media.sh` / `setup_media.ps1` 安装（基础依赖仅 `requests`）、可选 `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`，MCP 仅查询/生成（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`；只接受素材 ID）
 
 ## M2 — 候选（按优先级排序）
 

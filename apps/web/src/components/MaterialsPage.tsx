@@ -1,12 +1,20 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Bone, Check, Crop, Download, Eye, Film, Grid3x3, ImageDown, Layers3, Package, Pencil, PersonStanding, RefreshCw, Scan, Send, Sparkles, Trash2, Undo2, Upload, Wand2, X } from "lucide-react";
-import { SOURCE_COLORS } from "@framebaker/shared";
-import { api, materialFileUrl, materialImageUrl, wsClient, type Folder, type Material } from "../api";
+import { MEDIA_KINDS, SOURCE_COLORS } from "@framebaker/shared";
+import { api, materialDownloadUrl, materialFileUrl, materialImageUrl, wsClient, type Folder, type Material } from "../api";
 import { downloadMaterialImage, downloadMaterialImages } from "../export";
 import { cropImage, findOpaqueBounds } from "../imageops/client";
 import { useModalEscClose } from "../hooks/useModalEscClose";
 import { getLocale, useT } from "../i18n";
+import {
+  filterMaterialsByMediaKind,
+  formatMaterialDuration,
+  materialActionAvailability,
+  materialDurationSeconds,
+  materialPosterUrl,
+  type MaterialMediaFilter,
+} from "../mediaMaterialUiState";
 import { askConfirm, notify } from "../notice";
 import { SOURCE_LABEL_KEYS } from "../sourceLabel";
 import { themedSourceColor, useTheme } from "../theme";
@@ -23,6 +31,7 @@ import IconBtn from "./IconBtn";
 import { useMaterialEditor } from "./MaterialEditor";
 
 const isMac = /macintosh|mac os/i.test(navigator.userAgent);
+const MEDIA_FILTERS: MaterialMediaFilter[] = ["all", ...MEDIA_KINDS];
 
 /**
  * 素材卡片 —— memo：仅当自身 props 变化（选中态翻转 / 该素材图版本变化 / 素材对象变化）时才重渲染，
@@ -47,6 +56,9 @@ const MaterialCard = memo(function MaterialCard({
 }) {
   const t = useT();
   const theme = useTheme();
+  const mediaKind = m.mediaKind ?? m.kind;
+  const duration = materialDurationSeconds(m.metadata);
+  const poster = materialPosterUrl(m, imgV);
   return (
     <motion.div
       className={`project-card mat-card ${selected ? "selected" : ""}`}
@@ -58,8 +70,14 @@ const MaterialCard = memo(function MaterialCard({
       onContextMenu={(e) => onContextMenu(e, m.id)}
     >
       <div className="thumb">
-        {m.kind === "video" ? (
-          <video src={materialFileUrl(m.id, imgV, "raw")} muted playsInline preload="metadata" draggable={false} />
+        {mediaKind === "video" ? (
+          poster ? (
+            <img className="mat-poster" src={poster} alt="" draggable={false} loading="lazy" decoding="async" />
+          ) : (
+            <video src={materialFileUrl(m.id, imgV, "raw")} muted playsInline preload="metadata" draggable={false} />
+          )
+        ) : mediaKind === "audio" ? (
+          <div className="mat-thumb-audio" aria-hidden />
         ) : (
           <img src={materialImageUrl(m.id, imgV, "processed", 320)} alt="" draggable={false} loading="lazy" decoding="async" />
         )}
@@ -73,15 +91,21 @@ const MaterialCard = memo(function MaterialCard({
         >
           {selected && <Check size={12} />}
         </span>
-        {m.kind === "video" && <span className="mat-badge-video">{t("msg.video")}</span>}
-        {m.status === "matted" && <span className="mat-badge-matted">{t("msg.matted_431ee1")}</span>}
+        {mediaKind === "video" && <span className="mat-badge-video">{t("msg.video")}</span>}
+        {mediaKind === "audio" && <span className="mat-badge-audio">{t("msg.audio")}</span>}
+        {m.status === "matted" && mediaKind === "image" && <span className="mat-badge-matted">{t("msg.matted_431ee1")}</span>}
         <span className="mat-src" style={{ background: themedSourceColor(SOURCE_COLORS[m.source] ?? "#888", theme) }}>
           {t(SOURCE_LABEL_KEYS[m.source] ?? m.source)}
         </span>
       </div>
       <div className="info">
         <div className="name">{m.name}</div>
-        <div className="meta">{new Date(m.created_at).toLocaleString(getLocale())}</div>
+        <div className="meta">
+          {new Date(m.created_at).toLocaleString(getLocale())}
+          {duration != null && (mediaKind === "video" || mediaKind === "audio") && (
+            <span className="mat-card-duration"> · {formatMaterialDuration(duration)}</span>
+          )}
+        </div>
       </div>
     </motion.div>
   );
@@ -92,6 +116,7 @@ export default function MaterialsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [folderSel, setFolderSel] = useState<FolderSelection>("all");
+  const [mediaFilter, setMediaFilter] = useState<MaterialMediaFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [anchorId, setAnchorId] = useState<string | null>(null);
   const [importTab, setImportTab] = useState<"upload" | "cli" | null>(null);
@@ -164,11 +189,14 @@ export default function MaterialsPage() {
 
   const editMaterial = useCallback(
     (material: Material) => {
-      if (material.kind === "video") return;
+      if ((material.mediaKind ?? material.kind) !== "image") return;
       openMaterialEditor({ id: material.id, name: material.name, v: imgV[material.id] ?? v, onSaved: load });
     },
     [imgV, load, openMaterialEditor, v]
   );
+
+  const materialKind = (m: Material) => m.mediaKind ?? m.kind;
+  const isImageMaterial = (m: Material) => materialKind(m) === "image";
 
   const openDetail = (id: string, action?: MaterialDetailAction) => {
     setDetailAction(action);
@@ -212,11 +240,22 @@ export default function MaterialsPage() {
     };
   }, [load, loadFolders, loadDebounced]);
 
-  const visible = useMemo(() => {
+  const folderVisible = useMemo(() => {
     if (folderSel === "all") return materials;
     if (folderSel === "ungrouped") return materials.filter((m) => !m.folder_id);
     return materials.filter((m) => m.folder_id === folderSel);
   }, [materials, folderSel]);
+
+  const visible = useMemo(
+    () => filterMaterialsByMediaKind(folderVisible, mediaFilter),
+    [folderVisible, mediaFilter],
+  );
+
+  const mediaCounts = useMemo(() => {
+    const counts = { all: folderVisible.length, image: 0, video: 0, audio: 0 };
+    for (const m of folderVisible) counts[materialKind(m)] += 1;
+    return counts;
+  }, [folderVisible]);
 
   // 持有「会变但回调只读」的值，避免回调依赖它们而频繁重建（保证 MaterialCard memo 生效）
   const selRef = useRef(selectedIds);
@@ -307,11 +346,18 @@ export default function MaterialsPage() {
     await deleteMaterials(ids);
   };
 
-  // 批量抠图：只对未抠图入队（已抠图跳过；详情页仍可重新抠）
+  // 批量抠图：只对未抠图图片入队（已抠图跳过；详情页仍可重新抠）
   const requestBatchMatting = async (ids: string[]) => {
-    const rawIds = materials.filter((m) => ids.includes(m.id) && m.status !== "matted").map((m) => m.id);
+    const selected = materials.filter((m) => ids.includes(m.id));
+    const nonImage = selected.filter((m) => !isImageMaterial(m)).length;
+    const rawIds = selected.filter((m) => isImageMaterial(m) && m.status !== "matted").map((m) => m.id);
     if (rawIds.length === 0) {
-      notify(t("msg.all_selected_are_already_matted_open_detail_to_rematte"), "info");
+      notify(
+        nonImage > 0
+          ? t("msg.materials_image_only_actions")
+          : t("msg.all_selected_are_already_matted_open_detail_to_rematte"),
+        "info",
+      );
       return;
     }
     if (!(await askConfirm(t("msg.queue_matting_for_n_unmatted_materials", { n: rawIds.length })))) return;
@@ -323,6 +369,7 @@ export default function MaterialsPage() {
           ? t("msg.queued_count_matting_jobs_skipped_skipped_already_matted", { count: r.count, skipped: r.skipped })
           : t("msg.queued_count_matting_jobs", { count: r.count });
       toast(msg);
+      if (nonImage > 0) notify(t("msg.materials_non_image_batch_skipped", { n: nonImage }), "info");
     } catch (e) {
       notify(t("msg.matting_failed_msg", { msg: (e as Error).message }));
     } finally {
@@ -331,15 +378,27 @@ export default function MaterialsPage() {
   };
 
   const openImportPicker = async (scope: "batch" | string) => {
-    const n = scope === "batch" ? selectedIds.size : 1;
-    if (n === 0) return;
-    if (!(await askConfirm(t("msg.import_n_materials_into_a_project", { n })))) return;
-    setPickerScope(scope);
+    const ids = scope === "batch" ? [...selectedIds] : [scope];
+    const imageIds = materials.filter((m) => ids.includes(m.id) && isImageMaterial(m)).map((m) => m.id);
+    const skipped = ids.length - imageIds.length;
+    if (imageIds.length === 0) {
+      notify(t("msg.materials_image_only_actions"), "info");
+      return;
+    }
+    if (!(await askConfirm(t("msg.import_n_materials_into_a_project", { n: imageIds.length })))) return;
+    if (skipped > 0) notify(t("msg.materials_non_image_batch_skipped", { n: skipped }), "info");
+    setPickerScope(scope === "batch" ? "batch" : imageIds[0]!);
     setShowPicker(true);
   };
 
   const doImportPick = async (projectId: string) => {
-    const ids = pickerScope === "batch" ? [...selectedIds] : [pickerScope];
+    const rawIds = pickerScope === "batch" ? [...selectedIds] : [pickerScope];
+    const ids = materials.filter((m) => rawIds.includes(m.id) && isImageMaterial(m)).map((m) => m.id);
+    if (ids.length === 0) {
+      notify(t("msg.materials_image_only_actions"), "info");
+      setShowPicker(false);
+      return;
+    }
     setBusy(true);
     try {
       const r = await api.batchImportMaterials(ids, projectId);
@@ -399,11 +458,16 @@ export default function MaterialsPage() {
   const requestBatchExport = async (slot: "raw" | "processed") => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
+    const imageMats = materials.filter((m) => ids.includes(m.id) && isImageMaterial(m));
+    const skipped = ids.length - imageMats.length;
+    if (imageMats.length === 0) {
+      notify(t("msg.materials_image_only_actions"), "info");
+      return;
+    }
     const label = slot === "processed" ? t("msg.matting") : t("msg.original");
-    if (!(await askConfirm(t("msg.export_slot_for_n_selected_materials", { n: ids.length, slot: label })))) return;
-    const items = materials
-      .filter((m) => ids.includes(m.id))
-      .map((m) => ({ id: m.id, name: m.name, processed: !!m.processed_path }));
+    if (!(await askConfirm(t("msg.export_slot_for_n_selected_materials", { n: imageMats.length, slot: label })))) return;
+    if (skipped > 0) notify(t("msg.materials_non_image_batch_skipped", { n: skipped }), "info");
+    const items = imageMats.map((m) => ({ id: m.id, name: m.name, processed: !!m.processed_path }));
     setBusy(true);
     try {
       const r = await downloadMaterialImages(items, slot, v);
@@ -425,16 +489,22 @@ export default function MaterialsPage() {
     }
   };
 
-  /** 批量自动裁透明边：对当前显示槽位（processed 优先）找不透明包围盒后写回 */
+  /** 批量自动裁透明边：仅图片；对当前显示槽位（processed 优先）找不透明包围盒后写回 */
   const requestBatchAutoCrop = async (ids: string[]) => {
-    if (ids.length === 0) return;
-    if (!(await askConfirm(t("msg.auto_trim_transparent_edges_on_n_selected_materials", { n: ids.length })))) return;
+    const imageIds = materials.filter((m) => ids.includes(m.id) && isImageMaterial(m)).map((m) => m.id);
+    const skippedNonImage = ids.length - imageIds.length;
+    if (imageIds.length === 0) {
+      notify(t("msg.materials_image_only_actions"), "info");
+      return;
+    }
+    if (!(await askConfirm(t("msg.auto_trim_transparent_edges_on_n_selected_materials", { n: imageIds.length })))) return;
+    if (skippedNonImage > 0) notify(t("msg.materials_non_image_batch_skipped", { n: skippedNonImage }), "info");
     setBusy(true);
     let ok = 0;
     let skipped = 0;
     let failed = 0;
     try {
-      for (const id of ids) {
+      for (const id of imageIds) {
         const mat = materials.find((x) => x.id === id);
         if (!mat) {
           skipped++;
@@ -467,7 +537,7 @@ export default function MaterialsPage() {
       }
       setImgV((prev) => {
         const next = { ...prev };
-        for (const id of ids) next[id] = (next[id] ?? 0) + 1;
+        for (const id of imageIds) next[id] = (next[id] ?? 0) + 1;
         return next;
       });
       await load();
@@ -481,10 +551,11 @@ export default function MaterialsPage() {
 
   const detail = detailId ? (materials.find((m) => m.id === detailId) ?? null) : null;
   const extractMat = extractId ? (materials.find((m) => m.id === extractId) ?? null) : null;
-  const layerMat = layerId ? (materials.find((m) => m.id === layerId) ?? null) : null;
+  const layerMat = layerId ? (materials.find((m) => m.id === layerId && isImageMaterial(m)) ?? null) : null;
   const selectedLayerMat = selectedIds.size === 1
-    ? (materials.find((m) => selectedIds.has(m.id) && m.kind !== "video") ?? null)
+    ? (materials.find((m) => selectedIds.has(m.id) && isImageMaterial(m)) ?? null)
     : null;
+  const selectedImageCount = materials.filter((m) => selectedIds.has(m.id) && isImageMaterial(m)).length;
 
   const openCharacterDecompose = (materialId: string) => {
     setDetailId(null);
@@ -498,31 +569,35 @@ export default function MaterialsPage() {
     ? []
     : ctxBatch
       ? [
-          {
-            label: t("msg.import_to_project_n", { n: selectedIds.size }),
-            icon: <Send size={13} />,
-            onClick: () => void openImportPicker("batch"),
-          },
-          {
-            label: t("msg.batch_matte_n", { n: selectedIds.size }),
-            icon: <Wand2 size={13} />,
-            onClick: () => void requestBatchMatting([...selectedIds]),
-          },
-          {
-            label: t("msg.auto_trim_n", { n: selectedIds.size }),
-            icon: <Scan size={13} />,
-            onClick: () => void requestBatchAutoCrop([...selectedIds]),
-          },
-          {
-            label: t("msg.export_original_n", { n: selectedIds.size }),
-            icon: <Download size={13} />,
-            onClick: () => void requestBatchExport("raw"),
-          },
-            {
-              label: t("msg.export_matted_n", { n: selectedIds.size }),
-              icon: <ImageDown size={13} />,
-              onClick: () => void requestBatchExport("processed"),
-            },
+          ...(selectedImageCount > 0
+            ? ([
+                {
+                  label: t("msg.import_to_project_n", { n: selectedImageCount }),
+                  icon: <Send size={13} />,
+                  onClick: () => void openImportPicker("batch"),
+                },
+                {
+                  label: t("msg.batch_matte_n", { n: selectedImageCount }),
+                  icon: <Wand2 size={13} />,
+                  onClick: () => void requestBatchMatting([...selectedIds]),
+                },
+                {
+                  label: t("msg.auto_trim_n", { n: selectedImageCount }),
+                  icon: <Scan size={13} />,
+                  onClick: () => void requestBatchAutoCrop([...selectedIds]),
+                },
+                {
+                  label: t("msg.export_original_n", { n: selectedImageCount }),
+                  icon: <Download size={13} />,
+                  onClick: () => void requestBatchExport("raw"),
+                },
+                {
+                  label: t("msg.export_matted_n", { n: selectedImageCount }),
+                  icon: <ImageDown size={13} />,
+                  onClick: () => void requestBatchExport("processed"),
+                },
+              ] satisfies CtxMenuItem[])
+            : []),
           {
             label: t("msg.delete_n_materials", { n: selectedIds.size }),
             icon: <Trash2 size={13} />,
@@ -531,116 +606,131 @@ export default function MaterialsPage() {
           },
         ]
       : ctxMat
-        ? [
-            {
-              label: t("msg.open_details"),
-              icon: <Eye size={13} />,
-              onClick: () => openDetail(ctxMat.id),
-            },
-            {
-              label: t("msg.rename"),
-              icon: <Pencil size={13} />,
-              onClick: () => openRename(ctxMat),
-            },
-            ...(ctxMat.kind === "video"
-              ? ([
-                  {
-                    label: t("videoExtract.open"),
-                    icon: <Film size={13} />,
-                    onClick: () => setExtractId(ctxMat.id),
+        ? (() => {
+            const kind = materialKind(ctxMat);
+            const actions = materialActionAvailability(kind);
+            const items: CtxMenuItem[] = [
+              {
+                label: t("msg.open_details"),
+                icon: <Eye size={13} />,
+                onClick: () => openDetail(ctxMat.id),
+              },
+              {
+                label: t("msg.rename"),
+                icon: <Pencil size={13} />,
+                onClick: () => openRename(ctxMat),
+              },
+            ];
+            if (actions.extractFrames) {
+              items.push({
+                label: t("videoExtract.open"),
+                icon: <Film size={13} />,
+                onClick: () => setExtractId(ctxMat.id),
+              });
+            }
+            if (kind === "image") {
+              items.push(
+                {
+                  label: t("materialEdit.action"),
+                  icon: <Pencil size={13} />,
+                  onClick: () => editMaterial(ctxMat),
+                },
+                {
+                  label: t("msg.crop"),
+                  icon: <Crop size={13} />,
+                  onClick: () => openDetail(ctxMat.id, "crop"),
+                },
+                {
+                  label: t("msg.grid_split"),
+                  icon: <Grid3x3 size={13} />,
+                  onClick: () => openDetail(ctxMat.id, "frame-split"),
+                },
+                {
+                  label: t("skeletal.split.reviewAndCreate"),
+                  icon: <Bone size={13} />,
+                  onClick: () => openDetail(ctxMat.id, "skeletal-split"),
+                },
+                {
+                  label: t("skeletal.generate.fromReference"),
+                  icon: <PersonStanding size={13} />,
+                  onClick: () => openCharacterDecompose(ctxMat.id),
+                },
+                {
+                  label: t("msg.multi_action_generate"),
+                  icon: <PersonStanding size={13} />,
+                  onClick: () => openDetail(ctxMat.id, "actions"),
+                },
+                {
+                  label: t("msg.character_eight_view"),
+                  icon: <RefreshCw size={13} />,
+                  onClick: () => openDetail(ctxMat.id, "directions"),
+                },
+                {
+                  label: t("msg.import_to_project"),
+                  icon: <Send size={13} />,
+                  onClick: () => void openImportPicker(ctxMat.id),
+                },
+                {
+                  label: ctxMat.status === "matted" ? t("msg.re_matte") : t("msg.matting"),
+                  icon: <Wand2 size={13} />,
+                  onClick: () => void matteOne(ctxMat.id, ctxMat.status === "matted"),
+                },
+              );
+              if (ctxMat.status === "matted") {
+                items.push({
+                  label: t("msg.restore_original"),
+                  icon: <Undo2 size={13} />,
+                  onClick: () => void unmatteOne(ctxMat.id),
+                });
+              }
+              items.push(
+                {
+                  label: t("layers.action"),
+                  icon: <Layers3 size={13} />,
+                  disabled: !cfg?.imageLayers.configured,
+                  onClick: () => setLayerId(ctxMat.id),
+                },
+                {
+                  label: t("msg.auto_trim"),
+                  icon: <Scan size={13} />,
+                  onClick: () => void requestBatchAutoCrop([ctxMat.id]),
+                },
+                {
+                  label: t("msg.export_original"),
+                  icon: <Download size={13} />,
+                  onClick: async () => {
+                    try {
+                      await downloadMaterialImage(ctxMat.id, ctxMat.name, "raw", v);
+                      toast(t("msg.original_exported"));
+                    } catch (e) {
+                      notify(t("msg.export_failed_msg", { msg: (e as Error).message }));
+                    }
                   },
-                ] satisfies CtxMenuItem[])
-              : ([
-                  {
-                    label: t("materialEdit.action"),
-                    icon: <Pencil size={13} />,
-                    onClick: () => editMaterial(ctxMat),
+                },
+                {
+                  label: t("msg.export_matted"),
+                  icon: <ImageDown size={13} />,
+                  disabled: !ctxMat.processed_path,
+                  onClick: async () => {
+                    try {
+                      await downloadMaterialImage(ctxMat.id, ctxMat.name, "processed", v);
+                      toast(t("msg.matted_image_exported"));
+                    } catch (e) {
+                      notify(t("msg.export_failed_msg", { msg: (e as Error).message }));
+                    }
                   },
-                  {
-                    label: t("msg.crop"),
-                    icon: <Crop size={13} />,
-                    onClick: () => openDetail(ctxMat.id, "crop"),
-                  },
-                  {
-                    label: t("msg.grid_split"),
-                    icon: <Grid3x3 size={13} />,
-                    onClick: () => openDetail(ctxMat.id, "frame-split"),
-                  },
-                  {
-                    label: t("skeletal.split.reviewAndCreate"),
-                    icon: <Bone size={13} />,
-                    onClick: () => openDetail(ctxMat.id, "skeletal-split"),
-                  },
-                  {
-                    label: t("skeletal.generate.fromReference"),
-                    icon: <PersonStanding size={13} />,
-                    onClick: () => openCharacterDecompose(ctxMat.id),
-                  },
-                  {
-                    label: t("msg.multi_action_generate"),
-                    icon: <PersonStanding size={13} />,
-                    onClick: () => openDetail(ctxMat.id, "actions"),
-                  },
-                  {
-                    label: t("msg.character_eight_view"),
-                    icon: <RefreshCw size={13} />,
-                    onClick: () => openDetail(ctxMat.id, "directions"),
-                  },
-                  {
-                    label: t("msg.import_to_project"),
-                    icon: <Send size={13} />,
-                    onClick: () => void openImportPicker(ctxMat.id),
-                  },
-                  {
-                    label: ctxMat.status === "matted" ? t("msg.re_matte") : t("msg.matting"),
-                    icon: <Wand2 size={13} />,
-                    onClick: () => void matteOne(ctxMat.id, ctxMat.status === "matted"),
-                  },
-                  ...(ctxMat.status === "matted"
-                    ? ([{
-                        label: t("msg.restore_original"),
-                        icon: <Undo2 size={13} />,
-                        onClick: () => void unmatteOne(ctxMat.id),
-                      }] satisfies CtxMenuItem[])
-                    : []),
-                  {
-                    label: t("layers.action"),
-                    icon: <Layers3 size={13} />,
-                    disabled: !cfg?.imageLayers.configured,
-                    onClick: () => setLayerId(ctxMat.id),
-                  },
-                  {
-                    label: t("msg.auto_trim"),
-                    icon: <Scan size={13} />,
-                    onClick: () => void requestBatchAutoCrop([ctxMat.id]),
-                  },
-                  {
-                    label: t("msg.export_original"),
-                    icon: <Download size={13} />,
-                    onClick: async () => {
-                      try {
-                        await downloadMaterialImage(ctxMat.id, ctxMat.name, "raw", v);
-                        toast(t("msg.original_exported"));
-                      } catch (e) {
-                        notify(t("msg.export_failed_msg", { msg: (e as Error).message }));
-                      }
-                    },
-                  },
-                  {
-                    label: t("msg.export_matted"),
-                    icon: <ImageDown size={13} />,
-                    disabled: !ctxMat.processed_path,
-                    onClick: async () => {
-                      try {
-                        await downloadMaterialImage(ctxMat.id, ctxMat.name, "processed", v);
-                        toast(t("msg.matted_image_exported"));
-                      } catch (e) {
-                        notify(t("msg.export_failed_msg", { msg: (e as Error).message }));
-                      }
-                    },
-                  },
-                ] satisfies CtxMenuItem[])),
-            {
+                },
+              );
+            } else {
+              items.push({
+                label: t("msg.download_material"),
+                icon: <Download size={13} />,
+                onClick: () => {
+                  window.open(materialDownloadUrl(ctxMat.id, v, "raw"), "_blank", "noopener,noreferrer");
+                },
+              });
+            }
+            items.push({
               label: t("msg.delete_material"),
               icon: <Trash2 size={13} />,
               danger: true,
@@ -649,8 +739,9 @@ export default function MaterialsPage() {
                 await deleteMaterials([ctxMat.id]);
                 if (detailId === ctxMat.id) setDetailId(null);
               },
-            },
-          ]
+            });
+            return items;
+          })()
         : [];
 
   return (
@@ -720,6 +811,24 @@ export default function MaterialsPage() {
         </header>
 
         <div className="folder-main">
+          {materials.length > 0 && (
+            <div className="mat-media-filter" role="tablist" aria-label={t("msg.materials_filter_title")}>
+              <strong>{t("msg.materials_filter_title")}</strong>
+              <div className="import-tabs">
+                {MEDIA_FILTERS.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`tab ${mediaFilter === id ? "active" : ""}`}
+                    onClick={() => setMediaFilter(id)}
+                  >
+                    {id === "all" ? t("msg.all") : t(`msg.${id}`)}
+                    <span> {mediaCounts[id]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {materials.length === 0 ? (
             <div className="empty">
               <Package size={32} />
@@ -728,7 +837,7 @@ export default function MaterialsPage() {
           ) : visible.length === 0 ? (
             <div className="empty">
               <Package size={32} />
-              <p>{t("msg.no_materials_in_this_folder")}</p>
+              <p>{mediaFilter === "all" ? t("msg.no_materials_in_this_folder") : t("msg.materials_filter_empty")}</p>
             </div>
           ) : (
             <div className="file-grid" style={{ ["--tile-min" as string]: `${zoom}px` }}>
@@ -773,19 +882,23 @@ export default function MaterialsPage() {
                 <IconBtn className="danger" title={t("msg.batch_delete")} disabled={busy} onClick={() => void requestBatchDelete()}>
                   <Trash2 size={14} />
                 </IconBtn>
-                <IconBtn title={t("msg.import_to_project")} disabled={busy} onClick={() => void openImportPicker("batch")}>
+                <IconBtn
+                  title={selectedImageCount > 0 ? t("msg.import_to_project") : t("msg.materials_image_only_actions")}
+                  disabled={busy || selectedImageCount === 0}
+                  onClick={() => void openImportPicker("batch")}
+                >
                   <Send size={14} />
                 </IconBtn>
                 <IconBtn
-                  title={t("msg.batch_matte_raw_only")}
-                  disabled={busy}
+                  title={selectedImageCount > 0 ? t("msg.batch_matte_raw_only") : t("msg.materials_image_only_actions")}
+                  disabled={busy || selectedImageCount === 0}
                   onClick={() => void requestBatchMatting([...selectedIds])}
                 >
                   <Wand2 size={14} />
                 </IconBtn>
                 <IconBtn
-                  title={t("msg.batch_auto_trim")}
-                  disabled={busy}
+                  title={selectedImageCount > 0 ? t("msg.batch_auto_trim") : t("msg.materials_image_only_actions")}
+                  disabled={busy || selectedImageCount === 0}
                   onClick={() => void requestBatchAutoCrop([...selectedIds])}
                 >
                   <Scan size={14} />
@@ -799,12 +912,16 @@ export default function MaterialsPage() {
                     <Layers3 size={14} />
                   </IconBtn>
                 )}
-                <IconBtn title={t("msg.batch_export_original")} disabled={busy} onClick={() => void requestBatchExport("raw")}>
+                <IconBtn
+                  title={selectedImageCount > 0 ? t("msg.batch_export_original") : t("msg.materials_image_only_actions")}
+                  disabled={busy || selectedImageCount === 0}
+                  onClick={() => void requestBatchExport("raw")}
+                >
                   <Download size={14} />
                 </IconBtn>
                 <IconBtn
-                  title={t("msg.batch_export_matted_matted_only")}
-                  disabled={busy}
+                  title={selectedImageCount > 0 ? t("msg.batch_export_matted_matted_only") : t("msg.materials_image_only_actions")}
+                  disabled={busy || selectedImageCount === 0}
                   onClick={() => void requestBatchExport("processed")}
                 >
                   <ImageDown size={14} />

@@ -5,18 +5,21 @@
 ```
                         ┌──────────────────────────────────────────────┐
                         │                浏览器（React 19）             │
-                        │  TopNav(项目/素材库/设置)                      │
+                        │  TopNav(项目/素材库/生成中心/设置)                 │
                         │  ProjectList   Editor ─ FrameEditor(PixiJS)  │
                         │  Timeline(DnD) PlaybackBar    ImportModal   │
                         │  MaterialsPage MaterialModal(对比滑杆/剪裁)   │
+                        │  MotionsPage（/motions 直达路由）             │
+                        │  MediaGenerationPage（/generate 三标签）      │
                         │  CropModal ─ imageops/（Web Worker 图像处理） │
-│  JobPanel（右侧常驻任务队列，WS 驱动）          │
+                        │  JobPanel（右侧常驻任务队列，WS 驱动）          │
                         │        │ fetch /api        │ WebSocket /ws   │
                         └────────┼───────────────────┼────────────────┘
                                  │                   │
 ┌────────────────────────────────▼───────────────────▼────────────────┐
 │                    Bun.serve（apps/server/src/index.ts）            │
-│  routes: "/" "/project/:id" "/materials" "/settings" → HTML import 打包 │
+│  routes: "/" "/project/:id" "/materials" "/motions" "/generate"    │
+│          "/settings" → HTML import 打包                             │
 │  fetch:  /ws → server.upgrade ──────► ws.ts（clients 集合广播）      │
 │          其余 → Elysia app（app.ts）                                │
 │                                                                     │
@@ -24,33 +27,43 @@
 │   ├─ api/projects.ts   项目 CRUD                                    │
 │   ├─ api/frames.ts     帧查询/PATCH/替换/删除/复制/换序 + 图片流     │
 │   ├─ api/import.ts     上传拆帧 / 生成 → 创建 job（项目帧）          │
-│   ├─ api/materials.ts  素材 CRUD/抠图/批量抠图/剪裁替换/导入项目     │
+│   ├─ api/materials.ts  素材 CRUD/抠图/批量抠图/剪裁替换/导入项目（统一图/视/音）│
+│   ├─ api/mediaPlugins.ts  .iap/.vap/.aap 安装/设置/导出           │
+│   ├─ api/mediaGeneration.ts  媒体插件异步生成入队                 │
 │   ├─ api/settings.ts   settings 表读写（layout/theme/lang/genProviders/  │
 │   │                    matting 白名单）                             │
 │   └─ /api/jobs(/:id)   任务列表（面板初始加载）/ 单任务查询          │
 │                                                                     │
-│  mcp.ts（MCP 服务端：POST /mcp JSON-RPC 2.0 Streamable HTTP）      │
-│         48 个工具直接操作 db/内部模块，供 AI 助手调用               │
+│  mcp/（MCP 服务端：POST /mcp JSON-RPC 2.0 Streamable HTTP）        │
+│       51 个工具直接操作 db/内部模块，供 AI 助手调用                 │
 │                                                                     │
 │  provider.ts（多生成 provider / 抠图配置解析：settings 优先 env 兜底）│
 │  providerAdapter.ts（生成校验/执行 adapter + provider 模型探测）      │
-│  doctor.ts（体检 + API 联通测试：/api/doctor /api/provider/test）    │
+│  mediaPlugins/（独立于 GenProvider：paths/registry/manifest/       │
+│                 installer/secrets/runner/service）                 │
+│  python/media_plugin_runner.py + aigc_bench_plugin_runtime/       │
+│                 （.venv-media 下 JSON 文件 CLI 桥）                 │
+│  doctor.ts（体检 + API 联通：/api/doctor /api/provider/test；含 .venv-media）│
 │  queue.ts（内存队列，并发 2；JobTarget = project | materials）      │
 │   ├─ jobs/extract.ts   extract_frames / generate_frames             │
 │   │                    ├─ CLI 模板（jobs/run.ts）                    │
 │   │                    ├─ OpenAI 兼容 API（jobs/generateApi.ts）     │
 │   │                    ├─ 视频生成（百炼/MiniMax 异步轮询 → mp4）    │
 │   │                    └─ generatedArtifacts.ts（分类与帧/素材入库） │
+│   ├─ jobs/mediaPlugin.ts  media_plugin_image|video|audio          │
 │   └─ jobs/matting.ts   matting（frame | material；引擎探测见下）    │
 │                                                                     │
 │  db.ts（bun:sqlite，WAL）  ──  jobs/frames/projects/materials 四表  │
 └───────────────────────────────┬─────────────────────────────────────┘
                                 │ 读写（绝对路径，基于 import.meta.dir）
-                        ┌───────▼────────┐        ┌────────────┐
-                        │ storage/（根级）│        │ ffmpeg/CLI │
-                        │ framebaker.db  │        │ 外部进程    │
-                        │ projects/...   │        └────────────┘
-                        │ materials/...  │
+                        ┌───────▼────────┐        ┌────────────────┐
+                        │ storage/（根级）│        │ ffmpeg/CLI /   │
+                        │ framebaker.db  │        │ .venv-media    │
+                        │ projects/...   │        │ Python runner  │
+                        │ materials/...  │        └────────────────┘
+                        │ media-plugins/ │
+                        │ media-plugin-  │
+                        │   runs/        │
                         └────────────────┘
 
          packages/shared：前后端共享类型与常量（无构建，exports 直指 src/index.ts）
@@ -62,7 +75,7 @@
 | --- | --- | --- |
 | `@framebaker/server` | `apps/server` | Elysia API + 任务队列 + SQLite；同时经 Bun 全栈模式托管前端 |
 | `@framebaker/web` | `apps/web` | React 19 + PixiJS v8 前端，`index.html` 为打包入口，字体在 `public/fonts` |
-| `@framebaker/shared` | `packages/shared` | `Frame`/`Project`/`Job`/`Material`/`FramePatch`/枚举（FRAME_STATUSES、FRAME_SOURCES、JOB_TYPES、JOB_STATUSES、MATERIAL_STATUSES、GEN_PROVIDER_TYPES、WS_EVENTS）/ SOURCE_COLORS / `GenProviderSettings` / `MattingSettings` / API 响应类型 |
+| `@framebaker/shared` | `packages/shared` | `Frame`/`Project`/`Job`/`Material`/`FramePatch`/枚举（FRAME_STATUSES、FRAME_SOURCES、JOB_TYPES 含 `media_plugin_*`、JOB_STATUSES、MATERIAL_STATUSES、GEN_PROVIDER_TYPES、MEDIA_PLUGIN_KINDS、WS_EVENTS）/ SOURCE_COLORS / `GenProviderSettings` / `MattingSettings` / `MediaPlugin*` 合约 / API 响应类型 |
 
 根 `tsconfig.base.json` 提供共享 compilerOptions（strict、moduleResolution: bundler、noEmit），各 app 的 `tsconfig.json` extends 后补自己的 lib/jsx/types。
 
@@ -78,9 +91,9 @@
 
 ## 关键设计
 
-- **HTML import 全栈**：`apps/server/src/index.ts` 里 `import index from "../../web/index.html"`，`Bun.serve` 的 `routes` 把它挂在 `/` 与 `/project/:id`；编辑器页前端读 `location.pathname` 恢复项目上下文（无路由库）。development 模式（`NODE_ENV !== "production"`）下每次请求重新打包并支持 HMR。
+- **HTML import 全栈**：`apps/server/src/index.ts` 里 `import index from "../../web/index.html"`，`Bun.serve` 的 `routes` 把它挂在 `/`、`/project/:id`、`/materials`、`/motions`、`/generate`、`/settings`；前端读 `location.pathname` 恢复页面/项目上下文（无路由库）。development 模式（`NODE_ENV !== "production"`）下每次请求重新打包并支持 HMR（Windows 使用稳定前端 bundle；bun --watch 仍会重启服务端）。
 - **storage 与 cwd 无关**：`db.ts` 用 `import.meta.dir` 上溯三级得到仓库根，`STORAGE_ROOT = <root>/storage`；DB 中 `raw_path`/`processed_path` 存绝对路径。从根 `bun dev` 或从 `apps/server` 内启动都指向同一位置。
-- **任务队列**：`queue.ts` 内存 FIFO，并发上限 2；job 状态落 SQLite（queued/running/done/error/cancelled + progress/error），负载（staging 路径、prompt 等）只存内存——重启后未完成任务不恢复，启动时统一把遗留的 queued/running 标记为 error（「服务重启，任务中断」）。`POST /api/jobs/:id/cancel` 可取消排队/运行中任务（AbortSignal → `runCmd` 杀进程 / API 轮询中断）。所有状态变化经 `ws.ts` 广播；前端由 `JobPanel`（右侧常驻面板，挂在 App 根部）经 WS `job_*` 事件 + `GET /api/jobs(/:id)` 兜底轮询展示进度，排队/运行中可点取消。调度依赖保持单向：`queue.ts` 调用 `jobs/*` worker；拆帧/生成后的抠图任务通过调度层注入的窄回调入队，worker 不反向依赖队列。
+- **任务队列**：`queue.ts` 内存 FIFO，并发上限 2；job 状态落 SQLite（queued/running/done/error/cancelled + progress/error），负载（staging 路径、prompt 等）只存内存——重启后未完成任务不恢复，启动时统一把遗留的 queued/running 标记为 error（「服务重启，任务中断」）。`POST /api/jobs/:id/cancel` 可取消排队/运行中任务（AbortSignal → `runCmd` 杀进程 / API 轮询中断 / 媒体插件 Python 子进程被杀并清理运行目录）。所有状态变化经 `ws.ts` 广播；前端由 `JobPanel`（右侧常驻面板，挂在 App 根部）经 WS `job_*` 事件 + `GET /api/jobs(/:id)` 兜底轮询展示进度，排队/运行中可点取消。调度依赖保持单向：`queue.ts` 调用 `jobs/*` worker；拆帧/生成后的抠图任务通过调度层注入的窄回调入队，worker 不反向依赖队列。
 - **WS 广播**：`ws.ts` 维护客户端 Set，`broadcast(type, payload)` 发 JSON；事件名在 shared 的 `WS_EVENTS` 统一定义。前端收到 `frame_updated/frames_reordered/frames_changed/job_done` 后重拉帧列表，收到 `material_updated/materials_changed` 后重拉素材列表。
 - **素材来源语义**：图片分层产物使用共享 `layers` 来源并显示「分层」，不再伪装成普通 `api` 来源；启动迁移按 `metadata.provider=imageLayers` 识别并修正历史产物。
 - **拆帧编号**：ffmpeg 先拆到 `staging/extract_<uuid>/frame_%04d.png`，再按 raw 目录现存最大编号续编搬入 `raw/frame_XXXX.png`，多次导入互不覆盖；`duplicate` 生成的 `dup_<uuid>.png` 不匹配该扫描规则，不会被误收。
@@ -100,6 +113,7 @@
 - **帧变换几何**（`apps/web/src/frameGeometry.ts`）：集中中心锚点、offset、rotation、scale 的轴对齐包围盒、fit-to-view 与 rotation 归一化；Pixi `FrameEditor` 与 Canvas `export.ts` 是两个渲染 adapter，共用同一几何语义。
 - **导入工作流**（`apps/web/src/hooks/useImportWorkflow.ts`）：项目导入与素材导入共用文件状态转换、顺序上传、任务轮询、部分失败、计时器清理与完成汇总；两个 modal 仅提供各自的 FormData/API adapter，剪裁阶段继续由 `useCropQueue` 负责。
 - **前端客户端边界**：`apps/web/src/api.ts` 保留为类型化 HTTP API 方法与共享响应类型的兼容门面；素材/帧图片 URL 构造位于 `api/mediaUrls.ts`，带重连的应用级 WebSocket 客户端位于 `api/ws.ts`。新增传输职责应放回所属模块，不再继续膨胀门面文件。
+- **独立媒体插件体系**（`.iap` / `.vap` / `.aap`，与 `GenProvider` 并行——不得合并执行路径）：Bun 负责发现、Zip Slip 安全安装到 `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`、设置（密钥/参数默认值；密钥永不回显）、API、队列任务（`media_plugin_image|video|audio`）、素材归档（`source=media-plugin:<plugin-id>`，`metadata.mediaKind`）、`/generate` 前端与 MCP 查询/生成工具。Python 仅作受控 JSON 文件子进程：`apps/server/src/python/media_plugin_runner.py` + 拷贝的 `aigc_bench_plugin_runtime/` 在 `.venv-media` 中加载可信 `provider.py`（`scripts/setup_media.sh` / `setup_media.ps1`；基础依赖仅 `requests`——首期**不**自动安装插件自带依赖）。通信为 `storage/media-plugin-runs/<run-id>/` 下的 `request.json` / `result.json`（prompt/参数不经 argv 转义）。取消/超时会尽力终止 Python 进程树（`Bun.spawn().kill()`；Windows 在可得 PID 时另发 `taskkill /PID <pid> /T /F`——Bun 无跨平台进程组 API），并由 `cleanupMediaPluginRunDir` 删除运行目录；失败/取消不得残留插件产出或密钥明文。结果处理拒绝 `file:` / 非 http(s) 下载，要求本地 `image_path`/`video_path`/`audio_path` 已位于当前 run `outputDir`（禁止任意绝对路径复制），限制下载与 ZIP 压缩/解压体积，保留小数 `durationSeconds`，Python stderr/traceback 仅服务端日志（任务/MCP 返回稳定安全错误码）。插件包是**可信可执行代码**（UI 必须警告）；提供路径隔离、包校验、超时与密钥脱敏——**不承诺操作系统级沙箱**。缺少 `.venv-media` → `PYTHON_RUNTIME_UNAVAILABLE` / `GET /api/config.mediaPlugins.pythonAvailable=false` 并给出安装提示；生成/测试拒绝执行。可选覆盖：`FRAMEBAKER_MEDIA_PYTHON`、`FRAMEBAKER_MEDIA_PLUGIN_ROOT`。MCP 仅暴露 `list_media_plugins`、`get_media_plugin`、`generate_with_media_plugin`（只接受素材 ID——禁止安装/删除/改密钥/本地路径/任意 Python）。HTTP 细节见 `docs/api.zh-CN.md`「媒体插件 / 媒体生成」。
 - **生成 provider adapter 与产物提交**：`providerAdapter.ts` 每次任务实时解析 provider，封装配置/模型/能力校验、CLI argv、API/CLI 产出分发及 doctor 的模型探测；`jobs/generatedArtifacts.ts` 拥有产物 allocation、媒体分类、帧/素材/视频入库、暂存清理、广播与自动抠图收尾。`jobs/extract.ts` 只协调“产出 → 提交”，API 厂商协议仍位于 `jobs/generateApi.ts`。
 
 ## 数据流
@@ -110,11 +124,13 @@
 AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
   → 服务端返回 protocolVersion/capabilities/serverInfo + Mcp-Session-Id
   → 客户端发 notifications/initialized
-  → tools/list 获取 48 个工具
+  → tools/list 获取 51 个工具
   → tools/call { name, arguments } → 直接 db 操作 → 返回 { content: [{ type:"text", text:JSON }] }
 ```
 
-`mcp.ts` 工具直接调用 `db` / `queue.ts` / `providerAdapter.ts` / `enhance.ts` / `doctor.ts`，逻辑与对应 `/api/*` 处理器一致但不走 HTTP 自调用。### 导入（GIF/MP4/单图）
+`mcp/` 工具直接调用 `db` / `queue.ts` / `providerAdapter.ts` / `enhance.ts` / `doctor.ts` / `mediaPlugins/*`，逻辑与对应 `/api/*` 处理器一致但不走 HTTP 自调用。媒体插件 MCP 仅查询/生成（禁止安装、删除、改密钥/默认参数、本地路径或任意 Python）。
+
+### 导入（GIF/MP4/单图）
 
 ```
 浏览器 FormData → POST /api/import/upload
@@ -204,11 +220,12 @@ storage/
 
 ## 前端页面与组件
 
-- `App.tsx`：`/` 项目列表 ↔ `/project/:id` 编辑器 ↔ `/materials` 素材库 ↔ `/settings` 设置页（history.pushState + popstate）；全局屏蔽浏览器原生右键菜单（输入框/文本域保留用于粘贴，帧项走自定义 ContextMenu）
-- `TopNav`：一级导航（项目 / 素材库 / 设置）+ 主题切换（三态：跟随系统/浅色/深色）+ 界面语言切换（zh/en，`LangToggle`）；编辑器页有自己的顶栏不显示
-- `SettingsPage`：生成 provider 列表管理（CLI / API 多个共存，增删改 + 保存 + API 测试连接）、抠图配置（CLI 模板 / 默认模型 datalist + 缓存状态）、体检（doctor 结果列表）
+- `App.tsx`：`/` 项目列表 ↔ `/project/:id` 编辑器 ↔ `/materials` 素材库 ↔ `/motions` 动作工作台 ↔ `/generate` 生成中心 ↔ `/settings` 设置页（history.pushState + popstate）；全局屏蔽浏览器原生右键菜单（输入框/文本域保留用于粘贴，帧项走自定义 ContextMenu）
+- `TopNav`：一级导航（项目 / 素材库 / 生成中心 / 设置）+ 主题切换（三态：跟随系统/浅色/深色）+ 界面语言切换（zh/en，`LangToggle`）；`/motions` 仍为直达路由（不在 TopNav 标签中）；编辑器页有自己的顶栏不显示
+- `MediaGenerationPage` + `MediaPluginForm` / `MediaReferencePicker` / `MediaResultPreview`：`/generate` 三标签（生图/生视频/生音频）；按 `params_schema` 动态表单；参考仅素材 ID；经 `/api/media-generation` 异步入队，JobPanel + `job_done.materialIds` 绑定结果
+- `SettingsPage`：生成 provider 列表管理（CLI / API 多个共存，增删改 + 保存 + API 测试连接）、**媒体插件设置**（`MediaPluginSettings`：导入 `.iap/.vap/.aap`、可信代码警告、密钥/参数/测试/导出/删除）、抠图配置（CLI 模板 / 默认模型 datalist + 缓存状态）、体检（doctor 结果列表）
 - `ProjectList`：像素卡片网格（motion stagger 入场、hover 上浮）、新建/删除弹窗
-- `MaterialsPage`：素材库页——左目录树（`FolderTree`）+ 右卡片网格（来源彩色徽标按 provider、左下角「已抠图」徽标、复选框 + Cmd/Shift 多选、拖拽入文件夹）、批量条（删除/导入项目/批量抠图仅 raw/取消）
+- `MaterialsPage`：素材库页——左目录树（`FolderTree`）+ 右卡片网格（全部/图片/视频/音频筛选；来源彩色徽标按 provider / `media-plugin:<id>`、视频海报+播放器、音频播放器、图片左下角「已抠图」徽标、复选框 + Cmd/Shift 多选、拖拽入文件夹）、批量条（删除/导入项目[仅图片]/批量抠图仅 raw/取消）
 - `ProjectList`：项目列表同左树右网格布局，新建落入当前文件夹
 - `FolderTree`：全部 / 未分组 + 多级文件夹 CRUD / HTML5 DnD
 - `MaterialModal`：素材详情——原图/抠图对比滑杆（pointer 拖动 clip 比例）、抠图/还原、剪裁（CropModal，作用于当前显示图槽位）、网格切分（GridSplitModal：多宫格精灵图按行×列逐格切成独立素材，网格线预览，复用 imageops cropImage + `/api/materials/upload` 单图入库，原素材保留）、多动作生成（ActionGenModal：以当前素材为引用图，按 shared `ACTION_PRESETS` 动作预设逐动作调 `/api/materials/generate`，可选 `name` 按「素材名_动作」命名，每动作一个生成任务）、导入项目（选项目+复制帧数）、删除（二次确认）

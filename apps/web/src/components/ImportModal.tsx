@@ -324,7 +324,7 @@ export default function ImportModal({ projectId, axisId, trackId, startStepId, t
                           {t(SOURCE_LABEL_KEYS[m.source] ?? m.source)}
                         </span>
                         <span className={`mat-check ${picked ? "on" : ""}`}>{picked && <Check size={12} />}</span>
-                        {m.kind !== "video" && (
+                        {m.kind === "image" && (
                           <IconBtn
                             className="mat-pick-edit"
                             title={t("materialEdit.action")}

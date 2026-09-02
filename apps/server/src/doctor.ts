@@ -11,6 +11,7 @@ import type {
 import { normalizeDashscopeBaseUrl } from "@framebaker/shared";
 import { STORAGE_ROOT } from "./db";
 import { bundledRembg, getMattingInfo } from "./jobs/matting";
+import { getMediaPluginRuntimeInfo } from "./mediaPlugins/diagnostics";
 import { enhancerConfigured, getGenProviders, getImageLayerSettings, getMattingSettings, getPromptEnhancers, imageLayerConfigured, providerConfigured, resolveEnhancerRuntime } from "./provider";
 import { listProviderModels, probeProviderModels } from "./providerAdapter";
 
@@ -223,6 +224,23 @@ export async function runDoctor(): Promise<DoctorResponse> {
         : (r.error ?? "连接失败"),
     });
   }
+
+  // 媒体插件 Python 运行时与已安装数量（不含密钥）
+  const media = getMediaPluginRuntimeInfo();
+  checks.push({
+    id: "media-python",
+    ok: media.pythonAvailable,
+    label: "媒体插件 Python（.venv-media）",
+    detail: media.pythonAvailable
+      ? `可用：${media.pythonPath}`
+      : (media.hint ?? "未配置 .venv-media"),
+  });
+  checks.push({
+    id: "media-plugins",
+    ok: true,
+    label: "已安装媒体插件",
+    detail: `${media.installedCount} 个（${media.installRoot}）`,
+  });
 
   return { checks };
 }

@@ -3,6 +3,7 @@ import { MotionConfig } from "motion/react";
 import ProjectList from "./components/ProjectList";
 import MaterialsPage from "./components/MaterialsPage";
 import SettingsPage from "./components/SettingsPage";
+import MediaGenerationPage from "./components/MediaGenerationPage";
 import SkeletalProjectEditor from "./components/SkeletalProjectEditor";
 import TopNav from "./components/TopNav";
 import AppModals from "./components/AppModals";
@@ -20,11 +21,13 @@ type View =
   | { page: "home" }
   | { page: "editor"; projectId: string }
   | { page: "materials" }
+  | { page: "generate" }
   | { page: "motions" }
   | { page: "settings" };
 
 function viewFromLocation(): View {
   if (/^\/materials/.test(location.pathname)) return { page: "materials" };
+  if (/^\/generate/.test(location.pathname)) return { page: "generate" };
   if (/^\/motions/.test(location.pathname)) return { page: "motions" };
   if (/^\/settings/.test(location.pathname)) return { page: "settings" };
   const m = /^\/project\/([\w-]+)/.exec(location.pathname);
@@ -134,6 +137,8 @@ export default function App() {
         ? "/"
         : v.page === "materials"
           ? "/materials"
+          : v.page === "generate"
+            ? "/generate"
           : v.page === "motions"
             ? "/motions"
           : v.page === "settings"
@@ -149,11 +154,12 @@ export default function App() {
         {view.page !== "editor" && <TopNav current={view.page} onNav={(p) => nav({ page: p })} />}
         {view.page === "home" && <ProjectList onOpen={(id) => nav({ page: "editor", projectId: id })} />}
         {view.page === "materials" && <MaterialsPage />}
+        {view.page === "generate" && <MediaGenerationPage onOpenMaterials={() => nav({ page: "materials" })} />}
         {view.page === "motions" && <MotionsRoute onOpenProjects={() => nav({ page: "home" })} />}
         {view.page === "settings" && <SettingsPage />}
         {view.page === "editor" && <ProjectEditorRoute projectId={view.projectId} onBack={() => nav({ page: "home" })} />}
         {/* 右侧常驻任务队列面板（有任务时才显示） */}
-        <JobPanel syncOnEnter={view.page === "materials"} />
+        <JobPanel syncOnEnter={view.page === "materials" || view.page === "generate"} />
         {/* 全局通知条 + 确认弹窗（notice.ts） */}
         <AppModals />
       </MaterialEditorProvider>

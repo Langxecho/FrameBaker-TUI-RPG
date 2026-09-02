@@ -17,12 +17,15 @@ import { foldersApi } from "./api/folders";
 import { animationAssetsApi } from "./api/animationAssets";
 import { skeletalProjectsApi } from "./api/skeletalProjects";
 import { characterPartSetsApi } from "./api/characterPartSets";
+import { mediaPluginsApi } from "./api/mediaPlugins";
+import { mediaGenerationApi } from "./api/mediaGeneration";
 import { beginProjectUndo, finishProjectUndo, undoProject } from "./undo";
 import { timelineApi } from "./api/timeline";
 import { attackEffectsApi } from "./api/attackEffects";
 import { mcpHandler } from "./mcp";
 import { cancelJob, getQueueConcurrency } from "./queue";
 import { broadcast } from "./ws";
+import { getMediaPluginRuntimeInfo } from "./mediaPlugins/diagnostics";
 
 // imageOps worker 打包结果：生产缓存一次，开发每次重建（跟随源码改动）
 let imageOpsWorkerCode: string | null = null;
@@ -139,6 +142,7 @@ export const app = new Elysia()
         .filter(enhancerConfigured)
         .map((e) => ({ id: e.id, name: e.name, model: e.model })),
       queueConcurrency: getQueueConcurrency(),
+      mediaPlugins: getMediaPluginRuntimeInfo(),
     };
   })
   // 提示词加强：调用设置页配置的加强模型（OpenAI 兼容 chat/completions），原提示词由前端保留
@@ -241,6 +245,8 @@ export const app = new Elysia()
   .use(attackEffectsApi)
   .use(importApi)
   .use(materialsApi)
+  .use(mediaPluginsApi)
+  .use(mediaGenerationApi)
   .use(characterPartSetsApi)
   .use(foldersApi)
   .use(animationAssetsApi)

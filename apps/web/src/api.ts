@@ -49,18 +49,34 @@ import type {
   CharacterPartSetSource,
   CharacterPartSetMember,
   GenerationIntent,
+  MediaKind,
+  MediaPluginKind,
+  MediaPluginSummary,
+  MediaPluginDetail,
+  MediaPluginGenerationRequest,
 } from "@framebaker/shared";
+import { materialDownloadUrl, normalizeMaterial } from "./mediaMaterialUiState";
 
-export type { AttackEffect, AttackEffectCell, Frame, FramePatch, Job, Material, Project, ProjectKind, Folder, FolderKind, SkeletalProjectDocument, WSMessage, AnimationAxis, AnimationTrack, TimelineStep, TimelineResponse, CharacterPartSet, CharacterPartSetMember, CharacterPartSetSource, GenerationIntent } from "@framebaker/shared";
-export { frameImageUrl, materialFileUrl, materialImageUrl, projectThumbnailUrl } from "./api/mediaUrls";
+export type { AttackEffect, AttackEffectCell, Frame, FramePatch, Job, Material, Project, ProjectKind, Folder, FolderKind, SkeletalProjectDocument, WSMessage, AnimationAxis, AnimationTrack, TimelineStep, TimelineResponse, CharacterPartSet, CharacterPartSetMember, CharacterPartSetSource, GenerationIntent, MediaKind, MediaPluginKind, MediaPluginSummary, MediaPluginDetail, MediaPluginGenerationRequest } from "@framebaker/shared";
+export { frameImageUrl, materialFileUrl, materialImageUrl, materialThumbnailUrl, projectThumbnailUrl } from "./api/mediaUrls";
 export { wsClient } from "./api/ws";
+export { materialDownloadUrl, normalizeMaterial } from "./mediaMaterialUiState";
+
+export class HttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
 
 // ---- fetch 封装 ----
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    throw new HttpError(res.status, text || `HTTP ${res.status}`);
   }
   return (await res.json()) as T;
 }
@@ -193,11 +209,18 @@ export const api = {
     req<OkResponse>(`/api/settings/${key}`, { method: "PUT", ...json({ value }) }),
 
   // ---- 素材库 ----
-  listMaterials: () => req<MaterialsResponse>("/api/materials").then((r) => r.materials),
+  listMaterials: () =>
+    req<MaterialsResponse>("/api/materials").then((r) => r.materials.map(normalizeMaterial)),
   renameMaterial: (id: string, name: string) =>
-    req<MaterialResponse>(`/api/materials/${id}`, { method: "PATCH", ...json({ name }) }),
-  uploadMaterial: (fd: FormData) =>
-    req<JobCreatedResponse | MaterialCreatedResponse>("/api/materials/upload", { method: "POST", body: fd }),
+    req<MaterialResponse>(`/api/materials/${id}`, { method: "PATCH", ...json({ name }) }).then((r) => ({
+      ...r,
+      material: normalizeMaterial(r.material),
+    })),
+  uploadMaterial: async (fd: FormData) => {
+    const r = await req<JobCreatedResponse | MaterialCreatedResponse>("/api/materials/upload", { method: "POST", body: fd });
+    if ("material" in r && r.material) return { ...r, material: normalizeMaterial(r.material) };
+    return r;
+  },
   generateMaterial: (body: GenerateBody) =>
     req<JobCreatedResponse>("/api/materials/generate", { method: "POST", ...json(body) }),
   matteMaterial: (id: string) => req<JobCreatedResponse>(`/api/materials/${id}/matting`, { method: "POST" }),
@@ -208,7 +231,11 @@ export const api = {
     id: string,
     body?: { fps?: number; timestamps?: number[]; autoMatting?: boolean; folderId?: string | null }
   ) => req<JobCreatedResponse>(`/api/materials/${id}/extract`, { method: "POST", ...json(body ?? {}) }),
-  unmatteMaterial: (id: string) => req<MaterialResponse>(`/api/materials/${id}/unmatting`, { method: "POST" }),
+  unmatteMaterial: (id: string) =>
+    req<MaterialResponse>(`/api/materials/${id}/unmatting`, { method: "POST" }).then((r) => ({
+      ...r,
+      material: normalizeMaterial(r.material),
+    })),
   batchMatteMaterials: (ids: string[]) =>
     req<OkResponse & { count: number; skipped: number }>("/api/materials/batch-matting", {
       method: "POST",
@@ -218,8 +245,13 @@ export const api = {
     const fd = new FormData();
     fd.append("file", file, "crop.png");
     fd.append("slot", slot);
-    return req<MaterialResponse>(`/api/materials/${id}/replace-image`, { method: "POST", body: fd });
+    return req<MaterialResponse>(`/api/materials/${id}/replace-image`, { method: "POST", body: fd }).then((r) => ({
+      ...r,
+      material: normalizeMaterial(r.material),
+    }));
   },
+  /** 统一媒体下载（含 Content-Disposition）；视频/音频用 raw，图片可选槽位 */
+  materialDownloadUrl: (id: string, v?: number, type: "raw" | "processed" = "raw") => materialDownloadUrl(id, v, type),
   importMaterial: (id: string, projectId: string, count = 1) =>
     req<OkResponse & { count: number }>(`/api/materials/${id}/import`, {
       method: "POST",
@@ -264,4 +296,55 @@ export const api = {
   copyAnimationAsset: (id: string, name?: string, folderId?: string | null) =>
     req<AnimationAssetResponse>(`/api/animation-assets/${id}/copy`, { method: "POST", ...json({ ...(name ? { name } : {}), ...(folderId !== undefined ? { folderId } : {}) }) }).then((r) => r.animationAsset),
   deleteAnimationAsset: (id: string) => req<OkResponse>(`/api/animation-assets/${id}`, { method: "DELETE" }),
+
+  // ---- 媒体插件（独立于 GenProvider） ----
+  listMediaPlugins: (kind?: MediaPluginKind) =>
+    req<{ plugins: MediaPluginSummary[]; installRoot: string }>(
+      `/api/media-plugins${kind ? `?kind=${encodeURIComponent(kind)}` : ""}`,
+    ).then((r) => r.plugins),
+  getMediaPlugin: (kind: MediaPluginKind, pluginId: string) =>
+    req<{ plugin: MediaPluginDetail }>(`/api/media-plugins/${kind}/${encodeURIComponent(pluginId)}`).then((r) => r.plugin),
+  importMediaPlugin: (file: File | Blob, filename: string, confirmReplace = false) => {
+    const fd = new FormData();
+    fd.append("plugin", file, filename);
+    if (confirmReplace) fd.append("confirm_replace", "true");
+    return req<{ plugin: MediaPluginDetail }>("/api/media-plugins/import", { method: "POST", body: fd }).then((r) => r.plugin);
+  },
+  updateMediaPluginSecrets: (kind: MediaPluginKind, pluginId: string, values: Record<string, string>) =>
+    req<{ plugin: MediaPluginDetail }>(`/api/media-plugins/${kind}/${encodeURIComponent(pluginId)}/secrets`, {
+      method: "PATCH",
+      ...json({ values }),
+    }).then((r) => r.plugin),
+  updateMediaPluginParams: (kind: MediaPluginKind, pluginId: string, defaults: Record<string, unknown>) =>
+    req<{ plugin: MediaPluginDetail }>(`/api/media-plugins/${kind}/${encodeURIComponent(pluginId)}/params`, {
+      method: "PATCH",
+      ...json({ defaults }),
+    }).then((r) => r.plugin),
+  deleteMediaPlugin: (kind: MediaPluginKind, pluginId: string) =>
+    req<OkResponse>(`/api/media-plugins/${kind}/${encodeURIComponent(pluginId)}`, { method: "DELETE" }),
+  exportMediaPluginUrl: (kind: MediaPluginKind, pluginId: string) =>
+    `/api/media-plugins/${kind}/${encodeURIComponent(pluginId)}/export`,
+  testMediaPlugin: (
+    kind: MediaPluginKind,
+    pluginId: string,
+    body?: { prompt?: string; params?: Record<string, unknown>; durationSeconds?: number | null },
+  ) =>
+    req<{
+      result: {
+        ok: boolean;
+        kind: MediaPluginKind;
+        pluginId: string;
+        mediaKind: string;
+        latencyMs: number;
+        outputCount: number;
+        archived: false;
+        code?: string;
+        error?: string;
+      };
+    }>(`/api/media-plugins/${kind}/${encodeURIComponent(pluginId)}/test`, {
+      method: "POST",
+      ...json(body ?? {}),
+    }).then((r) => r.result),
+  createMediaGeneration: (body: MediaPluginGenerationRequest) =>
+    req<JobCreatedResponse>("/api/media-generation", { method: "POST", ...json(body) }),
 };

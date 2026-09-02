@@ -14,6 +14,7 @@ This guide is for end users, explaining each feature by page. For API details se
 bun install
 bun dev          # → http://localhost:3000 (PORT overridable)
 ./scripts/setup_matting.sh   # matting engine (first time; Windows: scripts\setup_matting.ps1); ffmpeg needed for GIF/MP4 (macOS: brew install ffmpeg / Windows: winget install ffmpeg)
+./scripts/setup_media.sh     # media-plugin Python (.venv-media; Windows: scripts\setup_media.ps1) before .iap/.vap/.aap
 ```
 
 ## Two Core Concepts
@@ -110,6 +111,7 @@ Card bottom-right status dot: green = matted, gray = raw.
 - **First matting is very slow?** Normal — rembg is downloading the model (~100 MB) to `storage/models`; subsequent runs are near-instant. Cache status visible in settings page.
 - **Matting didn't work?** Check settings page health check: without an engine installed, it degrades to "raw copy" with an install hint (`./scripts/setup_matting.sh`, Windows: `scripts\setup_matting.ps1`).
 - **Generation job failed?** The error message on the job card explains directly (provider not configured / no model selected / API returned error etc.); use "Test Connection" in settings to troubleshoot first.
+- **Media plugin not runnable / PYTHON_RUNTIME_UNAVAILABLE?** Install `.venv-media` with `./scripts/setup_media.sh` (Windows: `scripts\setup_media.ps1`), then confirm Settings → Media Plugins / doctor. Plugin packages are trusted executable code — only import archives you trust.
 - **GIF frame extraction** ignores frame delays and uses uniform 1 tick; job queue is in-memory — unfinished jobs are lost on restart; the app has no authentication and is for local use only.
 
 ## Tips & Conventions

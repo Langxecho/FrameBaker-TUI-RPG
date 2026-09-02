@@ -6,12 +6,16 @@ import { getSettingJson } from "./provider";
 import { matte } from "./jobs/matting";
 import { JobCancelledError } from "./jobs/run";
 import { splitImageLayers, type ImageLayersPayload } from "./jobs/imageLayers";
+import { runMediaPluginJob } from "./jobs/mediaPlugin";
+import { sanitizeMediaPluginDiagnostic } from "./mediaPlugins/diagnostics";
+import type { MediaPluginJobPayload } from "./mediaPlugins/types";
 
 export interface JobPayload {
   extract?: ExtractPayload;
   generate?: GeneratePayload;
   matting?: { target: "frame" | "material"; id: string };
   imageLayers?: ImageLayersPayload;
+  mediaPlugin?: MediaPluginJobPayload;
 }
 
 // 任务负载只存内存（状态落 SQLite），重启后 queued/running 任务不会恢复
@@ -198,6 +202,26 @@ async function runJob(id: string) {
       if (warn) report(warn); // 引擎缺失等警告写进 job.progress
     } else if (job.type === "image_layers" && payload.imageLayers) {
       await splitImageLayers(payload.imageLayers, report, signal);
+    } else if (
+      (job.type === "media_plugin_image" || job.type === "media_plugin_video" || job.type === "media_plugin_audio") &&
+      payload.mediaPlugin
+    ) {
+      const results = await runMediaPluginJob(payload.mediaPlugin, report, signal);
+      if (signal.aborted) throw new JobCancelledError();
+      const materialIds = results.map((r) => r.materialId).filter(Boolean);
+      const doneProgress =
+        materialIds.length > 0
+          ? `完成 materialIds=${JSON.stringify(materialIds)}`
+          : "完成";
+      setJob(id, "done", doneProgress);
+      broadcast("job_done", {
+        id,
+        projectId: job.project_id,
+        type: job.type,
+        materialIds,
+        results,
+      });
+      return;
     } else {
       throw new Error(`未知任务类型: ${job.type}`);
     }
@@ -210,8 +234,28 @@ async function runJob(id: string) {
       setJob(id, "cancelled", "已取消", null);
       broadcast("job_cancelled", { id, projectId: job.project_id, type: job.type });
     } else {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[job ${id}] ${job.type} 失败:`, msg);
+      const raw = err instanceof Error ? err.message : String(err);
+      let msg = raw;
+      if (
+        job.type === "media_plugin_image" ||
+        job.type === "media_plugin_video" ||
+        job.type === "media_plugin_audio"
+      ) {
+        const code =
+          /PLUGIN_RUNTIME_TIMEOUT/.test(raw)
+            ? "PLUGIN_RUNTIME_TIMEOUT"
+            : /PLUGIN_DOWNLOAD_REJECTED/.test(raw)
+              ? "PLUGIN_DOWNLOAD_REJECTED"
+              : /PLUGIN_OUTPUT_INVALID/.test(raw)
+                ? "PLUGIN_OUTPUT_INVALID"
+                : "PLUGIN_RUNTIME_ERROR";
+        const diag = sanitizeMediaPluginDiagnostic(raw, { code });
+        console.error(`[job ${id}] ${job.type} 失败:`, diag.serverLog || raw);
+        // 已是稳定短码文案则保留；含 traceback/密钥痕迹时改用对外安全文案
+        msg = /traceback|sk-[A-Za-z0-9_-]{8,}|Bearer\s+\S+|stderr=/i.test(raw) ? diag.publicMessage : raw;
+      } else {
+        console.error(`[job ${id}] ${job.type} 失败:`, msg);
+      }
       setJob(id, "error", null, msg);
       broadcast("job_error", { id, projectId: job.project_id, type: job.type, error: msg });
     }
