@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type ActionTemplate, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type CharacterLoadout, type EquipmentDefinition, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
-import { ArrowLeft, Bone, Boxes, Camera, Crosshair, Download, Package, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Bone, Boxes, Camera, Copy, Crosshair, Download, Package, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
 import { api, type Folder, type Project, type SkeletalProjectDocument } from "../api";
 import { wsClient } from "../api/ws";
 import { localizeSkeletonName } from "../builtinAnimationLabels";
 import { useModalEscClose } from "../hooks/useModalEscClose";
 import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
+import { stubMotionClip, fillMissingActionClips, semanticEventDisplayLabel } from "../actionUiState";
 import { exportSkeletalProjectPackage } from "../export";
 import { readZip } from "../zip";
 import ActionWorkspace from "./ActionWorkspace";
@@ -221,14 +222,34 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
 
   useEffect(() => {
     let active = true;
-    const ids = [...new Set((document?.animations ?? []).map((item) => item.motionClipId))];
+    const templates = document?.actionTemplates ?? [];
+    const skeletonId = skeleton?.id ?? binding?.skeletonId;
+    const fromAnimations = (document?.animations ?? []).map((item) => item.motionClipId);
+    const fromTemplates = templates.map((template) => {
+      const match = document?.animations.find((item) => item.name === template.id || item.id === template.id);
+      return match?.motionClipId ?? `clip-${template.id}`;
+    });
+    const ids = [...new Set([...fromAnimations, ...fromTemplates].filter(Boolean))];
     if (!ids.length) { setActionClips({}); return () => { active = false; }; }
     void Promise.all(ids.map(async (id) => {
       try {
         const { asset } = await api.getAnimationAsset(id);
         return asset.kind === "motion-clip" ? asset : null;
       } catch {
-        return null;
+        if (!skeletonId) return null;
+        const template = templates.find((item) => item.id === id.replace(/^clip-/, "") || `clip-${item.id}` === id);
+        const stub = stubMotionClip({
+          id,
+          name: template?.id ?? id.replace(/^clip-/, ""),
+          skeletonId,
+          loop: template?.loop,
+        });
+        try {
+          const created = await api.createAnimationAsset(stub, null);
+          return created.asset.kind === "motion-clip" ? created.asset : stub;
+        } catch {
+          return stub;
+        }
       }
     })).then((loaded) => {
       if (!active) return;
@@ -238,7 +259,13 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
       setActionClips(next);
     });
     return () => { active = false; };
-  }, [document?.animations, clip]);
+  }, [document?.animations, document?.actionTemplates, clip, skeleton?.id, binding?.skeletonId]);
+
+  const ingestMotionClip = useCallback((id: string) => {
+    void api.getAnimationAsset(id).then(({ asset }) => {
+      if (asset.kind === "motion-clip") setActionClips((prev) => ({ ...prev, [asset.id]: asset }));
+    }).catch(() => undefined);
+  }, []);
 
   // 动作编辑弹窗（或其他页面）保存动画资产后服务端会广播 animation_assets_changed，
   // 这里按资产 id 精准重拉，保证画板预览、骨骼展示和资产列表同步到最新内容。
@@ -257,8 +284,9 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
           .then(({ asset }) => setClip(asset.kind === "motion-clip" ? asset : undefined))
           .catch(() => setClip(undefined));
       }
+      if (payload?.id) ingestMotionClip(payload.id);
     });
-  }, [binding?.skeletonId, activeAnimation?.motionClipId]);
+  }, [binding?.skeletonId, activeAnimation?.motionClipId, ingestMotionClip]);
 
   useEffect(() => {
     if (!playing || !clip || !activeAnimation) return;
@@ -322,11 +350,19 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
     equipmentOverrides: Record<string, string>;
   }) => {
     if (!document) return;
-    for (const clip of Object.values(payload.clips)) {
+    const filled = fillMissingActionClips({
+      templates: payload.templates,
+      clips: payload.clips,
+      baseActions: payload.baseActions,
+      stanceActions: payload.stanceActions,
+      equipmentOverrides: payload.equipmentOverrides,
+      equipmentCorrections: {},
+    }, skeleton?.id ?? binding?.skeletonId ?? "skeleton");
+    for (const motion of Object.values(filled.clips)) {
       try {
-        await api.putAnimationAsset(clip.id, clip);
+        await api.putAnimationAsset(motion.id, motion);
       } catch {
-        await api.createAnimationAsset(clip, null);
+        await api.createAnimationAsset(motion, null);
       }
     }
     const stanceProfiles = Object.keys(payload.stanceActions).length
@@ -347,9 +383,10 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
       }),
     });
     if (!ok) throw new Error(t("skeletal.actions.saveFailed", { msg: "document save failed" }));
+    setActionClips((prev) => ({ ...prev, ...filled.clips }));
     const nextAssets = await api.listAnimationAssets();
     setAssets(nextAssets);
-  }, [document, save, t]);
+  }, [document, save, t, skeleton?.id, binding?.skeletonId]);
 
   const reloadMaterialLibrary = useCallback(async () => {
     const nextMaterials = await api.listMaterials();
@@ -478,6 +515,15 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
     if (!document) return;
     const animations = document.animations.filter((item) => item.id !== id);
     await save({ ...document, animations, activeAnimationId: document.activeAnimationId === id ? animations[0]?.id ?? null : document.activeAnimationId });
+  };
+
+  const copyMotionClipId = async (clipId: string) => {
+    try {
+      await navigator.clipboard.writeText(clipId);
+      notify(t("skeletal.animations.clipIdCopied"), "info");
+    } catch {
+      notify(clipId, "info");
+    }
   };
 
   if (!document) return <div className="project-route-state">{t("project.loading")}</div>;
@@ -630,7 +676,21 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
             <button type="button" className="px-btn accent" disabled={busy || !clipToAdd} onClick={() => void addAnimation()}><Plus size={14} /> {t("skeletal.animations.add")}</button>
             <button type="button" className="px-btn" disabled={busy} onClick={() => void createProjectAction()}><Plus size={14} /> {t("skeletal.animations.create")}</button>
           </div>
-          <div className="skeletal-action-items">{document.animations.map((item) => <button type="button" key={item.id} className={document.activeAnimationId === item.id ? "active" : ""} onClick={() => void save({ ...document, activeAnimationId: item.id })}><strong>{item.name}</strong><span>{assets.find((asset) => asset.id === item.motionClipId)?.name ?? item.motionClipId}</span></button>)}</div>
+          <div className="skeletal-action-items">{document.animations.map((item) => (
+            <div key={item.id} className={`skeletal-action-item ${document.activeAnimationId === item.id ? "active" : ""}`}>
+              <button type="button" onClick={() => void save({ ...document, activeAnimationId: item.id })}>
+                <strong>{item.name}</strong>
+                <span className="skeletal-clip-id-text">{item.motionClipId}</span>
+              </button>
+              <button
+                type="button"
+                className="px-btn skeletal-copy-clip-id"
+                title={t("skeletal.animations.copyClipId")}
+                aria-label={t("skeletal.animations.copyClipId")}
+                onClick={() => void copyMotionClipId(item.motionClipId)}
+              ><Copy size={14} /> {t("skeletal.animations.copyClipId")}</button>
+            </div>
+          ))}</div>
           {!document.animations.length && <p className="animation-empty">{t("skeletal.animations.empty")}</p>}
         </aside>
         <section className="pixel-panel skeletal-sequence-editor">
@@ -642,6 +702,12 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               <span>{previewTime.toFixed(2)}s / {clip.duration.toFixed(2)}s</span>
               <button type="button" className="px-btn" disabled={busy} onClick={() => void captureThumbnail()}><Camera size={14} /> {t("skeletal.thumbnail.set")}</button>
             </div>
+            <div className="skeletal-clip-id-bar">
+              <span>{t("skeletal.animations.clipId")}</span>
+              <code>{activeAnimation.motionClipId}</code>
+              <button type="button" className="px-btn" onClick={() => void copyMotionClipId(activeAnimation.motionClipId)}><Copy size={14} /> {t("skeletal.animations.copyClipId")}</button>
+              <p>{t("skeletal.animations.clipIdHint")}</p>
+            </div>
             <div className="skeletal-action-settings">
               <label>{t("skeletal.animations.name")}<input className="px-input" value={activeAnimation.name} onChange={(e) => { const next = { ...document, animations: document.animations.map((item) => item.id === activeAnimation.id ? { ...item, name: e.target.value } : item) }; documentRef.current = next; setDocument(next); }} onBlur={(e) => void patchAnimation(activeAnimation.id, { name: e.target.value.trim() || activeAnimation.name })} /></label>
               <label>{t("skeletal.animations.speed")}<input key={`speed-${activeAnimation.id}-${activeAnimation.speed}`} className="px-input" type="number" min="0.1" max="8" step="0.1" defaultValue={activeAnimation.speed} onBlur={(e) => void patchAnimation(activeAnimation.id, { speed: Math.min(8, Math.max(.1, +e.target.value || 1)) })} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} /></label>
@@ -650,7 +716,7 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               <button type="button" className="px-btn danger" onClick={() => void deleteAnimation(activeAnimation.id)}><Trash2 size={14} /> {t("skeletal.animations.remove")}</button>
               <button type="button" className="px-btn accent" onClick={() => setActionEditorClipId(activeAnimation.motionClipId)}>{t("skeletal.animations.editOnCharacter")}</button>
             </div>
-            <div className="skeletal-event-strip"><strong>{t("skeletal.animations.events")}</strong>{clip.events.map((event, index) => <button type="button" key={`${event.time}-${index}`} onClick={() => { setPlaying(false); setElapsed(event.time); }} style={{ left: `${clip.duration ? event.time / clip.duration * 100 : 0}%` }} title={`${event.type} · ${event.name}`}><span>{event.name}</span></button>)}<i style={{ left: `${clip.duration ? previewTime / clip.duration * 100 : 0}%` }} /></div>
+            <div className="skeletal-event-strip"><strong>{t("skeletal.animations.events")}</strong>{clip.events.map((event, index) => <button type="button" key={`${event.time}-${index}`} onClick={() => { setPlaying(false); setElapsed(event.time); }} style={{ left: `${clip.duration ? event.time / clip.duration * 100 : 0}%` }} title={`${event.type} · ${event.name}`}><span>{semanticEventDisplayLabel(event.type)}</span></button>)}<i style={{ left: `${clip.duration ? previewTime / clip.duration * 100 : 0}%` }} /></div>
           </> : <div className="skeletal-empty-state"><Play size={38} /><h2>{t("skeletal.animations.empty")}</h2><p>{t("skeletal.animations.emptyHint")}</p></div>}
         </section>
       </main>}
@@ -671,8 +737,12 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
       {actionEditorClipId && binding && skeleton && <div className="modal-mask skeletal-action-editor-mask">
         <section className="modal pixel-panel skeletal-action-editor-modal" role="dialog" aria-modal="true" aria-label={t("skeletal.animations.editOnCharacter")}>
           <header className="skeletal-binding-editor-titlebar">
-            <div><h2>{t("skeletal.animations.editOnCharacter")}</h2><p>{t("skeletal.animations.editOnCharacterHint")}</p></div>
-            <button type="button" className="px-btn icon" title={t("common.close")} aria-label={t("common.close")} onClick={() => setActionEditorClipId(undefined)}><X size={17} /></button>
+            <div><h2>{t("skeletal.animations.editOnCharacter")}</h2><p>{t("skeletal.animations.editOnCharacterHint")}</p><p className="skeletal-clip-id-text">{t("skeletal.animations.clipId")}: {actionEditorClipId}</p></div>
+            <button type="button" className="px-btn icon" title={t("common.close")} aria-label={t("common.close")} onClick={() => {
+              const id = actionEditorClipId;
+              setActionEditorClipId(undefined);
+              if (id) ingestMotionClip(id);
+            }}><X size={17} /></button>
           </header>
           <AnimationAssetsWorkspace onOpenProjects={() => undefined} initialAssetId={actionEditorClipId} previewBinding={binding} />
         </section>

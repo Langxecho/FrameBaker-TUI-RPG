@@ -6,6 +6,7 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ### Added
 
+- Wrapped the MiniMax H3 T8 ComfyUI `.cfp` image-to-video workflow as a FrameBaker `.vap` (`minimax-h3-t8-i2v`), with I2VA prompt help on `/generate` and a project Cursor skill at `.cursor/skills/h3-prompt-writing`.
 - Added an independent media plugin system for `.iap` / `.vap` / `.aap` packages parallel to `GenProvider`: Zip Slip-safe install under `storage/media-plugins`, trusted-code UI warning, secrets/params settings, `/generate` three-tab center, unified image/video/audio materials, async queue jobs with cancel that kills the Python child and cleans `storage/media-plugin-runs`, `.venv-media` setup scripts (`scripts/setup_media.sh` / `setup_media.ps1`, base dep `requests` only), optional `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`, and MCP query/generate tools only (`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`; material IDs only — no install/delete/secrets/local paths).
 - Equipment try-on and weapon preview now composite assembled loadouts onto the character: attached/replacement gear is visible on socket bones, dual-wield pistols occupy both hands, and two-hand weapons keep a single primary-hand visual. Missing attachment images fall back to a themed placeholder rectangle. New body profiles seed standard head/chest/hand slots and weapon sockets from the current skeleton.
 - Weapon configuration can pick a weapon image from the material library, and save is blocked until a real material is selected so placeholder attachment IDs are not persisted.
@@ -15,11 +16,17 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ### Fixed
 
+- Step 5 now shows a copyable motion clip ID bar, with a copy button on each action in the left list, so it is not confused with the game action name or the weapon stance profile ID.
+- Semantic event markers show the event type (for example `footstep.left`) instead of a leftover default name `fire`, and inserting a non-fire type no longer keeps the name `fire`.
 - Equipment attachments now stay visible on the canvas while editing (no try-on required), can be clicked to show the body-part transform box, and ignore orange bone dots so drag/rotate/scale handles can appear.
 - New weapons now prompt for a material-library image instead of failing on save with a missing attachment material.
 - Saving a weapon now registers an empty stance stub for a missing stanceProfile instead of rejecting the document.
 - Weapon compatibility preview no longer overlays the in-progress draft, so clear preview actually removes weapons from the canvas.
 - Equipment/weapon preview retries the real image after a placeholder 404 instead of keeping the orange fallback box.
+- Action configuration keeps “Edit tracks on character” after save/reload by loading template clips such as `clip-idle`, not only step-5 project animations.
+- Action semantic-event timeline can be dragged, and the character preview samples the current clip pose after track edits.
+- The motion editor shows Duration (seconds) above the timeline instead of hiding it inside collapsed advanced settings.
+- The action-event strip can be dragged to scrub the pose, and closing the motion editor reloads the saved clip into the right-hand preview.
 - Equipment canvas framing stays locked to the skeleton while you drag gear; zoom is a manual slider/wheel, and focus presets no longer auto-switch when selecting a socket.
 - Equipment attachments can tuck under the socket's body part (layer offset -1) instead of always drawing on top of the whole character.
 - The equipment replace/hide step lists character parts to click instead of typing slot IDs; the binding inspector also shows the part slot ID.

@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type {
   ActionTemplate,
   BodyProfile,
@@ -6,6 +6,7 @@ import type {
   CharacterLoadout,
   EquipmentDefinition,
   MotionClip,
+  MotionEvent,
   Skeleton,
 } from "@framebaker/shared";
 import { Plus, Redo2, Save, Trash2, Undo2 } from "lucide-react";
@@ -16,10 +17,13 @@ import {
   compileSelectedAction,
   createActionFromTemplate,
   createActionUiState,
+  editableMotionClipId,
   evaluateCompatibilityMatrix,
   inspectLayerClip,
   isActionDirty,
   reduceActionUi,
+  defaultSemanticEventName,
+  semanticEventDisplayLabel,
   type ActionTemplateKind,
   type ActionUiState,
   type OwnedActionLayer,
@@ -30,6 +34,51 @@ import { CharacterPreview } from "./AnimationAssetsWorkspace";
 import PxSelect from "./PxSelect";
 
 const LAYER_SOURCES = ["base", "stance", "equipment", "correction", "pre-constraint", "post-constraint", "composed"] as const;
+
+function TimelineScrubber({
+  duration,
+  time,
+  events,
+  label,
+  onSeek,
+}: {
+  duration: number;
+  time: number;
+  events: MotionEvent[];
+  label: string;
+  onSeek: (time: number) => void;
+}) {
+  const max = duration > 0 ? duration : 1;
+  const seek = (raw: string) => onSeek(Number(raw) || 0);
+  return (
+    <div className="skeletal-action-scrubber">
+      <div className="skeletal-action-scrubber-label">{label}</div>
+      <div className="skeletal-action-scrubber-bar">
+        <input
+          type="range"
+          min={0}
+          max={max}
+          step={0.001}
+          disabled={duration <= 0}
+          value={Math.min(time, max)}
+          aria-label={label}
+          onInput={(event) => seek(event.currentTarget.value)}
+          onChange={(event) => seek(event.currentTarget.value)}
+        />
+        <div className="skeletal-action-scrubber-marks" aria-hidden>
+          {events.map((event, index) => (
+            <b
+              key={`${event.time}-${index}`}
+              style={{ left: `${duration ? (event.time / duration) * 100 : 0}%` }}
+              title={`${event.type} · ${event.name}`}
+            />
+          ))}
+        </div>
+      </div>
+      <span>{time.toFixed(2)}s / {duration.toFixed(2)}s</span>
+    </div>
+  );
+}
 
 export interface ActionWorkspaceProps {
   templates?: ActionTemplate[];
@@ -90,17 +139,23 @@ export default function ActionWorkspace({
       bodyProfiles,
       equipment,
       loadouts,
+      skeletonId: skeleton.id,
     }),
   );
+  useEffect(() => {
+    dispatch({ type: "hydrateClips", clips });
+  }, [clips]);
   const [newKind, setNewKind] = useState<ActionTemplateKind>("idle");
   const [eventType, setEventType] = useState<string>("weapon.fire");
   const [eventName, setEventName] = useState("fire");
   const [socketId, setSocketId] = useState("");
+  const [eventNameEdited, setEventNameEdited] = useState(false);
 
   const dirty = isActionDirty(state);
   const editable = canEditOwnedLayer(state);
   const compiled = useMemo(() => compileSelectedAction(state), [state]);
   const layerClip = useMemo(() => inspectLayerClip(state), [state]);
+  const editClipId = useMemo(() => editableMotionClipId(state), [state]);
   const selectedTemplate = state.templates.find((item) => item.id === state.selectedActionId) ?? null;
   const body = bodyProfiles.find((item) => item.id === state.selectedBodyProfileId) ?? bodyProfiles[0] ?? null;
   const sockets = body?.sockets ?? [];
@@ -126,7 +181,18 @@ export default function ActionWorkspace({
     });
   }, [state.selectedActionId, state.clips, state.baseActions, state.stanceActions, bodyProfiles, equipment, weapons, cyberlimbs, loadouts]);
 
-  const previewClip = layerClip ?? compiled?.clip;
+  const previewClip = useMemo(() => {
+    const ownedId = editClipId;
+    if (ownedId && state.clips[ownedId] && !ownedId.startsWith("runtime:")) return state.clips[ownedId];
+    if (layerClip && !layerClip.id.startsWith("runtime:")) return layerClip;
+    return layerClip ?? compiled?.clip;
+  }, [compiled?.clip, editClipId, layerClip, state.clips]);
+  const previewDuration = Math.max(previewClip?.duration ?? 0, 0);
+  const hasPreviewKeys = Boolean(previewClip?.tracks.some((track) => track.keyframes.length > 0));
+  const setPreviewTime = useCallback((time: number) => {
+    const next = previewDuration > 0 ? Math.min(Math.max(0, time), previewDuration) : Math.max(0, time);
+    dispatch({ type: "setPreviewTime", time: next });
+  }, [previewDuration]);
 
   const save = async () => {
     if (busy) return;
@@ -252,16 +318,22 @@ export default function ActionWorkspace({
               />
             </label>
             <p>{editable ? t("skeletal.actions.layerEditable") : t("skeletal.actions.layerReadOnly")}</p>
+            {onEditMotionClip && selectedTemplate && (
+              <button
+                type="button"
+                className="px-btn accent"
+                disabled={!editable || busy}
+                onClick={() => onEditMotionClip(editClipId ?? `clip-${selectedTemplate.id}`)}
+              >
+                {t("skeletal.actions.editTracks")}
+              </button>
+            )}
+            <p className="skeletal-action-note">{t("skeletal.actions.durationHint")}</p>
             {compiled && <ul className="skeletal-action-diagnostics">
               {compiled.layers.filter((layer) => layer.source !== "composed").map((layer) => (
                 <li key={layer.source}>{t(`skeletal.actions.layer.${layer.source}`)}: {layer.clipId ?? t("skeletal.actions.none")} {layer.readOnly ? `(${t("skeletal.actions.readOnly")})` : ""}</li>
               ))}
             </ul>}
-            {onEditMotionClip && layerClip && (
-              <button type="button" className="px-btn" disabled={!editable || busy} onClick={() => onEditMotionClip(layerClip.id)}>
-                {t("skeletal.actions.editTracks")}
-              </button>
-            )}
             <button
               type="button"
               className="px-btn danger"
@@ -276,7 +348,7 @@ export default function ActionWorkspace({
         </>}
 
         {selectedTemplate && state.pane === "events" && <>
-          <div className="skeletal-action-settings">
+          <div className="skeletal-action-event-fields">
             <label>{t("skeletal.actions.eventType")}
               <PxSelect
                 value={eventType}
@@ -284,10 +356,13 @@ export default function ActionWorkspace({
                   value,
                   label: `${t(`skeletal.actions.eventGroup.${eventGroup(value)}`)} · ${value}`,
                 }))}
-                onChange={setEventType}
+                onChange={(value) => {
+                  setEventType(value);
+                  if (!eventNameEdited) setEventName(defaultSemanticEventName(value));
+                }}
               />
             </label>
-            <label>{t("skeletal.actions.eventName")}<input className="px-input" value={eventName} onChange={(e) => setEventName(e.target.value)} /></label>
+            <label>{t("skeletal.actions.eventName")}<input className="px-input" value={eventName} onChange={(e) => { setEventNameEdited(true); setEventName(e.target.value); }} /></label>
             <label>{t("skeletal.actions.socket")}
               <PxSelect
                 value={socketId}
@@ -297,7 +372,7 @@ export default function ActionWorkspace({
               />
             </label>
             <label>{t("skeletal.actions.previewTime")}
-              <input className="px-input" type="number" min={0} step={0.01} value={state.previewTime} onChange={(e) => dispatch({ type: "setPreviewTime", time: Number(e.target.value) || 0 })} />
+              <input className="px-input" type="number" min={0} max={previewDuration || undefined} step={0.01} value={state.previewTime} onChange={(e) => setPreviewTime(Number(e.target.value) || 0)} />
             </label>
             <button
               type="button"
@@ -312,23 +387,29 @@ export default function ActionWorkspace({
             >{t("skeletal.actions.addEvent")}</button>
           </div>
           {state.muzzlePlaceholder && <p className="skeletal-action-muzzle">{t("skeletal.actions.muzzlePlaceholder", { socket: state.muzzlePlaceholder.socketId, time: state.muzzlePlaceholder.time.toFixed(2) })}</p>}
-          <div className="skeletal-event-strip">
-            <strong>{t("skeletal.actions.eventTimeline")}</strong>
-            {(layerClip?.events ?? []).map((event, index) => (
-              <button
-                type="button"
-                key={`${event.time}-${index}`}
-                style={{ left: `${(layerClip?.duration ? event.time / layerClip.duration : 0) * 100}%` }}
-                title={`${event.type} · ${event.name}`}
-                onClick={() => dispatch({ type: "setPreviewTime", time: event.time })}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  if (editable) dispatch({ type: "deleteEvent", index });
-                }}
-              ><span>{event.name}</span></button>
-            ))}
-            <i style={{ left: `${(layerClip?.duration ? state.previewTime / layerClip.duration : 0) * 100}%` }} />
-          </div>
+          <TimelineScrubber
+            duration={previewDuration}
+            time={state.previewTime}
+            events={layerClip?.events ?? []}
+            label={t("skeletal.actions.eventTimeline")}
+            onSeek={setPreviewTime}
+          />
+          {(layerClip?.events.length ?? 0) > 0 && (
+            <div className="skeletal-event-chips">
+              {(layerClip?.events ?? []).map((event, index) => (
+                <button
+                  type="button"
+                  key={`${event.time}-${index}`}
+                  title={`${event.type} · ${event.name}`}
+                  onClick={() => setPreviewTime(event.time)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (editable) dispatch({ type: "deleteEvent", index });
+                  }}
+                >{semanticEventDisplayLabel(event.type)} · {event.time.toFixed(2)}s</button>
+              ))}
+            </div>
+          )}
           <ul className="skeletal-action-diagnostics">
             {state.eventIssues.map((issue, index) => <li key={`${issue.path}-${index}`}>{issue.path}: {issue.message}</li>)}
             {!state.eventIssues.length && <li>{t("skeletal.actions.diagnosticsOk")}</li>}
@@ -381,8 +462,18 @@ export default function ActionWorkspace({
       <section className="pixel-panel skeletal-action-preview">
         <header><h2>{t("skeletal.actions.preview")}</h2><p>{t("skeletal.actions.previewHint")}</p></header>
         {binding && previewClip
-          ? <div className="skeletal-live-preview"><CharacterPreview binding={binding} skeleton={skeleton} clip={previewClip} time={state.previewTime} /></div>
+          ? <div className="skeletal-live-preview"><CharacterPreview binding={binding} skeleton={skeleton} clip={previewClip} time={state.previewTime} showSkeleton /></div>
           : <div className="skeletal-empty-state"><p>{t("skeletal.actions.needBinding")}</p></div>}
+        {previewDuration > 0 && (
+          <TimelineScrubber
+            duration={previewDuration}
+            time={state.previewTime}
+            events={previewClip?.events ?? []}
+            label={t("skeletal.actions.previewTime")}
+            onSeek={setPreviewTime}
+          />
+        )}
+        {!hasPreviewKeys && previewClip ? <p className="skeletal-action-note">{t("skeletal.actions.noKeysHint")}</p> : null}
         {compiled?.diagnostics?.length ? (
           <ul className="skeletal-action-diagnostics">{compiled.diagnostics.map((issue, index) => <li key={`${issue.path}-${index}`}>{issue.message}</li>)}</ul>
         ) : null}

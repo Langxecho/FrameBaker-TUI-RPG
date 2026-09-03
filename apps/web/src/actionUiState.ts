@@ -17,6 +17,73 @@ import {
 export { STANDARD_ACTION_EVENTS };
 export type { ActionLayerSource };
 
+export function stubMotionClip(input: {
+  id: string;
+  name: string;
+  skeletonId: string;
+  loop?: boolean;
+}): MotionClip {
+  return {
+    schemaVersion: 1,
+    kind: "motion-clip",
+    id: input.id,
+    name: input.name,
+    skeletonId: input.skeletonId,
+    duration: 1,
+    loop: Boolean(input.loop),
+    tracks: [],
+    events: [],
+    provenance: { source: "manual" },
+  };
+}
+
+export function fillMissingActionClips(snapshot: ActionUiSnapshot, skeletonId: string): ActionUiSnapshot {
+  const clips = { ...snapshot.clips };
+  const maps = [snapshot.baseActions, snapshot.stanceActions, snapshot.equipmentOverrides, snapshot.equipmentCorrections];
+  for (const map of maps) {
+    for (const [actionId, clipId] of Object.entries(map)) {
+      if (!clipId || clips[clipId]) continue;
+      const template = snapshot.templates.find((item) => item.id === actionId);
+      clips[clipId] = stubMotionClip({
+        id: clipId,
+        name: actionId,
+        skeletonId,
+        loop: template?.loop,
+      });
+    }
+  }
+  return { ...snapshot, clips };
+}
+
+/** 类型 `movement.footstep.left` → 默认名称 `left`。 */
+export function defaultSemanticEventName(type: string): string {
+  const last = type.trim().split(".").filter(Boolean).pop();
+  return last || "event";
+}
+
+/** 表单曾默认名称 fire；类型已改成脚步时不要把 fire 当作风脚名称。 */
+export function resolveSemanticEventName(type: string, name: string): string {
+  const trimmed = name.trim();
+  const derived = defaultSemanticEventName(type);
+  if (!trimmed) return derived;
+  if (trimmed === "fire" && type !== "weapon.fire") return derived;
+  return trimmed;
+}
+
+/** 时间轴标签用类型后两段，避免只显示错误的短名称。 */
+export function semanticEventDisplayLabel(type: string): string {
+  const parts = type.trim().split(".").filter(Boolean);
+  if (parts.length >= 2) return parts.slice(-2).join(".");
+  return parts[0] || type;
+}
+
+/** 把时间轴条上的指针位置换成秒；宽度无效时返回 0。 */
+export function seekTimeFromStrip(clientX: number, left: number, width: number, duration: number): number {
+  if (!(width > 0) || !(duration > 0)) return 0;
+  const ratio = Math.min(1, Math.max(0, (clientX - left) / width));
+  return ratio * duration;
+}
+
 export const ACTION_TEMPLATE_KINDS = [
   "idle",
   "move",
@@ -107,6 +174,7 @@ export type ActionUiAction =
   | { type: "undo" }
   | { type: "redo" }
   | { type: "markSaved" }
+  | { type: "hydrateClips"; clips: Record<string, MotionClip> }
   | { type: "replaceAll"; snapshot: ActionUiSnapshot };
 
 const KEY_POSES = ["start", "anticipation", "action", "recovery"] as const;
@@ -222,15 +290,16 @@ export function createActionUiState(input: {
   equipment?: EquipmentDefinition[];
   loadouts?: Array<{ name: string; loadout: CharacterLoadout }>;
   ownedLayer?: OwnedActionLayer;
+  skeletonId?: string;
 }): ActionUiState {
-  const snapshot: ActionUiSnapshot = {
+  const snapshot = fillMissingActionClips({
     templates: structuredClone(input.templates ?? []),
     clips: structuredClone(input.clips ?? {}),
     baseActions: { ...(input.baseActions ?? {}) },
     stanceActions: { ...(input.stanceActions ?? {}) },
     equipmentOverrides: { ...(input.equipmentOverrides ?? {}) },
     equipmentCorrections: { ...(input.equipmentCorrections ?? {}) },
-  };
+  }, input.skeletonId ?? input.bodyProfiles?.[0]?.skeletonId ?? "skeleton");
   const firstAction = snapshot.templates[0]?.id
     ?? Object.keys(snapshot.baseActions)[0]
     ?? null;
@@ -238,9 +307,9 @@ export function createActionUiState(input: {
     ...snapshot,
     saved: cloneSnapshot(snapshot),
     selectedActionId: firstAction,
-    layerSource: "composed",
-    // 默认不拥有 base：检视 base 层只读，需显式 setOwnedLayer 后才可编辑
-    ownedLayer: input.ownedLayer ?? "equipment",
+    layerSource: input.ownedLayer ?? "base",
+    // 默认编辑基础层，避免重开页面后「插入事件 / 编辑轨道」灰掉或按钮消失
+    ownedLayer: input.ownedLayer ?? "base",
     pane: "tree",
     previewTime: 0,
     selectedBodyProfileId: input.bodyProfiles?.[0]?.id ?? null,
@@ -295,6 +364,18 @@ export function inspectLayerClip(state: ActionUiState): MotionClip | null {
   return compiled.layers.find((layer) => layer.source === state.layerSource)?.clip ?? null;
 }
 
+export function ownedLayerClipId(state: ActionUiState): string | undefined {
+  if (!state.selectedActionId) return undefined;
+  return state[layerMapKey(state.ownedLayer)][state.selectedActionId];
+}
+
+/** 弹窗编辑用的真实资产 ID；合成层的 runtime:* 剪辑不能拿去打开编辑器。 */
+export function editableMotionClipId(state: ActionUiState): string | undefined {
+  const inspected = inspectLayerClip(state);
+  if (inspected && !inspected.id.startsWith("runtime:")) return inspected.id;
+  return ownedLayerClipId(state);
+}
+
 export function validateActionEvents(
   events: readonly MotionEvent[],
   template?: ActionTemplate,
@@ -327,7 +408,8 @@ export function insertSemanticEvent(
   template?: ActionTemplate,
 ): { ok: boolean; clip?: MotionClip; issues: ValidationIssue[] } {
   const type = event.type.trim();
-  if (!type || !event.name.trim()) {
+  const name = resolveSemanticEventName(type, event.name);
+  if (!type || !name) {
     return { ok: false, issues: [{ path: "events", message: "事件类型和名称不能为空" }] };
   }
   const allowed = new Set<string>([...STANDARD_ACTION_EVENTS, ...(template?.allowedEvents ?? [])]);
@@ -340,7 +422,7 @@ export function insertSemanticEvent(
       return { ok: false, issues: [{ path: "events.weapon.fire", message: "weapon.fire 需要 muzzle 插座" }] };
     }
   }
-  const nextEvents = [...clip.events, { ...event, type, name: event.name.trim() }]
+  const nextEvents = [...clip.events, { ...event, type, name }]
     .sort((a, b) => a.time - b.time);
   const validation = validateActionEvents(nextEvents, template);
   // reload order may be incomplete while authoring — still apply clip but surface issues
@@ -477,18 +559,12 @@ export function reduceActionUi(state: ActionUiState, action: ActionUiAction): Ac
     case "createFromTemplate": {
       const seed = createActionFromTemplate(action.kind, action.actionId);
       const clipId = action.clipId ?? `clip-${action.actionId}`;
-      const clip: MotionClip = state.clips[clipId] ?? {
-        schemaVersion: 1,
-        kind: "motion-clip",
+      const clip: MotionClip = state.clips[clipId] ?? stubMotionClip({
         id: clipId,
         name: action.actionId,
         skeletonId: state.bodyProfiles[0]?.skeletonId ?? "skeleton",
-        duration: 1,
         loop: seed.template.loop,
-        tracks: [],
-        events: [],
-        provenance: { source: "manual" },
-      };
+      });
       const next = pushHistory(state, {
         ...asSnapshot(state),
         templates: [...state.templates.filter((item) => item.id !== action.actionId), seed.template],
@@ -623,6 +699,29 @@ export function reduceActionUi(state: ActionUiState, action: ActionUiAction): Ac
     }
     case "markSaved":
       return { ...state, saved: cloneSnapshot(asSnapshot(state)), past: [], future: [] };
+    case "hydrateClips": {
+      const clips = { ...state.clips };
+      const savedClips = { ...state.saved.clips };
+      for (const [id, clip] of Object.entries(action.clips)) {
+        const local = state.clips[id];
+        const savedClip = state.saved.clips[id];
+        const locallyDirty = Boolean(
+          local && savedClip && JSON.stringify(local) !== JSON.stringify(savedClip),
+        );
+        if (locallyDirty && local) {
+          clips[id] = { ...clip, events: local.events };
+          continue;
+        }
+        clips[id] = clip;
+        savedClips[id] = clip;
+      }
+      const next = {
+        ...state,
+        clips,
+        saved: { ...state.saved, clips: savedClips },
+      };
+      return { ...next, eventIssues: recomputeEventIssues(next) };
+    }
     case "replaceAll":
       return {
         ...state,

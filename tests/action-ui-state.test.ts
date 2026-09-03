@@ -6,8 +6,14 @@ import {
   canEditOwnedLayer,
   createActionFromTemplate,
   createActionUiState,
+  editableMotionClipId,
   evaluateCompatibilityMatrix,
+  inspectLayerClip,
   insertSemanticEvent,
+  defaultSemanticEventName,
+  resolveSemanticEventName,
+  semanticEventDisplayLabel,
+  seekTimeFromStrip,
   isActionDirty,
   reduceActionUi,
   validateActionEvents,
@@ -96,6 +102,7 @@ describe("action ui state", () => {
       templates: [createActionFromTemplate("aim", "aim").template],
       clips: { "clip-aim": emptyClip("clip-aim") },
       baseActions: { aim: "clip-aim" },
+      ownedLayer: "equipment",
     });
     state = reduceActionUi(state, { type: "selectAction", actionId: "aim" });
     state = reduceActionUi(state, { type: "setLayerSource", source: "base" });
@@ -201,5 +208,79 @@ describe("action ui state", () => {
     }, custom);
     expect(ok.ok).toBeTrue();
     expect(validateActionEvents(ok.clip!.events, custom).ok).toBeTrue();
+  });
+
+  test("editableMotionClipId 在剪辑尚未载入时仍返回基础层 clip id", () => {
+    const state = createActionUiState({
+      templates: [createActionFromTemplate("idle", "idle").template],
+      clips: {},
+      baseActions: { idle: "clip-idle" },
+    });
+    expect(editableMotionClipId(state)).toBe("clip-idle");
+    expect(inspectLayerClip(state)?.id).toBe("clip-idle");
+  });
+
+  test("createActionUiState 会为缺失的 clip-move 补空剪辑", () => {
+    const state = createActionUiState({
+      templates: [createActionFromTemplate("move", "move").template],
+      clips: {},
+      baseActions: { move: "clip-move" },
+      skeletonId: "hero",
+    });
+    expect(state.clips["clip-move"]?.id).toBe("clip-move");
+    expect(state.clips["clip-move"]?.loop).toBeTrue();
+  });
+
+  test("hydrateClips 会补上缺失剪辑且不覆盖未保存的本地修改", () => {
+    let state = createActionUiState({
+      templates: [createActionFromTemplate("idle", "idle").template],
+      clips: { "clip-idle": emptyClip("clip-idle") },
+      baseActions: { idle: "clip-idle" },
+    });
+    state = reduceActionUi(state, { type: "setOwnedLayer", layer: "base" });
+    state = reduceActionUi(state, {
+      type: "addSemanticEvent",
+      eventType: "effect.trigger",
+      name: "spark",
+    });
+    const dirtyEvents = state.clips["clip-idle"]!.events.length;
+    const incoming = {
+      ...emptyClip("clip-idle"),
+      tracks: [{
+        targetId: "root",
+        property: "rotation" as const,
+        keys: [{ time: 0, value: [0, 0, 0, 1], interpolation: "linear" as const }],
+      }],
+    };
+    state = reduceActionUi(state, {
+      type: "hydrateClips",
+      clips: { "clip-idle": incoming, "clip-move": emptyClip("clip-move", true) },
+    });
+    expect(state.clips["clip-idle"]!.events.length).toBe(dirtyEvents);
+    expect(state.clips["clip-idle"]!.tracks).toEqual(incoming.tracks);
+    expect(state.clips["clip-move"]?.id).toBe("clip-move");
+  });
+
+  test("脚步事件不会沿用默认名称 fire", () => {
+    expect(defaultSemanticEventName("movement.footstep.left")).toBe("left");
+    expect(resolveSemanticEventName("movement.footstep.left", "fire")).toBe("left");
+    expect(resolveSemanticEventName("weapon.fire", "fire")).toBe("fire");
+    expect(semanticEventDisplayLabel("movement.footstep.left")).toBe("footstep.left");
+    const clip = emptyClip("clip-move", true);
+    const inserted = insertSemanticEvent(clip, {
+      time: 0.2,
+      type: "movement.footstep.left",
+      name: "fire",
+    }, createActionFromTemplate("move", "move").template);
+    expect(inserted.clip?.events[0]?.name).toBe("left");
+    expect(inserted.clip?.events[0]?.type).toBe("movement.footstep.left");
+  });
+
+  test("seekTimeFromStrip 把指针位置换成秒并夹紧", () => {
+    expect(seekTimeFromStrip(10, 10, 100, 2)).toBe(0);
+    expect(seekTimeFromStrip(60, 10, 100, 2)).toBe(1);
+    expect(seekTimeFromStrip(110, 10, 100, 2)).toBe(2);
+    expect(seekTimeFromStrip(0, 10, 100, 2)).toBe(0);
+    expect(seekTimeFromStrip(50, 10, 0, 2)).toBe(0);
   });
 });
