@@ -4749,6 +4749,61 @@ body.resizing-row * {
 .animation-preview > .animation-skeleton:not(.binding-preview) { height: 240px; margin: 8px 0; }
 .animation-motion-compose { display: grid; grid-template-columns: minmax(360px, 1.35fr) minmax(310px, .9fr); gap: 10px; align-items: start; margin-top: 10px; }
 .animation-motion-stage { min-width: 0; display: grid; gap: 8px; }
+.animation-ref-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.animation-ref-toolbar > strong { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+.animation-ref-toolbar > label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
+.animation-ref-toolbar > label input[type="range"] { width: 88px; accent-color: var(--accent); }
+.animation-ref-toolbar > p { flex: 1 0 100%; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.animation-ref-label { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 12px; }
+.animation-ref-stage {
+  position: relative;
+  min-width: 0;
+  background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 0 0 / 18px 18px;
+}
+.animation-ref-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+.animation-ref-layer video,
+.animation-ref-layer img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: center center;
+  image-rendering: pixelated;
+}
+.animation-ref-layer video.scrubbable { pointer-events: auto; }
+.animation-ref-stage[data-ref-order="front"] > .animation-ref-layer { z-index: 2; }
+.animation-ref-stage[data-ref-order="front"] > :not(.animation-ref-layer) { z-index: 1; }
+.animation-ref-stage > :not(.animation-ref-layer) { position: relative; z-index: 1; }
+.animation-ref-stage > .binding-preview,
+.animation-ref-stage .animation-rig-stage { background: transparent; }
+.animation-ref-picker { width: min(720px, calc(100vw - 32px)); max-height: min(80dvh, 720px); overflow: auto; }
+.animation-ref-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.animation-ref-picker-grid > button {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  text-align: left;
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.animation-ref-picker-grid > button img { width: 100%; height: 72px; object-fit: cover; image-rendering: pixelated; background: var(--surface); }
+.animation-ref-picker-grid > button span { color: var(--text-muted); font-size: 11px; }
 .animation-rig-stage { min-width: 0; position: relative; display: grid; border: 2px solid var(--border); background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 0 0 / 18px 18px; overflow: hidden; }
 .animation-rig-stage > .motion-clip-skeleton { width: 100%; height: clamp(430px, 52dvh, 620px); min-height: 360px; margin: 0; touch-action: none; }
 .animation-rig-stage > small { padding: 7px 9px; color: var(--text-muted); border-top: 1px solid var(--border); background: var(--surface); line-height: 1.45; }

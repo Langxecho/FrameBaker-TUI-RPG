@@ -10,6 +10,7 @@ import { askConfirm, notify } from "../notice";
 import { useWarpedAttachments } from "../hooks/useWarpedAttachments";
 import FolderTree, { type FolderSelection } from "./FolderTree";
 import { useMaterialEditor } from "./MaterialEditor";
+import MotionReferenceSkin from "./MotionReferenceSkin";
 import PxSelect from "./PxSelect";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -1461,9 +1462,11 @@ export default function AnimationAssetsWorkspace({ onOpenProjects, initialAssetI
       {clip && <>
         <div className="animation-motion-compose">
         <section className="animation-motion-stage">
+        <MotionReferenceSkin clipTime={time} clipDuration={clip.duration}>
         {previewBinding
           ? <CharacterPreview binding={previewBinding} skeleton={skeleton} clip={previewClip} time={time} selectedAttachmentId={selectedAttachmentId || undefined} selectedBoneId={selectedBone} showSkeleton onSelectBone={selectBone} onSelectAttachment={selectAttachment} onTransformAttachmentOffset={builtin || playing ? undefined : editAttachmentOnCanvas} />
           : <SkeletonPreview skeleton={skeleton} clip={previewClip} rangeClip={clip} time={time} selectedBone={selectedBone} disabled={playing} onSelectBone={selectBone} onEditBone={builtin ? undefined : editBoneOnCanvas} />}
+        </MotionReferenceSkin>
         <div className="animation-controls"><button className="px-btn accent" disabled={busy} onClick={() => setPlaying((v) => !v)}>{playing ? <Pause size={14} /> : <Play size={14} />}{playing ? t("animation.pause") : t("animation.play")}</button><input type="range" min="0" max={clip.duration} step="0.001" value={time} onChange={(e) => { setPlaying(false); setTime(+e.target.value); }} /><span>{time.toFixed(2)}s / {clip.duration.toFixed(2)}s</span><label className="px-check" title={builtin ? t("animation.builtin.loopEditHint") : undefined}><input type="checkbox" checked={clip.loop} disabled={busy} onChange={(event) => void toggleLoop(event.target.checked)} />{t("animation.loop")}</label>{clip.loop && <button className="px-btn" disabled={busy || builtin} onClick={() => skeleton && void commitClipEdit(closeMotionLoopSeam(clip, skeleton))}>{t("animation.closeLoopSeam")}</button>}</div>
 
         <ol className="animation-quick-guide" aria-label={t("animation.guide.title")}>
