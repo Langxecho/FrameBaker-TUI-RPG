@@ -673,7 +673,8 @@ input[type="range"] {
 .skeletal-binding-editor-titlebar p { margin-top: 4px; color: var(--text-muted); line-height: 1.45; }
 .skeletal-binding-editor-titlebar > div:last-child { display: flex; gap: 7px; }
 .skeletal-binding-tool-tabs { display: flex; gap: 7px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-.skeletal-binding-editor-modal > .binding-editor { min-height: 0; overflow-y: auto; border-top: 0; padding-top: 0; scrollbar-gutter: stable; }
+.skeletal-binding-editor-modal > .binding-editor { min-height: 0; flex: 1; overflow-y: auto; border-top: 0; padding-top: 0; scrollbar-gutter: stable; }
+.skeletal-binding-editor-modal > .skeleton-editor { min-height: 0; flex: 1; overflow: hidden; }
 .skeletal-binding-editor-modal .binding-calibration-workspace { grid-template-columns: minmax(0, 1fr) minmax(370px, 420px); }
 .skeletal-binding-editor-modal .binding-preview { height: clamp(560px, calc(100dvh - 355px), 820px); min-height: 0; }
 .skeletal-binding-editor-modal .binding-inspector { position: sticky; top: 0; max-height: calc(100dvh - 190px); overflow-y: auto; }
@@ -4877,6 +4878,12 @@ body.resizing-row * {
 .binding-bone-overlay g[role="button"] { cursor: crosshair; outline: none; }
 .binding-bone-node { fill: var(--surface) !important; stroke: var(--accent) !important; stroke-width: 2 !important; vector-effect: non-scaling-stroke; pointer-events: visiblePainted; cursor: crosshair; }
 .binding-bone-overlay[data-static] .binding-bone-node { pointer-events: none !important; cursor: default; }
+.binding-preview.edit-bones image,
+.binding-preview.edit-bones .attachment-fallback,
+.binding-preview.edit-bones .binding-transform-overlay { pointer-events: none !important; }
+.binding-bone-hit { stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: move; }
+.skeleton-editor-toolbar { margin-bottom: 0; }
+.skeleton-editor-drag-hint { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.4; }
 .binding-bone-overlay g.selected .binding-bone-node { fill: var(--accent) !important; stroke: var(--text) !important; stroke-width: 3 !important; }
 .binding-canvas-hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 6px; }
 .binding-canvas-hud span { min-width: 0; padding: 6px; display: flex; align-items: center; gap: 5px; color: var(--text-muted); border: 1px solid var(--border); background: var(--bg); }
@@ -4920,12 +4927,16 @@ body.resizing-row * {
 .binding-create, .binding-editor .animation-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
 .binding-create > label { flex: 1; min-width: 140px; }
 .animation-library-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.skeleton-editor { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr); gap: 10px; margin-top: 10px; align-items: start; }
-.skeleton-editor .animation-rig-stage > .motion-clip-skeleton { height: clamp(430px, 55dvh, 650px); }
-.skeleton-editor > .binding-preview { width: 100%; height: clamp(430px, 55dvh, 650px); border: 2px solid var(--border); background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 0 0 / 18px 18px; }
-.skeleton-editor-inspector { display: grid; gap: 10px; padding: 12px; border: 2px solid var(--accent); background: var(--surface); box-shadow: 3px 3px 0 var(--elevated); }
-.skeleton-bone-tree { display: grid; gap: 1px; max-height: 180px; overflow-y: auto; padding: 4px; border: 1px solid var(--border); background: var(--bg); }
-.skeleton-bone-tree > span { display: grid; min-width: 0; }
+.skeleton-editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); gap: 10px; margin-top: 0; min-height: 0; align-items: stretch; }
+.skeleton-editor-stage { min-width: 0; min-height: 480px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 7px; }
+.skeletal-binding-editor-modal .skeleton-editor-stage { min-height: 0; }
+.skeleton-editor .animation-rig-stage { min-height: 0; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.skeleton-editor .animation-rig-stage > .motion-clip-skeleton { height: 100%; min-height: 0; }
+.skeletal-binding-editor-modal .skeleton-editor-stage > .binding-preview,
+.skeleton-editor-stage > .binding-preview { width: 100%; height: 100%; min-height: 0; border: 2px solid var(--border); background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 0 0 / 18px 18px; }
+.skeleton-editor-inspector { display: grid; align-content: start; gap: 10px; min-height: 0; overflow-y: auto; padding: 12px; border: 2px solid var(--accent); background: var(--surface); box-shadow: 3px 3px 0 var(--elevated); scrollbar-gutter: stable; }
+.skeleton-bone-tree { display: grid; gap: 1px; max-height: min(280px, 32dvh); overflow-y: auto; padding: 4px; border: 1px solid var(--border); background: var(--bg); }
+.skeleton-bone-tree span { display: grid; min-width: 0; }
 .skeleton-bone-tree button { min-width: 0; overflow: hidden; padding: 2px 6px; color: var(--text-muted); background: transparent; border: 0; font: inherit; font-size: 11px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .skeleton-bone-tree button:hover { color: var(--text); }
 .skeleton-bone-tree button.on { color: var(--accent); background: var(--selected); }

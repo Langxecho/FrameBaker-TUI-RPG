@@ -8,6 +8,7 @@ import { localizeBoneName, localizeSkeletonName } from "../builtinAnimationLabel
 import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
 import { useWarpedAttachments } from "../hooks/useWarpedAttachments";
+import { IDENTITY_MAT4, skeletonBoneDragPatch, type SkeletonBoneEditTool } from "../skeletonBoneDrag";
 import FolderTree, { type FolderSelection } from "./FolderTree";
 import { useMaterialEditor } from "./MaterialEditor";
 import MotionReferenceSkin from "./MotionReferenceSkin";
@@ -37,7 +38,7 @@ function pointToSegmentDistance(point: { x: number; y: number }, start: { x: num
   return Math.hypot(point.x - start.x - amount * dx, point.y - start.y - amount * dy);
 }
 
-function SkeletonPreview({ skeleton, clip, rangeClip, time, selectedBone, disabled, onSelectBone, onEditBone }: { skeleton: Skeleton; clip?: MotionClip; rangeClip?: MotionClip; time: number; selectedBone?: string; disabled?: boolean; onSelectBone?: (id: string) => void; onEditBone?: (id: string, patch: { tx?: number; ty?: number; rz?: number }) => void }) {
+function SkeletonPreview({ skeleton, clip, rangeClip, time, selectedBone, disabled, boneEditTool, onSelectBone, onEditBone }: { skeleton: Skeleton; clip?: MotionClip; rangeClip?: MotionClip; time: number; selectedBone?: string; disabled?: boolean; boneEditTool?: SkeletonBoneEditTool; onSelectBone?: (id: string) => void; onEditBone?: (id: string, patch: { tx?: number; ty?: number; rz?: number; sx?: number; sy?: number }) => void }) {
   const t = useT();
   const [camera, setCamera] = useState({ zoom: 1, x: 0, y: 0 });
   useEffect(() => setCamera({ zoom: 1, x: 0, y: 0 }), [skeleton.id, clip?.id]);
@@ -102,7 +103,16 @@ function SkeletonPreview({ skeleton, clip, rangeClip, time, selectedBone, disabl
       y: Math.max(0, Math.min(height - nextHeight, point.y - ratioY * nextHeight)),
     });
   };
-  const dragRef = useRef<{ id: string; root: boolean; origin: [number, number, number]; displayAngle: number; rotation: number; pointer: [number, number]; translation: [number, number, number] } | undefined>(undefined);
+  const dragRef = useRef<{
+    id: string;
+    root: boolean;
+    restTranslation: [number, number, number];
+    restRotationZ: number;
+    restScale: [number, number, number];
+    parentWorld: typeof IDENTITY_MAT4;
+    originWorld: [number, number];
+    startPointer: [number, number];
+  } | undefined>(undefined);
   const beginEdit = (event: React.PointerEvent<SVGSVGElement>) => {
     const point = svgPoint(event.currentTarget, event.clientX, event.clientY);
     const candidates = skeleton.bones.map((bone, index) => {
@@ -119,18 +129,34 @@ function SkeletonPreview({ skeleton, clip, rangeClip, time, selectedBone, disabl
     if (!onEditBone || disabled) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const origin = segmentStarts[index]!, end = ends[index] ?? origin;
-    dragRef.current = { id: boneId, root: bone.parentId === null, origin, displayAngle: Math.atan2(end[1] - origin[1], end[0] - origin[0]), rotation: zRotationFromQuaternion(pose.local[boneId]!.rotation), pointer: [point.x, top - point.y], translation: pose.local[boneId]!.translation };
+    const origin = segmentStarts[index]!;
+    const parentWorld = bone.parentId ? pose.worldMatrices[bone.parentId]! : IDENTITY_MAT4;
+    dragRef.current = {
+      id: boneId,
+      root: bone.parentId === null,
+      restTranslation: [...bone.rest.translation] as [number, number, number],
+      restRotationZ: zRotationFromQuaternion(bone.rest.rotation),
+      restScale: [...bone.rest.scale] as [number, number, number],
+      parentWorld,
+      originWorld: [origin[0], origin[1]],
+      startPointer: [point.x, top - point.y],
+    };
   };
   const moveEdit = (event: React.PointerEvent<SVGSVGElement>) => {
     const drag = dragRef.current;
     if (!drag || !onEditBone) return;
-    const point = svgPoint(event.currentTarget, event.clientX, event.clientY), x = point.x, y = top - point.y;
-    if (drag.root) onEditBone(drag.id, { tx: drag.translation[0] + x - drag.pointer[0], ty: drag.translation[1] + y - drag.pointer[1] });
-    else {
-      const angle = drag.rotation + Math.atan2(y - drag.origin[1], x - drag.origin[0]) - drag.displayAngle;
-      onEditBone(drag.id, { rz: Math.atan2(Math.sin(angle), Math.cos(angle)) * 180 / Math.PI });
-    }
+    const point = svgPoint(event.currentTarget, event.clientX, event.clientY);
+    onEditBone(drag.id, skeletonBoneDragPatch({
+      tool: boneEditTool ?? (drag.root ? "translate" : "rotate"),
+      root: drag.root,
+      restTranslation: drag.restTranslation,
+      restRotationZ: drag.restRotationZ,
+      restScale: drag.restScale,
+      parentWorld: drag.parentWorld,
+      originWorld: drag.originWorld,
+      startPointer: drag.startPointer,
+      pointer: [point.x, top - point.y],
+    }));
   };
   const endEdit = () => { dragRef.current = undefined; };
   const selectedInfo = skeleton.bones.find((bone) => bone.id === selectedBone);
@@ -158,18 +184,22 @@ export function SkeletonEditor({ skeleton, previewBinding, busy, onSave }: { ske
   const t = useT();
   const [draft, setDraft] = useState(() => structuredClone(skeleton));
   const [selectedBone, setSelectedBone] = useState(skeleton.bones[0]?.id ?? "");
+  const [boneTool, setBoneTool] = useState<SkeletonBoneEditTool>("translate");
   const boneName = (bone: Skeleton["bones"][number]) => localizeBoneName(draft.id, bone.id, bone.name, t);
   useEffect(() => { setDraft(structuredClone(skeleton)); setSelectedBone(skeleton.bones[0]?.id ?? ""); }, [skeleton]);
   const selected = draft.bones.find((bone) => bone.id === selectedBone);
   const sampled = useMemo(() => sampleMotionClip({ schemaVersion: 1, kind: "motion-clip", id: "skeleton-edit-rest", name: "Rest", skeletonId: draft.id, duration: 0, loop: false, tracks: [], events: [] }, draft, 0), [draft]);
   const patchBone = (id: string, patch: Partial<Skeleton["bones"][number]>) => setDraft((old) => ({ ...old, bones: old.bones.map((bone) => bone.id === id ? { ...bone, ...patch } : bone) }));
-  const editOnCanvas = (id: string, patch: { tx?: number; ty?: number; rz?: number }) => {
+  const editOnCanvas = (id: string, patch: { tx?: number; ty?: number; rz?: number; sx?: number; sy?: number }) => {
     const bone = draft.bones.find((item) => item.id === id);
     if (!bone) return;
     const translation = [...bone.rest.translation] as [number, number, number];
+    const scale = [...bone.rest.scale] as [number, number, number];
     if (patch.tx !== undefined) translation[0] = patch.tx;
     if (patch.ty !== undefined) translation[1] = patch.ty;
-    patchBone(id, { rest: { ...bone.rest, translation, rotation: patch.rz === undefined ? bone.rest.rotation : quaternionFromZRotation(patch.rz * Math.PI / 180) } });
+    if (patch.sx !== undefined) scale[0] = patch.sx;
+    if (patch.sy !== undefined) scale[1] = patch.sy;
+    patchBone(id, { rest: { ...bone.rest, translation, scale, rotation: patch.rz === undefined ? bone.rest.rotation : quaternionFromZRotation(patch.rz * Math.PI / 180) } });
   };
   const setRestNumber = (property: "tx" | "ty" | "rz" | "length" | "tipAngle", value: number) => {
     if (!selected || !Number.isFinite(value)) return;
@@ -216,13 +246,23 @@ export function SkeletonEditor({ skeleton, previewBinding, busy, onSave }: { ske
   const selectedLength = selected?.tipOffset ? Math.hypot(selected.tipOffset[0], selected.tipOffset[1]) : 0;
   const selectedDirection = selected?.tipOffset ? Math.atan2(selected.tipOffset[1], selected.tipOffset[0]) * 180 / Math.PI : 0;
   return <section className="skeleton-editor">
-    {previewBinding
-      ? <CharacterPreview binding={previewBinding} skeleton={draft} time={0} selectedBoneId={selectedBone} showSkeleton onSelectBone={setSelectedBone} />
-      : <SkeletonPreview skeleton={draft} time={0} selectedBone={selectedBone} disabled={busy} onSelectBone={setSelectedBone} onEditBone={editOnCanvas} />}
+    <article className="skeleton-editor-stage">
+      <div className="binding-canvas-toolbar skeleton-editor-toolbar" role="toolbar" aria-label={t("animation.binding.tools")}>
+        <div className="binding-transform-tools">
+          <button type="button" className={boneTool === "translate" ? "on" : ""} aria-pressed={boneTool === "translate"} title={t("animation.skeletonEditor.toolMoveHint")} onClick={() => setBoneTool("translate")}><Move size={13} />{t("animation.binding.toolMove")}</button>
+          <button type="button" className={boneTool === "rotate" ? "on" : ""} aria-pressed={boneTool === "rotate"} title={t("animation.skeletonEditor.toolRotateHint")} onClick={() => setBoneTool("rotate")}><RotateCw size={13} />{t("animation.binding.toolRotate")}</button>
+          <button type="button" className={boneTool === "scale" ? "on" : ""} aria-pressed={boneTool === "scale"} title={t("animation.skeletonEditor.toolScaleHint")} onClick={() => setBoneTool("scale")}><ZoomIn size={13} />{t("animation.binding.toolScale")}</button>
+        </div>
+      </div>
+      {previewBinding
+        ? <CharacterPreview binding={previewBinding} skeleton={draft} time={0} selectedBoneId={selectedBone} showSkeleton fitTo="skeleton" boneEditTool={boneTool} onSelectBone={setSelectedBone} onEditBone={busy ? undefined : editOnCanvas} />
+        : <SkeletonPreview skeleton={draft} time={0} selectedBone={selectedBone} disabled={busy} boneEditTool={boneTool} onSelectBone={setSelectedBone} onEditBone={editOnCanvas} />}
+      <p className="skeleton-editor-drag-hint">{t("animation.skeletonEditor.canvasHint")}</p>
+    </article>
     <aside className="skeleton-editor-inspector">
       <div className="skeleton-bone-tree">{(function renderTree(parentId: string | null, depth: number): ReactNode {
-        return draft.bones.filter((bone) => bone.parentId === parentId).map((bone) => <span key={bone.id} style={{ paddingLeft: depth * 14 }}>
-          <button type="button" className={bone.id === selectedBone ? "on" : ""} onClick={() => setSelectedBone(bone.id)}>{boneName(bone)}</button>
+        return draft.bones.filter((bone) => bone.parentId === parentId).map((bone) => <span key={bone.id}>
+          <button type="button" className={bone.id === selectedBone ? "on" : ""} style={{ paddingLeft: 6 + depth * 12 }} onClick={() => setSelectedBone(bone.id)}>{boneName(bone)}</button>
           {renderTree(bone.id, depth + 1)}
         </span>);
       })(null, 0)}</div>
@@ -266,6 +306,8 @@ interface CharacterPreviewProps {
   socketMarkers?: CharacterPreviewSocketMarker[];
   onSelectAttachment?: (id: string) => void;
   onSelectBone?: (id: string) => void;
+  onEditBone?: (id: string, patch: { tx?: number; ty?: number; rz?: number; sx?: number; sy?: number }) => void;
+  boneEditTool?: SkeletonBoneEditTool;
   onSelectSocket?: (id: string) => void;
   onTransformAttachment?: (id: string, patch: Partial<CharacterBinding["attachments"][number]>) => void;
   /** 动作编辑模式：拖拽/检查器产生部件偏移关键帧（att: 轨道）而非修改绑定 rest；tx/ty 为 rest 后局部像素、rz 为角度制，sx/sy 为缩放倍率，bend 为 deform 弯曲增量的绝对值，warp 为自描述轨道值 [列数, 行数, dx0, dy0, …]。 */
@@ -332,7 +374,7 @@ function effectiveWarp(attachment: CharacterBinding["attachments"][number], offs
   return resolved && resolved.points.some((value) => Math.abs(value) > 1e-9) ? resolved : undefined;
 }
 
-export function CharacterPreview({ binding, skeleton, clip, time, selectedAttachmentId, selectedBoneId, showSkeleton = false, transformTool = "translate", socketMarkers, onSelectAttachment, onSelectBone, onSelectSocket, onTransformAttachment, onTransformAttachmentOffset, onBeginTransform, onEndTransform, pickAttachments = false, fitTo = "contents" }: CharacterPreviewProps) {
+export function CharacterPreview({ binding, skeleton, clip, time, selectedAttachmentId, selectedBoneId, showSkeleton = false, transformTool = "translate", socketMarkers, onSelectAttachment, onSelectBone, onEditBone, boneEditTool = "translate", onSelectSocket, onTransformAttachment, onTransformAttachmentOffset, onBeginTransform, onEndTransform, pickAttachments = false, fitTo = "contents" }: CharacterPreviewProps) {
   const t = useT();
   const filterPrefix = useId().replaceAll(":", "");
   const boneName = (bone: Skeleton["bones"][number]) => localizeBoneName(skeleton.id, bone.id, bone.name, t);
@@ -356,6 +398,16 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
   }), [binding, materialV, pose]);
   const warpedUrls = useWarpedAttachments(warpRequests);
   const dragRef = useRef<BindingTransformDrag | undefined>(undefined);
+  const boneDragRef = useRef<{
+    id: string;
+    root: boolean;
+    restTranslation: [number, number, number];
+    restRotationZ: number;
+    restScale: [number, number, number];
+    parentWorld: typeof IDENTITY_MAT4;
+    originWorld: [number, number];
+    startPointer: [number, number];
+  } | undefined>(undefined);
   const frozenViewBoxRef = useRef<string | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
   const viewBox = useMemo(() => {
@@ -411,6 +463,30 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
     const matrix = svg.getScreenCTM();
     return matrix ? point.matrixTransform(matrix.inverse()) : point;
   };
+  const beginBoneEdit = (event: React.PointerEvent<SVGGraphicsElement>, boneId: string) => {
+    if (!onEditBone) return;
+    const bone = skeleton.bones.find((item) => item.id === boneId);
+    const svg = event.currentTarget.ownerSVGElement;
+    if (!bone || !svg) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSelectBone?.(boneId);
+    svg.setPointerCapture(event.pointerId);
+    frozenViewBoxRef.current = viewBox;
+    const point = svgPoint(svg, event.clientX, event.clientY);
+    const origin = transformPoint(pose.worldMatrices[boneId]!, [0, 0, 0]);
+    boneDragRef.current = {
+      id: boneId,
+      root: bone.parentId === null,
+      restTranslation: [...bone.rest.translation] as [number, number, number],
+      restRotationZ: zRotationFromQuaternion(bone.rest.rotation),
+      restScale: [...bone.rest.scale] as [number, number, number],
+      parentWorld: bone.parentId ? pose.worldMatrices[bone.parentId]! : IDENTITY_MAT4,
+      originWorld: [origin[0], origin[1]],
+      startPointer: [point.x, -point.y],
+    };
+    setDragging(true);
+  };
   const beginTransform = (event: React.PointerEvent<SVGGraphicsElement>, attachment: CharacterBinding["attachments"][number], bone: Mat4, world: Mat4, tool = transformTool, warpPoint?: number) => {
     if (attachment.id !== selectedAttachmentId) {
       event.preventDefault();
@@ -465,6 +541,22 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
     setDragging(true);
   };
   const moveTransform = (event: React.PointerEvent<SVGSVGElement>) => {
+    const boneDrag = boneDragRef.current;
+    if (boneDrag && onEditBone) {
+      const svgPointValue = svgPoint(event.currentTarget, event.clientX, event.clientY);
+      onEditBone(boneDrag.id, skeletonBoneDragPatch({
+        tool: boneEditTool,
+        root: boneDrag.root,
+        restTranslation: boneDrag.restTranslation,
+        restRotationZ: boneDrag.restRotationZ,
+        restScale: boneDrag.restScale,
+        parentWorld: boneDrag.parentWorld,
+        originWorld: boneDrag.originWorld,
+        startPointer: boneDrag.startPointer,
+        pointer: [svgPointValue.x, -svgPointValue.y],
+      }));
+      return;
+    }
     const drag = dragRef.current;
     if (!drag || (!onTransformAttachment && !onTransformAttachmentOffset)) return;
     const svgPointValue = svgPoint(event.currentTarget, event.clientX, event.clientY), point: [number, number] = [svgPointValue.x, -svgPointValue.y];
@@ -554,6 +646,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
   const endTransform = () => {
     if (dragRef.current) onEndTransform?.();
     dragRef.current = undefined;
+    boneDragRef.current = undefined;
     frozenViewBoxRef.current = undefined;
     setDragging(false);
   };
@@ -596,7 +689,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
     for (let col = 0; col < cols; col++) lines.push(Array.from({ length: rows }, (_, row) => `${nodes[row * cols + col]![0]},${nodes[row * cols + col]![1]}`).join(" "));
     return { nodes, lines };
   })() : undefined;
-  return <svg className={`animation-skeleton binding-preview${canTransform ? " interactive" : ""}${pickAttachments ? " pick-attachments" : ""}`} data-tool={transformTool} data-offset-mode={offsetMode || undefined} viewBox={dragging ? frozenViewBoxRef.current : viewBox} role="img" onPointerMove={moveTransform} onPointerUp={endTransform} onPointerCancel={endTransform}>
+  return <svg className={`animation-skeleton binding-preview${canTransform ? " interactive" : ""}${pickAttachments ? " pick-attachments" : ""}${onEditBone ? " edit-bones" : ""}`} data-tool={transformTool} data-offset-mode={offsetMode || undefined} viewBox={dragging ? frozenViewBoxRef.current : viewBox} role="img" onPointerMove={moveTransform} onPointerUp={endTransform} onPointerCancel={endTransform}>
     <defs>{binding.attachments.filter((attachment) => effectiveDeformBend(attachment, pose.attachmentOffsets[attachment.id]) !== undefined).map((attachment) => {
       const deform = attachment.deform ?? DEFAULT_ATTACHMENT_DEFORM;
       const bend = effectiveDeformBend(attachment, pose.attachmentOffsets[attachment.id])!;
@@ -620,7 +713,7 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
             setMissingMaterials((prev) => prev[key] ? prev : { ...prev, [key]: true });
           }} onPointerDown={canPick ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />}
       </g>;
-    })}{showSkeleton && <g className="binding-bone-overlay" data-static={onSelectBone ? undefined : ""} style={onSelectBone ? undefined : { pointerEvents: "none" }}>
+    })}{showSkeleton && <g className="binding-bone-overlay" data-static={onSelectBone || onEditBone ? undefined : ""} style={onSelectBone || onEditBone ? undefined : { pointerEvents: "none" }}>
       {skeleton.bones.map((bone) => {
         const matrix = pose.worldMatrices[bone.id];
         if (!matrix) return null;
@@ -632,13 +725,16 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
             ? transformPoint(pose.worldMatrices[child.id]!, [0, 0, 0])
             : null;
         if (!end || Math.hypot(end[0] - start[0], end[1] - start[1]) < 1e-8) return null;
-        return <line className={selectedBoneId === bone.id ? "selected" : ""} key={`bone-${bone.id}`} x1={start[0]} y1={start[1]} x2={end[0]} y2={end[1]} />;
+        return <g key={`bone-${bone.id}`}>
+          {onEditBone && <line className="binding-bone-hit" x1={start[0]} y1={start[1]} x2={end[0]} y2={end[1]} onPointerDown={(event) => beginBoneEdit(event, bone.id)} />}
+          <line className={selectedBoneId === bone.id ? "selected" : ""} x1={start[0]} y1={start[1]} x2={end[0]} y2={end[1]} />
+        </g>;
       })}
       {skeleton.bones.map((bone) => {
         const matrix = pose.worldMatrices[bone.id];
         if (!matrix) return null;
         const point = transformPoint(matrix, [0, 0, 0]);
-        return <g className={selectedBoneId === bone.id ? "selected" : ""} key={`node-${bone.id}`} role={onSelectBone ? "button" : undefined} tabIndex={onSelectBone ? 0 : undefined} aria-label={boneName(bone)} onPointerDown={onSelectBone ? (event) => { event.preventDefault(); event.stopPropagation(); onSelectBone(bone.id); } : undefined} onKeyDown={onSelectBone ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectBone(bone.id); } } : undefined}>
+        return <g className={selectedBoneId === bone.id ? "selected" : ""} key={`node-${bone.id}`} role={onSelectBone || onEditBone ? "button" : undefined} tabIndex={onSelectBone || onEditBone ? 0 : undefined} aria-label={boneName(bone)} onPointerDown={onSelectBone || onEditBone ? (event) => { event.preventDefault(); event.stopPropagation(); if (onEditBone) beginBoneEdit(event, bone.id); else onSelectBone?.(bone.id); } : undefined} onKeyDown={onSelectBone || onEditBone ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectBone?.(bone.id); } } : undefined}>
           <circle className="binding-bone-node" cx={point[0]} cy={point[1]} r={selectedBoneId === bone.id ? boneNodeRadius * 1.45 : boneNodeRadius}><title>{boneName(bone)}</title></circle>
         </g>;
       })}
