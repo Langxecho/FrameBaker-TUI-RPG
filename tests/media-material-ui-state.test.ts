@@ -28,17 +28,19 @@ function material(partial: Partial<Material> & Pick<Material, "id">): Material {
 }
 
 describe("media material ui state", () => {
-  test("filters materials by all/image/video/audio", () => {
+  test("filters materials by all/image/video/audio/archive", () => {
     const mats = [
       material({ id: "i1", kind: "image", mediaKind: "image" }),
       material({ id: "v1", kind: "video", mediaKind: "video", raw_path: "v1.mp4" }),
       material({ id: "a1", kind: "audio", mediaKind: "audio", raw_path: "a1.mp3" }),
+      material({ id: "z1", kind: "archive", mediaKind: "archive", raw_path: "z1.zip" }),
     ];
     const cases: Array<[MaterialMediaFilter, string[]]> = [
-      ["all", ["i1", "v1", "a1"]],
+      ["all", ["i1", "v1", "a1", "z1"]],
       ["image", ["i1"]],
       ["video", ["v1"]],
       ["audio", ["a1"]],
+      ["archive", ["z1"]],
     ];
     for (const [filter, ids] of cases) {
       expect(filterMaterialsByMediaKind(mats, filter).map((m) => m.id)).toEqual(ids);
@@ -50,7 +52,7 @@ describe("media material ui state", () => {
     expect(resolveClientMediaKind({ metadata: { mediaKind: "weird" } })).toBe("image");
     expect(resolveClientMediaKind({ kind: "nope", metadata: null })).toBe("image");
     expect(resolveClientMediaKind({ raw_path: "clip.mp4", metadata: {} })).toBe("video");
-    expect(resolveClientMediaKind({ raw_path: "sfx.wav", metadata: {} })).toBe("audio");
+    expect(resolveClientMediaKind({ raw_path: "pack.zip", metadata: {} })).toBe("archive");
     expect(resolveClientMediaKind({ mediaKind: "audio", raw_path: "x.png", metadata: {} })).toBe("audio");
     expect(resolveClientMediaKind({ metadata: { mediaKind: "video" }, raw_path: "x.png" })).toBe("video");
   });
@@ -193,6 +195,17 @@ describe("media material ui state", () => {
       download: true,
       showPlayer: true,
       showDuration: true,
+      imageOnlyExplanation: true,
+    });
+    expect(materialActionAvailability("archive")).toEqual({
+      crop: false,
+      matting: false,
+      layers: false,
+      importToProject: false,
+      extractFrames: false,
+      download: true,
+      showPlayer: false,
+      showDuration: false,
       imageOnlyExplanation: true,
     });
   });

@@ -139,6 +139,8 @@ export function mediaContentTypeForPath(path: string): string {
       return "audio/mp4";
     case ".aac":
       return "audio/aac";
+    case ".zip":
+      return "application/zip";
     default:
       return "application/octet-stream";
   }
@@ -172,7 +174,16 @@ function parseByteRange(header: string | null, size: number): { start: number; e
   return { start, end };
 }
 
-/** 为媒体响应提供条件请求、版本化缓存；视频/音频支持基础 Range。 */
+/** RFC 5987：中文文件名必须带 filename*，否则 Chrome 下载栏会失败并提示「联系你的组织」。 */
+export function contentDispositionAttachment(downloadName: string): string {
+  const cleaned = downloadName.replace(/[\r\n"]/g, "_").trim() || "download";
+  const ext = cleaned.includes(".") ? cleaned.slice(cleaned.lastIndexOf(".")) : "";
+  const ascii = /^[\x20-\x7E]+$/.test(cleaned) ? cleaned : `download${ext}`;
+  const encoded = encodeURIComponent(cleaned).replace(/['()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
+/** 为媒体响应提供条件请求、版本化缓存；支持基础 Range。 */
 export function serveMediaFile(
   path: string,
   request: Request,
@@ -190,14 +201,13 @@ export function serveMediaFile(
     "Accept-Ranges": "bytes",
   });
   if (options?.downloadName) {
-    const safe = options.downloadName.replace(/["\r\n]/g, "_");
-    headers.set("Content-Disposition", `attachment; filename="${safe}"`);
+    headers.set("Content-Disposition", contentDispositionAttachment(options.downloadName));
   }
   if (request.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
 
   const size = statSync(path).size;
   const range = parseByteRange(request.headers.get("range"), size);
-  if (range && (contentType.startsWith("video/") || contentType.startsWith("audio/"))) {
+  if (range) {
     const { start, end } = range;
     headers.set("Content-Range", `bytes ${start}-${end}/${size}`);
     headers.set("Content-Length", String(end - start + 1));

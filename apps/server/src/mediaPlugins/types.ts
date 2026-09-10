@@ -22,6 +22,8 @@ export type MediaPluginJobPayload = {
   pluginId: string;
   prompt: string;
   references: string[];
+  /** 覆盖参考图文件（必须在 STORAGE_ROOT 内）。怪物流水线用 RGB JPEG，避免透明小 PNG 导致网关 502。 */
+  referencePathOverrides?: string[];
   params: Record<string, unknown>;
   durationSeconds: number | null;
   folderId: string | null;

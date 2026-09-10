@@ -9,6 +9,9 @@ import { splitImageLayers, type ImageLayersPayload } from "./jobs/imageLayers";
 import { runMediaPluginJob } from "./jobs/mediaPlugin";
 import { sanitizeMediaPluginDiagnostic } from "./mediaPlugins/diagnostics";
 import type { MediaPluginJobPayload } from "./mediaPlugins/types";
+import { applyMonsterPipelineProduct, enqueueMonsterPipelineStep, shouldPackMonsterExtractArchive } from "./monsterPipeline";
+import { packMonsterExtractArchive } from "./monsterExtractArchive";
+import type { MonsterPipelineRun } from "./monsterPipelineTypes";
 
 export interface JobPayload {
   extract?: ExtractPayload;
@@ -16,6 +19,7 @@ export interface JobPayload {
   matting?: { target: "frame" | "material"; id: string };
   imageLayers?: ImageLayersPayload;
   mediaPlugin?: MediaPluginJobPayload;
+  monsterPipeline?: MonsterPipelineRun;
 }
 
 // 任务负载只存内存（状态落 SQLite），重启后 queued/running 任务不会恢复
@@ -50,7 +54,7 @@ export function createJob(projectId: string, type: JobType, payload: JobPayload)
   );
   payloads.set(id, payload);
   waiting.push(id);
-  broadcast("job_queued", { id, projectId, type });
+  broadcast("job_queued", { id, projectId, type, pipelineId: payload.monsterPipeline?.pipelineId });
   pump();
   return id;
 }
@@ -127,6 +131,15 @@ function enqueueMatting(projectId: string, target: "frame" | "material", id: str
   createMattingJob(projectId, target, id); // 已有进行中任务则忽略（拆帧/生成后的自动抠图）
 }
 
+function continueMonsterPipeline(run: MonsterPipelineRun, materialIds: string[]) {
+  const next = applyMonsterPipelineProduct(run, materialIds);
+  if (shouldPackMonsterExtractArchive(run, next)) {
+    const archiveId = packMonsterExtractArchive(next);
+    if (archiveId) next.archiveMaterialId = archiveId;
+  }
+  enqueueMonsterPipelineStep(next);
+}
+
 function enqueueGeneratedFollowUp(source: GeneratePayload, referenceMaterialId: string) {
   const material = db.query("SELECT raw_path FROM materials WHERE id = ?").get(referenceMaterialId) as { raw_path: string | null } | null;
   if (!material?.raw_path) throw new Error("完整角色已生成，但素材文件缺失，无法继续拆分");
@@ -178,6 +191,7 @@ async function runJob(id: string) {
   controllers.set(id, ac);
   const signal = ac.signal;
   let generatedReferenceId: string | undefined;
+  let producedMaterialIds: string[] = [];
   // 相同 progress 文本去重（如视频轮询每 5s 的重复心跳），避免无谓 DB 写 + 全局广播
   let lastProgress = "";
   const report = (p: string) => {
@@ -192,9 +206,10 @@ async function runJob(id: string) {
   try {
     if (signal.aborted) throw new JobCancelledError();
     if (job.type === "extract_frames" && payload.extract) {
-      await extractFrames(payload.extract, report, enqueueMatting, signal);
+      producedMaterialIds = await extractFrames(payload.extract, report, enqueueMatting, signal);
     } else if (job.type === "generate_frames" && payload.generate) {
       const generated = await generateFrames(payload.generate, report, enqueueMatting, signal);
+      producedMaterialIds = generated.map((item) => item.id);
       if (payload.generate.followUp && generated[0]?.kind === "image") generatedReferenceId = generated[0].id;
     } else if (job.type === "matting" && payload.matting) {
       if (signal.aborted) throw new JobCancelledError();
@@ -208,18 +223,20 @@ async function runJob(id: string) {
     ) {
       const results = await runMediaPluginJob(payload.mediaPlugin, report, signal);
       if (signal.aborted) throw new JobCancelledError();
-      const materialIds = results.map((r) => r.materialId).filter(Boolean);
+      producedMaterialIds = results.map((r) => r.materialId).filter(Boolean);
+      if (payload.monsterPipeline) continueMonsterPipeline(payload.monsterPipeline, producedMaterialIds);
       const doneProgress =
-        materialIds.length > 0
-          ? `完成 materialIds=${JSON.stringify(materialIds)}`
+        producedMaterialIds.length > 0
+          ? `完成 materialIds=${JSON.stringify(producedMaterialIds)}`
           : "完成";
       setJob(id, "done", doneProgress);
       broadcast("job_done", {
         id,
         projectId: job.project_id,
         type: job.type,
-        materialIds,
+        materialIds: producedMaterialIds,
         results,
+        pipelineId: payload.monsterPipeline?.pipelineId,
       });
       return;
     } else {
@@ -227,8 +244,19 @@ async function runJob(id: string) {
     }
     if (signal.aborted) throw new JobCancelledError();
     if (generatedReferenceId && payload.generate) enqueueGeneratedFollowUp(payload.generate, generatedReferenceId);
-    setJob(id, "done", "完成");
-    broadcast("job_done", { id, projectId: job.project_id, type: job.type });
+    if (payload.monsterPipeline) continueMonsterPipeline(payload.monsterPipeline, producedMaterialIds);
+    const doneProgress =
+      producedMaterialIds.length > 0
+        ? `完成 materialIds=${JSON.stringify(producedMaterialIds)}`
+        : "完成";
+    setJob(id, "done", doneProgress);
+    broadcast("job_done", {
+      id,
+      projectId: job.project_id,
+      type: job.type,
+      materialIds: producedMaterialIds,
+      pipelineId: payload.monsterPipeline?.pipelineId,
+    });
   } catch (err) {
     if (err instanceof JobCancelledError || signal.aborted) {
       setJob(id, "cancelled", "已取消", null);

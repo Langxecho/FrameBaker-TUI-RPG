@@ -1840,6 +1840,18 @@ input[type="range"] {
     var(--elevated);
   image-rendering: pixelated;
 }
+.mat-thumb-archive {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--elevated);
+}
+.mat-archive-preview {
+  min-height: 120px;
+}
 .mat-media-filter {
   display: flex;
   align-items: center;
@@ -1886,7 +1898,8 @@ input[type="range"] {
   }
 }
 .mat-badge-video,
-.mat-badge-audio {
+.mat-badge-audio,
+.mat-badge-archive {
   position: absolute;
   bottom: 4px;
   left: 4px;
@@ -1906,6 +1919,9 @@ input[type="range"] {
 }
 .mat-badge-audio {
   background: var(--purple);
+}
+.mat-badge-archive {
+  background: var(--text-muted);
 }
 .mat-video-wrap {
   display: flex;

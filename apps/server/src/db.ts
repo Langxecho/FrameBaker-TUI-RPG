@@ -337,6 +337,7 @@ export function serializeFrame(f: FrameRow): Frame {
 function inferMediaKindFromPath(path: string): MediaKind {
   if (/\.(mp4|mov|webm|avi)$/i.test(path)) return "video";
   if (/\.(mp3|wav|ogg|flac|m4a)$/i.test(path)) return "audio";
+  if (/\.zip$/i.test(path)) return "archive";
   return "image";
 }
 

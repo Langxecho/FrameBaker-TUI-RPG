@@ -10,7 +10,7 @@
                         │  Timeline(DnD) PlaybackBar    ImportModal     │
                         │  MaterialsPage MaterialModal(comparison/crop) │
                         │  MotionsPage (/motions direct route)          │
-                        │  MediaGenerationPage (/generate three tabs)   │
+                        │  MediaGenerationPage (/generate four tabs)    │
                         │  CropModal ─ imageops/ (Web Worker image ops) │
                         │  JobPanel (right-side persistent job queue)   │
                         │        │ fetch /api        │ WebSocket /ws   │
@@ -38,7 +38,7 @@
 │   └─ /api/jobs(/:id)   Job list (panel initial load) / single query │
 │                                                                     │
 │  mcp/ (MCP server: POST /mcp JSON-RPC 2.0 Streamable HTTP)         │
-│       51 tools directly operating db/internal modules for AI agents │
+│       53 tools directly operating db/internal modules for AI agents │
 │                                                                     │
 │  provider.ts (multi-gen provider / matting config: settings > env)  │
 │  providerAdapter.ts (generation validation/execution adapter +      │
@@ -123,7 +123,7 @@ Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy an
 - **Import workflow** (`apps/web/src/hooks/useImportWorkflow.ts`): project import and material import share file state transitions, sequential upload, job polling, partial failure, timer cleanup, and completion summary; the two modals only provide their own FormData/API adapters; crop phase handled by `useCropQueue`.
 - **Web client boundaries**: `apps/web/src/api.ts` remains the compatibility facade for typed HTTP API methods and shared response types; media URL builders live in `api/mediaUrls.ts`, while the reconnecting application WebSocket client lives in `api/ws.ts`. New transport concerns should be added to their owning module instead of growing the facade.
 - **Independent media plugin system** (`.iap` / `.vap` / `.aap`, parallel to `GenProvider` — do not merge execution paths): Bun owns discovery, Zip Slip-safe install under `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`, settings (secrets/params; secrets never echoed), API, queue jobs (`media_plugin_image|video|audio`), material archival (`source=media-plugin:<plugin-id>`, `metadata.mediaKind`), `/generate` UI, and MCP query/generate tools. Python is only a controlled JSON-file subprocess: `apps/server/src/python/media_plugin_runner.py` + copied `aigc_bench_plugin_runtime/` load trusted `provider.py` from `.venv-media` (`scripts/setup_media.sh` / `setup_media.ps1`; base dep `requests` only — plugin-declared deps are **not** auto-installed in v1). Communication is `request.json` / `result.json` under `storage/media-plugin-runs/<run-id>/` (no argv escaping of prompts/params). Cancel/timeout best-effort terminates the Python process tree (`Bun.spawn().kill()`; on Windows also `taskkill /PID <pid> /T /F` when a PID is available — Bun has no portable process-group API) and `cleanupMediaPluginRunDir` removes the run directory; failed/cancelled runs must not leave plugin outputs or secret plaintext in storage. Result handling rejects `file:` / non-http(s) downloads, requires local `image_path`/`video_path`/`audio_path` already under the run `outputDir` (no arbitrary absolute-path copy), bounds download and ZIP compressed/uncompressed sizes, preserves fractional `durationSeconds`, and keeps Python stderr/traceback server-log-only (jobs/MCP get stable safe codes). Archives are **trusted executable code** (UI warning required); path containment, package validation, timeouts, and secret redaction are provided — **no OS-level sandbox**. Missing `.venv-media` → `PYTHON_RUNTIME_UNAVAILABLE` / `GET /api/config.mediaPlugins.pythonAvailable=false` with setup hint; generation/test refuse to run. Optional overrides: `FRAMEBAKER_MEDIA_PYTHON`, `FRAMEBAKER_MEDIA_PLUGIN_ROOT`. MCP exposes only `list_media_plugins`, `get_media_plugin`, `generate_with_media_plugin` (material IDs only — no install/delete/secrets/local paths/arbitrary Python). HTTP details in `docs/api.md` § Media Plugins / Media Generation.
-- **Generation provider adapter & artifact submission**: `providerAdapter.ts` resolves provider in real-time per job, encapsulates config/model/capability validation, CLI argv, API/CLI output dispatch, and doctor's model detection; `jobs/generatedArtifacts.ts` handles artifact allocation, media classification, frame/material/video commit, staging cleanup, broadcast, and auto-matting finalization. `jobs/extract.ts` only coordinates "output → commit"; API vendor protocols remain in `jobs/generateApi.ts`.
+- **Generation provider adapter & artifact submission**: `providerAdapter.ts` resolves provider in real-time per job, encapsulates config/model/capability validation, CLI argv, API/CLI output dispatch, and doctor's model detection; `jobs/generatedArtifacts.ts` handles artifact allocation, media classification, frame/material/video commit, staging cleanup, broadcast, and auto-matting finalization. `jobs/extract.ts` only coordinates "output → commit"; API vendor protocols remain in `jobs/generateApi.ts`. Monster production is a scheduler-owned chain of those existing jobs (`monsterPipeline.ts`), not a merged GenProvider/plugin worker.
 
 ## Data Flows
 
@@ -133,7 +133,7 @@ Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy an
 AI client → POST /mcp { jsonrpc, method: "initialize" }
   → server returns protocolVersion/capabilities/serverInfo + Mcp-Session-Id
   → client sends notifications/initialized
-  → tools/list returns 51 tools
+  → tools/list returns 53 tools
   → tools/call { name, arguments } → direct db ops → returns { content: [{ type:"text", text:JSON }] }
 ```
 
@@ -231,10 +231,10 @@ Database tables (`apps/server/src/db.ts`, created on startup with CREATE TABLE I
 
 - `App.tsx`: `/` project list ↔ `/project/:id` editor ↔ `/materials` material library ↔ `/motions` motion workbench ↔ `/generate` generation center ↔ `/settings` settings page (history.pushState + popstate); globally suppresses browser native context menu (preserves input/textarea for paste; frames use custom ContextMenu)
 - `TopNav`: primary nav (Projects / Materials / Generate / Settings) + theme toggle (three-state: follow system / light / dark) + language toggle (zh/en, `LangToggle`); `/motions` remains a direct route (not a TopNav tab); editor page has its own top bar and doesn't show this
-- `MediaGenerationPage` + `MediaPluginForm` / `MediaReferencePicker` / `MediaResultPreview`: `/generate` three tabs (image/video/audio); dynamic `params_schema` form; references are material IDs only; enqueue via `/api/media-generation`, JobPanel + `job_done.materialIds` bind results
+- `MediaGenerationPage` + `MediaPluginForm` / `MediaReferencePicker` / `MediaResultPreview` + `MonsterPipelinePage`: `/generate` four tabs (image/video/audio plugins unchanged, plus monster identity still then action pipeline); plugin tabs still use `params_schema` and `/api/media-generation`; monster tab uses `/api/materials/monster-reference` then `/api/materials/monster-pipeline`. Monster stills resolve `providerId=monster-image` from `settings.monsterImage` (`monsterImage.ts`), not the Settings GenProvider list. Monster I2VA uploads an RGB JPEG of the idle still; after extract, a zip archive material is stored in the monster folder.
 - `SettingsPage`: generation provider list management (CLI / API multiple coexisting, add/remove/edit + save + API test connection), **media plugin settings** (`MediaPluginSettings`: import `.iap/.vap/.aap`, trusted-code warning, secrets/params/test/export/delete), matting config (CLI template / default model datalist + cache status), doctor (health check result list)
 - `ProjectList`: pixel card grid (motion stagger entrance, hover lift), new/delete modals
-- `MaterialsPage`: material library page — left directory tree (`FolderTree`) + right card grid (All/Image/Video/Audio filter; source color badge per provider / `media-plugin:<id>`, video poster + players, audio players, bottom-left "matted" badge for images, checkbox + Cmd/Shift multi-select, drag into folders), batch bar (delete / import to project [images only] / batch matting raw-only / cancel)
+- `MaterialsPage`: material library page — left directory tree (`FolderTree`) + right card grid (All/Image/Video/Audio/Archive filter; source color badge per provider / `media-plugin:<id>`, video poster + players, audio players, zip download cards, bottom-left "matted" badge for images, checkbox + Cmd/Shift multi-select, drag into folders), batch bar (delete / import to project [images only] / batch matting raw-only / cancel)
 - `ProjectList`: project list same left-tree-right-grid layout, new projects land in current folder
 - `FolderTree`: All / Ungrouped + multi-level folder CRUD / HTML5 DnD
 - `MaterialModal`: material detail — raw/matted comparison slider (pointer drag clip ratio), matting/restore, crop (CropModal, operates on currently displayed image slot), grid split (GridSplitModal: multi-cell sprite sheet split by rows × columns into individual materials, grid line preview, reuses imageops cropImage + `/api/materials/upload` single-image commit, original preserved), multi-action generation (ActionGenModal: uses current material as reference image, per shared `ACTION_PRESETS` action presets calls `/api/materials/generate` per action, optional `name` as "material_action" naming, one generation job per action), import to project (select project + copy count), delete (confirmation)

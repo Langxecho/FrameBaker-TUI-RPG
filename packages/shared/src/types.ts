@@ -41,8 +41,8 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export const MATERIAL_STATUSES = ["raw", "matted"] as const;
 export type MaterialStatus = (typeof MATERIAL_STATUSES)[number];
 
-/** 统一媒体素材类型（图片 / 视频 / 音频） */
-export const MEDIA_KINDS = ["image", "video", "audio"] as const;
+/** 统一媒体素材类型（图片 / 视频 / 音频 / 压缩包） */
+export const MEDIA_KINDS = ["image", "video", "audio", "archive"] as const;
 export type MediaKind = (typeof MEDIA_KINDS)[number];
 
 /** 媒体插件包类型（与安装目录名一致） */
@@ -163,7 +163,7 @@ export function buildArticulatedPartsPrompt(options: { description?: string; ref
   return `${introduction} ${segmentation} ${layout} ${joints} ${uniqueness} ${separation}${description}${extra}`;
 }
 
-export const GENERATION_INTENTS = ["frame-image", "frame-sheet", "frame-video", "skeletal-character", "skeletal-parts", "skeletal-decompose", "skeletal-repair-part", "motion-clip"] as const;
+export const GENERATION_INTENTS = ["frame-image", "frame-sheet", "frame-video", "skeletal-character", "skeletal-parts", "skeletal-decompose", "skeletal-repair-part", "motion-clip", "monster-reference", "monster-action-still", "monster-action-video"] as const;
 export type GenerationIntent = (typeof GENERATION_INTENTS)[number];
 
 /** 抠图引擎（服务端启动时探测一次，解析顺序 a→d） */
@@ -441,6 +441,14 @@ export interface ServerConfig {
     installRoot: string;
     hint: string | null;
   };
+  /** 怪物页独立生图连接（不含 apiKey）；与设置页骨架 GenProvider 分离 */
+  monsterImage: {
+    apiBaseUrl: string;
+    model: string;
+    configured: boolean;
+    hasKey: boolean;
+    usingPluginFallback: boolean;
+  };
 }
 
 /**
@@ -686,6 +694,7 @@ export const SETTING_KEYS = [
   "imageLayers",
   "promptEnhancers",
   "queueConcurrency",
+  "monsterImage",
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 

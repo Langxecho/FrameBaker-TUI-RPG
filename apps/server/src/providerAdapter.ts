@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import type { GenProviderType, ProviderModelsRequest, ProviderModelsResponse } from "@framebaker/shared";
-import { normalizeDashscopeBaseUrl, PROVIDER_VIDEO_SUPPORT } from "@framebaker/shared";
+import { MONSTER_IMAGE_PROVIDER_ID, normalizeDashscopeBaseUrl, PROVIDER_VIDEO_SUPPORT } from "@framebaker/shared";
 import { getFrame, getMaterial } from "./db";
 import { generateViaApi, generateVideoViaApi } from "./jobs/generateApi";
 import { runCmd } from "./jobs/run";
@@ -30,7 +30,12 @@ export function createProviderAdapter(
 ): ProviderAdapter {
   const provider = resolveGenProvider(req.providerId);
   if (!provider) throw new Error("未配置生成方式：请到「设置」页添加生成 provider（CLI 或各厂商 API，可配多个共存）");
-  if (!providerConfigured(provider)) throw new Error(`生成 provider「${provider.name}」配置不完整，请到「设置」页补齐`);
+  if (!providerConfigured(provider)) {
+    if (provider.id === MONSTER_IMAGE_PROVIDER_ID) {
+      throw new Error("请在怪物页顶部填写生图 Base URL 和 API Key，或先在设置里配好 Euzhi GPT Image 2 插件密钥");
+    }
+    throw new Error(`生成 provider「${provider.name}」配置不完整，请到「设置」页补齐`);
+  }
   const capabilityModels = req.mediaKind === "video" ? provider.videoModels : provider.imageModels;
   const model = req.model?.trim() || capabilityModels[0] || "";
   if (req.mediaKind === "video" && !PROVIDER_VIDEO_SUPPORT[provider.type])

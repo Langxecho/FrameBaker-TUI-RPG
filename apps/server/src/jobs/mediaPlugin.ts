@@ -1,10 +1,11 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import type { MediaPluginResult } from "@framebaker/shared";
 import { JobCancelledError } from "./run";
 import { getMediaPlugin } from "../mediaPlugins/registry";
 import { mediaPluginKindRoot, mediaPluginRunsRoot } from "../mediaPlugins/paths";
-import { cleanupMediaPluginRunDir, runMediaPluginPython } from "../mediaPlugins/runner";
+import { cleanupMediaPluginRunDir, runMediaPluginPython, type RunMediaPluginOptions } from "../mediaPlugins/runner";
+import type { MediaPluginRunnerPayload, MediaPluginRunnerRequest } from "../mediaPlugins/pythonEnv";
 import {
   archiveMaterializedOutputs,
   downloadUrlToOutput,
@@ -30,7 +31,7 @@ export async function runMediaPluginJob(
   }
 
   report(`正在准备插件 ${payload.pluginId}`);
-  const refs = resolveMediaPluginReferences(payload.kind, payload.references);
+  const refs = resolveMediaPluginReferences(payload.kind, payload.references, payload.referencePathOverrides);
   // Python runtime 扫描的是 kind 根目录（其下每个 plugin_id 子目录），不是单个插件目录
   const pluginRoot = mediaPluginKindRoot(payload.kind);
   const outputDir = join(mediaPluginRunsRoot(), `${payload.pluginId}_${Date.now()}_${payload.batchIndex}`);
@@ -40,7 +41,7 @@ export async function runMediaPluginJob(
     if (signal?.aborted) throw new JobCancelledError();
     report("正在调用插件");
 
-    const runnerPayload = await runMediaPluginPython(
+    const runnerPayload = await runMediaPluginPythonWithUploadRetry(
       {
         kind: payload.kind,
         pluginId: payload.pluginId,
@@ -54,6 +55,7 @@ export async function runMediaPluginJob(
         bridgeTimeoutMs: payload.bridgeTimeoutMs,
       },
       { signal, bridgeTimeoutMs: payload.bridgeTimeoutMs },
+      report,
     );
 
     if (signal?.aborted) throw new JobCancelledError();
@@ -119,4 +121,53 @@ export async function runMediaPluginJob(
   } finally {
     cleanupMediaPluginRunDir(outputDir);
   }
+}
+
+export function isRetryableMediaPluginUploadError(message: string): boolean {
+  return /上传参考图失败 HTTP 50[234]/.test(message);
+}
+
+async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) throw new JobCancelledError();
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new JobCancelledError());
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function runMediaPluginPythonWithUploadRetry(
+  request: MediaPluginRunnerRequest,
+  options: RunMediaPluginOptions,
+  report: (progress: string) => void,
+): Promise<MediaPluginRunnerPayload> {
+  const maxAttempts = 4;
+  let last: MediaPluginRunnerPayload | undefined;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      report(`参考图网关繁忙，正在重试（${attempt}/${maxAttempts - 1}）`);
+      try {
+        unlinkSync(join(request.outputDir, "result.json"));
+      } catch {
+        /* ignore */
+      }
+      await sleep(2000 * attempt, options.signal);
+    }
+    try {
+      last = await runMediaPluginPython(request, options);
+    } catch (error) {
+      if (error instanceof JobCancelledError) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (attempt < maxAttempts - 1 && isRetryableMediaPluginUploadError(message)) continue;
+      throw error;
+    }
+    if (last.ok) return last;
+    const message = `${last.error ?? ""} ${last.code ?? ""}`;
+    if (attempt < maxAttempts - 1 && isRetryableMediaPluginUploadError(message)) continue;
+    return last;
+  }
+  return last!;
 }

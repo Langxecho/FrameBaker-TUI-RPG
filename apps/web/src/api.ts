@@ -347,4 +347,43 @@ export const api = {
     }).then((r) => r.result),
   createMediaGeneration: (body: MediaPluginGenerationRequest) =>
     req<JobCreatedResponse>("/api/media-generation", { method: "POST", ...json(body) }),
+  startMonsterReference: (body: {
+    appearance: string;
+    name?: string;
+    providerId?: string;
+    model?: string;
+    size?: string;
+    width?: number;
+    height?: number;
+    autoMatting?: boolean;
+    folderId?: string | null;
+  }) =>
+    req<{ jobId: string }>("/api/materials/monster-reference", {
+      method: "POST",
+      ...json(body),
+    }),
+  startMonsterPipeline: (body: {
+    appearance?: string;
+    name?: string;
+    referenceMaterialId?: string | null;
+    actions?: Record<string, string | null | undefined>;
+    providerId?: string;
+    model?: string;
+    size?: string;
+    width?: number;
+    height?: number;
+    videoPrompts?: Record<string, string | null | undefined>;
+    videoPluginId?: string | null;
+    durationSeconds?: number;
+    extractFps?: number[];
+    extraFps?: number | null;
+    autoMatting?: boolean;
+    bgKey?: "flood" | "none";
+    folderId?: string | null;
+    importProjectId?: string | null;
+  }) =>
+    req<{ pipelineId: string; jobId: string; folderId: string }>("/api/materials/monster-pipeline", {
+      method: "POST",
+      ...json(body),
+    }),
 };

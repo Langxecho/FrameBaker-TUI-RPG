@@ -1,13 +1,15 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { EXTRACT_TIMESTAMPS_MAX, type GenerationIntent } from "@framebaker/shared";
-import { db, nextFrameIdx, STORAGE_ROOT, uid } from "../db";
+import { db, STORAGE_ROOT, uid } from "../db";
 import { createProviderAdapter } from "../providerAdapter";
 import { broadcast } from "../ws";
 import { JobCancelledError, runCmd } from "./run";
+import { requireFfmpegBin } from "./ffmpegBin";
 import { createGeneratedArtifactCommitter, type ArtifactCommitResult } from "./generatedArtifacts";
 import { appendFramePool } from "../timeline";
 import { invalidateProjectUndo } from "../undo";
+import { applySpritePostprocessToPng } from "./spritePost";
 
 /** 任务产出目标：项目帧 or 素材库 */
 type JobTarget = { kind: "project"; projectId: string } | { kind: "materials" };
@@ -29,6 +31,10 @@ export interface ExtractPayload {
   originName?: string;
   /** 素材入库目标文件夹（NULL = 根目录） */
   folderId?: string | null;
+  /** 拆帧后 nearest 居中贴进固定画布（怪物流水线） */
+  spriteFit?: { width: number; height: number };
+  /** flood = 四角连通去背并去掉品红；缺省不去连通底（仍可 autoMatting） */
+  bgKey?: "flood" | "none";
 }
 
 /** 规范化时间戳：非负、排序、按 1ms 去重、截断上限 */
@@ -80,6 +86,8 @@ export interface GeneratePayload {
   /** 骨骼分件表网格；默认人形为 3 行 × 4 列。 */
   gridRows?: number;
   gridCols?: number;
+  /** 怪物静图落地后 nearest 贴画（API 常出 1024，精灵默认 256） */
+  spriteFit?: { width: number; height: number };
   /** 第一阶段完整角色成功后，由调度层创建的第二阶段生成任务。 */
   followUp?: { prompt: string; name?: string; autoMatting?: boolean; gridRows?: number; gridCols?: number };
 }
@@ -153,8 +161,10 @@ async function extractToStaging(
   if (p.mediaType === "image") {
     copyFileSync(p.stagingFile, `${stageDir}/frame_0000.png`);
   } else if (p.mediaType === "gif") {
-    await runCmd(["ffmpeg", "-y", "-i", p.stagingFile, "-start_number", "0", outPattern], undefined, signal);
+    const ffmpeg = requireFfmpegBin();
+    await runCmd([ffmpeg, "-y", "-i", p.stagingFile, "-start_number", "0", outPattern], undefined, signal);
   } else if (p.mode === "timestamps") {
+    const ffmpeg = requireFfmpegBin();
     const times = normalizeExtractTimestamps(p.timestamps ?? []);
     if (times.length === 0) throw new Error("未提供有效抽帧时间点");
     for (let i = 0; i < times.length; i++) {
@@ -163,15 +173,16 @@ async function extractToStaging(
       const out = `${stageDir}/frame_${String(i).padStart(4, "0")}.png`;
       // -ss 在 -i 前：按关键帧快进，单帧输出
       await runCmd(
-        ["ffmpeg", "-y", "-ss", String(times[i]), "-i", p.stagingFile, "-frames:v", "1", out],
+        [ffmpeg, "-y", "-ss", String(times[i]), "-i", p.stagingFile, "-frames:v", "1", out],
         undefined,
         signal
       );
       if (!existsSync(out)) throw new Error(`截帧失败 @ ${times[i]}s`);
     }
   } else {
+    const ffmpeg = requireFfmpegBin();
     await runCmd(
-      ["ffmpeg", "-y", "-i", p.stagingFile, "-vf", `fps=${p.fps}`, "-start_number", "0", outPattern],
+      [ffmpeg, "-y", "-i", p.stagingFile, "-vf", `fps=${p.fps}`, "-start_number", "0", outPattern],
       undefined,
       signal
     );
@@ -181,6 +192,13 @@ async function extractToStaging(
     .filter((f) => /^frame_\d+\.png$/.test(f))
     .sort();
   if (files.length === 0) throw new Error("未能从素材中提取任何帧");
+  if (p.spriteFit || p.bgKey === "flood") {
+    for (const file of files) {
+      if (signal?.aborted) throw new JobCancelledError();
+      progress(`精灵去背 ${file}`);
+      await applySpritePostprocessToPng(`${stageDir}/${file}`, { bgKey: p.bgKey, spriteFit: p.spriteFit }, signal);
+    }
+  }
   return { stageDir, files };
 }
 
@@ -216,7 +234,7 @@ export async function extractFrames(
   progress: (s: string) => void,
   enqueueMatting: EnqueueMatting,
   signal?: AbortSignal
-) {
+): Promise<string[]> {
   if (signal?.aborted) throw new JobCancelledError();
   const { stageDir, files } = await extractToStaging(p, progress, signal);
   if (signal?.aborted) throw new JobCancelledError();
@@ -241,10 +259,12 @@ export async function extractFrames(
     });
     cleanupStaging(stageDir, p.stagingFile);
     afterImportFrames(p.target.projectId, frameIds, p.autoMatting, enqueueMatting);
+    return frameIds;
   } else {
     const ids = saveMaterials(stageDir, files, p);
     cleanupStaging(stageDir, p.stagingFile);
     afterImportMaterials(ids, p.autoMatting, enqueueMatting);
+    return ids;
   }
 }
 
@@ -284,6 +304,10 @@ export async function generateFrames(
     const allocation = artifacts.allocate(kind, index);
     try {
       await adapter.produce(allocation.path, index);
+      const monsterStill = p.intent === "monster-reference" || p.intent === "monster-action-still";
+      if (kind === "image" && monsterStill) {
+        await applySpritePostprocessToPng(allocation.path, { bgKey: "flood", spriteFit: p.spriteFit }, signal);
+      }
       return artifacts.commit(allocation);
     } catch (error) {
       artifacts.discard(allocation);

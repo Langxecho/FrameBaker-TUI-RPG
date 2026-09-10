@@ -201,7 +201,7 @@ provider 解析：传了 `providerId` 按 id 找（找不到 400）；缺省用�
 }
 ```
 
-`kind` 与 `mediaKind` 始终返回，规则相同（`image` | `video` | `audio`）：有效的 `metadata.mediaKind` 优先，否则按文件路径推断。新客户端请优先读 `mediaKind`；`kind` 仍供旧 UI 过滤使用。公开响应会省略 `metadata.thumbnailPath` 等服务端绝对路径；若存在 `storage/materials/<id>/thumb.png`，则返回 `metadata.hasThumbnail: true`。
+`kind` 与 `mediaKind` 始终返回，规则相同（`image` | `video` | `audio` | `archive`）：有效的 `metadata.mediaKind` 优先，否则按文件路径推断。新客户端请优先读 `mediaKind`；`kind` 仍供旧 UI 过滤使用。公开响应会省略 `metadata.thumbnailPath` 等服务端绝对路径；若存在 `storage/materials/<id>/thumb.png`，则返回 `metadata.hasThumbnail: true`。`archive` 是可下载压缩包（不可裁剪/抠图/导入项目）。
 
 ### PATCH /api/materials/:id
 
@@ -236,6 +236,14 @@ curl -F "file=@walk.gif" -F "autoMatting=true" http://localhost:3000/api/materia
 ### POST /api/materials/generate
 
 `{ "prompt": "pixel slime", "count": 4, "autoMatting": false, "references": [{ "kind": "material", "id": "…" }] }` → `{ "jobId": "…", "jobIds": ["…", "…", "…", "…"] }`（provider 解析、图片独立任务与多引用图规则同 `/api/import/generate`）。每个素材任务完成时都会广播 `materials_changed`，停留在素材库时会逐个刷新。可选 `name`：素材命名基准（缺省取 prompt 前 24 字符），产出命名为 `name #i`（count>1）——素材详情「多动作生成」按「素材名_动作」传入。支持 `mediaKind: "video"`：只生成并保存视频素材（`kind=video`），**不抽帧**；完成后用下方 extract 接口拆帧。骨骼分件生成支持成对提供 1–8 的 `gridRows` / `gridCols`，生成素材 metadata 和网格切分编辑器都会保留该布局；人形默认值为 `gridRows: 3`、`gridCols: 4`（12 个部件）。`skeletal-character` 两阶段请求可把相同字段放入 `followUp`，用于后续分件表。骨骼请求不再要求预先创建或传入 `characterPartSetId`：缺省时服务端自动建立内部部件集，并随 `jobId` 返回其 ID；显式 ID 仍为 API 兼容保留。
+
+### POST /api/materials/monster-reference
+
+只生成一张身份静图。`{ "appearance": "朝左像素飞行器", "width": 256, "height": 256 }` → `{ "jobId" }`。生图一律走怪物页独立连接（`settings.monsterImage`，默认 Base `https://euzhi.vip/v1`、模型 `gpt-image-2`），不使用设置页骨架 GenProvider。Key 为空时回退已安装的 `euzhi_gpt_image2` 插件密钥。上游按 `1024x1024` 出图，`width`/`height` 是落地精灵画布。不会启动动作视频或拆帧。确认满意后再把素材 ID 交给流水线。
+
+### POST /api/materials/monster-pipeline
+
+从已选定的身份图开始：动作静图 → 图生视频 → 拆帧。`{ "referenceMaterialId": "…", "actions": { "monster-02-attack": "挥砍" }, "width": 256, "height": 256, "extractFps": [4] }` → `{ "pipelineId", "jobId", "folderId" }`。必须传 `referenceMaterialId`，本接口不再生成参考图。空动作槽跳过；`videoPrompts` 有对应键时仍会收录该动作。开启视频时会先生成待机静图，**所有动作的 I2VA 都以该待机图为 `<Picture 1>`**（交给插件的是待机图转成的 RGB JPEG，不是 256 透明 PNG）。`durationSeconds` 默认 4（限制 4–15）。可选 `videoPrompts` 为每个动作的完整 I2VA 文案，空则回退 H3 模板。`width`/`height`（64–2048，默认 256）用于拆帧贴画；静图 API 尺寸来自 `monsterImage`。不传 `videoPluginId` 时尽量用已安装的 MiniMax H3 I2V；`null` 或 `""` 只生成静图。动作静图用参考图做图生图（不要品红）。可选 `importProjectId`（逐帧项目）接收拆出的帧。全部拆帧结束后会打成 `{名称}/{动作}/{fps}fps/*.png` 的 zip 素材，落在同一文件夹。请求体里的 `providerId` / `model` / `size` 会被忽略。
 
 ### POST /api/materials/:id/extract
 
@@ -376,7 +384,7 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 ### PUT /api/settings/:key
 
 ```json
-// 请求（key 白名单：layout、theme、lang、genProviders、matting、imageLayers、promptEnhancers；其他 key 返回 400）
+// 请求（key 白名单：layout、theme、lang、genProviders、matting、imageLayers、monsterImage、promptEnhancers、queueConcurrency；其他 key 返回 400）
 { "value": { "sidebarW": 260, "timelineH": 160 } }
 // 响应
 { "ok": true }
@@ -391,6 +399,8 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 `matting`：结构化抠图命令 `cliBin` / `cliInputArg` / `cliOutputArg` / `cliModelArg`（均留空走 env `FRAMEBAKER_MATTING_CLI` 模板 → 自动探测）；`model` 留空回退 `FRAMEBAKER_MATTING_MODEL` / 默认 `u2net`。
 
 `imageLayers`：独立的图片分层服务配置 `{ "apiBaseUrl", "apiKey", "model" }`，不再归属生成 Provider，执行时调用 `POST {apiBaseUrl}/images/layers`。若该设置从未保存，服务端会临时读取首个旧 `genProviders[].layerModels` 配置以兼容迁移。
+
+`monsterImage`：怪物页独立生图 `{ "apiBaseUrl", "apiKey", "model" }`，与设置页骨架 GenProvider 分离。默认 Base `https://euzhi.vip/v1`、模型 `gpt-image-2`。Key 为空时回退已安装的 `euzhi_gpt_image2` 插件密钥。末尾 `/images/generations` 会被剥掉，由服务端再拼接。
 
 ### POST /api/materials/:id/layers
 
@@ -492,6 +502,13 @@ multipart/form-data：`plugin`（必需，`.iap`/`.vap`/`.aap`）+ 可选 `confi
     "configured": true,
     "model": "Qwen-Image-Layered"
   },
+  "monsterImage": {
+    "apiBaseUrl": "https://euzhi.vip/v1",
+    "model": "gpt-image-2",
+    "configured": true,
+    "hasKey": true,
+    "usingPluginFallback": false
+  },
   "gen": {
     "providers": [
       { "id": "…", "name": "OpenAI", "type": "api", "models": ["gpt-image-1"], "configured": true }
@@ -507,7 +524,7 @@ multipart/form-data：`plugin`（必需，`.iap`/`.vap`/`.aap`）+ 可选 `confi
 }
 ```
 
-  `engine`：`custom-cli`（设置页 matting.cliTemplate 或 `FRAMEBAKER_MATTING_CLI`）/ `rembg-bundled`（`.venv-matting` 内置）/ `rembg-path`（PATH 中找到）/ `none`（未安装，抠图仅复制原图，`hint` 为安装提示）。`model` 为 rembg 模型名（设置页 matting.model → `FRAMEBAKER_MATTING_MODEL` → 默认 `u2net`），`modelCached` 表示模型文件已在 `storage/models`（未缓存首次抠图自动下载）。`imageLayers` 只返回独立图片分层服务的可用状态，不暴露 API Key。`gen.providers` 为全部生成 provider 的摘要（不含 apiKey；模型能力列表供生成弹窗使用，`configured` 表示关键字段齐备，`video` 表示支持视频生成——仅 cli/dashscope/minimax，映射见共享常量 `PROVIDER_VIDEO_SUPPORT`）。`mediaPlugins` 报告 `.venv-media` 可用性与已安装插件数量，不含任何凭证。
+  `engine`：`custom-cli`（设置页 matting.cliTemplate 或 `FRAMEBAKER_MATTING_CLI`）/ `rembg-bundled`（`.venv-matting` 内置）/ `rembg-path`（PATH 中找到）/ `none`（未安装，抠图仅复制原图，`hint` 为安装提示）。`model` 为 rembg 模型名（设置页 matting.model → `FRAMEBAKER_MATTING_MODEL` → 默认 `u2net`），`modelCached` 表示模型文件已在 `storage/models`（未缓存首次抠图自动下载）。`imageLayers` 只返回独立图片分层服务的可用状态，不暴露 API Key。`monsterImage` 返回怪物页生图连接状态（不含 apiKey）。`gen.providers` 为全部生成 provider 的摘要（不含 apiKey；模型能力列表供生成弹窗使用，`configured` 表示关键字段齐备，`video` 表示支持视频生成——仅 cli/dashscope/minimax，映射见共享常量 `PROVIDER_VIDEO_SUPPORT`）。`mediaPlugins` 报告 `.venv-media` 可用性与已安装插件数量，不含任何凭证。
 - `GET /api/doctor` → 体检：逐项检查存储目录可写 / ffmpeg / 抠图引擎与模型缓存 / 独立图片分层服务 / 每个生成 provider（CLI 校验命令存在；OpenAI 兼容实发 `GET /models`、Gemini 实发 `GET /v1beta/models`、百炼实发 `GET /compatible-mode/v1/models` 联通测试；MiniMax 无探测端点仅校验字段）/ 媒体插件 Python（`.venv-media`）/ 已安装媒体插件数量 → `{ "checks": [{ "id", "ok", "label", "detail" }] }`。
 - `POST /api/provider/test` → API provider 联通测试（用表单当前值，不要求已保存）：`{ "type"?, "apiBaseUrl", "apiKey", "apiModel?" }`；api 实发 `GET {baseUrl}/models` + Bearer、gemini 实发 `GET {baseUrl}/v1beta/models`（x-goog-api-key）、dashscope 实发 `GET {baseUrl}/compatible-mode/v1/models` + Bearer，返回 `{ "ok", "status", "latencyMs", "modelsFound" }`（401/403 判定为认证失败）；minimax 无轻量探测端点，仅校验字段并在 `note` 说明。
 - `POST /api/provider/models` → API provider 模型列表（设置页「获取模型」，用表单当前值拉取，不要求已保存）：`{ "type", "apiBaseUrl", "apiKey" }` → `{ "ok", "models": ["…"] }`；端点与联通测试同源（api `/models`、dashscope `/compatible-mode/v1/models`、gemini `/v1beta/models` 去 `models/` 前缀；minimax 为 best-effort 试 `/v1/models`），失败返回 `{ "ok": false, "error" }`，前端保持手填。
@@ -580,7 +597,7 @@ claude mcp add framebaker --transport http http://localhost:3000/mcp
 ```
 FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable HTTP）。
 请连接并调用 list_projects 开始。
-可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、list_media_plugins、get_media_plugin、generate_with_media_plugin、matting_material、list_jobs、get_config 等共 51 个。
+可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、list_media_plugins、get_media_plugin、generate_with_media_plugin、generate_monster_reference、generate_monster_pipeline、matting_material、list_jobs、get_config 等共 53 个。
 覆盖功能：像素动画项目、帧、素材、AI 生成、媒体插件查询/生成、抠图、文件夹、任务与系统设置。
 ```
 
@@ -624,6 +641,8 @@ FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable
 | `reorder_frames` | 重排帧顺序 |
 | `generate_frames` | 为项目生成帧（AI provider） |
 | `generate_materials` | 生成素材（AI provider） |
+| `generate_monster_reference` | 只生成怪物身份参考图（仅素材 ID / 文案） |
+| `generate_monster_pipeline` | 从已有参考图启动动作静图→视频→拆帧（仅素材 ID / 文案） |
 | `list_media_plugins` | 列出已安装的 `.iap`/`.vap`/`.aap` 媒体插件（可选 `kind`：image\|video\|audio\|all）；返回摘要/configured/runnable——永不返回密钥明文 |
 | `get_media_plugin` | 获取单个已安装媒体插件详情（参数 schema、约束、密钥配置状态；不返回密钥明文） |
 | `generate_with_media_plugin` | 创建异步媒体插件生成任务；`references` 仅允许素材 ID（禁止本地路径）；返回 `jobId`/`jobIds` |

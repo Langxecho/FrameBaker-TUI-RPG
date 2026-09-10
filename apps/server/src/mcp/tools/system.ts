@@ -5,6 +5,7 @@ import { db } from "../../db";
 import { broadcast } from "../../ws";
 import { getMattingInfo } from "../../jobs/matting";
 import { getGenProviders, getImageLayerSettings, imageLayerConfigured, providerConfigured, getPromptEnhancers, enhancerConfigured } from "../../provider";
+import { getMonsterImagePublic, mergeMonsterImageSetting } from "../../monsterImage";
 import { isModelCached, runDoctor } from "../../doctor";
 import { enhancePrompt } from "../../enhance";
 import { getQueueConcurrency } from "../../queue";
@@ -52,6 +53,7 @@ export function register(server: McpServer) {
           .filter(enhancerConfigured)
           .map((e) => ({ id: e.id, name: e.name, model: e.model })),
         queueConcurrency: getQueueConcurrency(),
+        monsterImage: getMonsterImagePublic(),
       });
     }
   );
@@ -75,7 +77,7 @@ export function register(server: McpServer) {
     {
       title: "Get Settings",
       description:
-        "Get all server settings (layout, theme, lang, genProviders, matting, promptEnhancers). API keys are redacted.",
+        "Get all server settings (layout, theme, lang, genProviders, matting, imageLayers, monsterImage, promptEnhancers). API keys are redacted.",
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
@@ -101,6 +103,14 @@ export function register(server: McpServer) {
           apiKey: e.apiKey ? "***" : "",
         }));
       }
+      if (out.imageLayers && typeof out.imageLayers === "object" && !Array.isArray(out.imageLayers)) {
+        const layers = out.imageLayers as Record<string, unknown>;
+        out.imageLayers = { ...layers, apiKey: layers.apiKey ? "***" : "" };
+      }
+      if (out.monsterImage && typeof out.monsterImage === "object" && !Array.isArray(out.monsterImage)) {
+        const monster = out.monsterImage as Record<string, unknown>;
+        out.monsterImage = { ...monster, apiKey: monster.apiKey ? "***" : "" };
+      }
       return ok(out);
     }
   );
@@ -110,7 +120,7 @@ export function register(server: McpServer) {
     {
       title: "Update Setting",
       description:
-        "Update a single server setting. Allowed keys: layout, theme, lang, genProviders, matting, imageLayers, promptEnhancers, queueConcurrency. The value must match the expected type for each key.",
+        "Update a single server setting. Allowed keys: layout, theme, lang, genProviders, matting, imageLayers, monsterImage, promptEnhancers, queueConcurrency. The value must match the expected type for each key.",
       inputSchema: z.object({
         key: z.enum(SETTING_KEYS as unknown as [string, ...string[]]).describe("Setting key"),
         value: z.any().describe("Setting value (type depends on key)"),
@@ -118,10 +128,11 @@ export function register(server: McpServer) {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
     async ({ key, value }) => {
+      const stored = key === "monsterImage" ? mergeMonsterImageSetting(value) : value;
       db.query(
         `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
-      ).run(key, JSON.stringify(value ?? null), Date.now());
+      ).run(key, JSON.stringify(stored ?? null), Date.now());
       broadcast("settings_changed", { key });
       return ok({ ok: true });
     }

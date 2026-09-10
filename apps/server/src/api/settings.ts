@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
 import { SETTING_KEYS } from "@framebaker/shared";
 import { db } from "../db";
+import { mergeMonsterImageSetting } from "../monsterImage";
 import { broadcast } from "../ws";
 
 // 界面偏好设置（布局/主题）：服务端 SQLite 持久化，换浏览器/重启不丢
@@ -25,10 +26,11 @@ export const settingsApi = new Elysia({ prefix: "/api" })
       if (!(SETTING_KEYS as readonly string[]).includes(params.key)) {
         return status(400, `非法设置项: ${params.key}（允许: ${SETTING_KEYS.join(", ")}）`);
       }
+      const value = params.key === "monsterImage" ? mergeMonsterImageSetting(body.value) : (body.value ?? null);
       db.query(
         `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
-      ).run(params.key, JSON.stringify(body.value ?? null), Date.now());
+      ).run(params.key, JSON.stringify(value), Date.now());
       broadcast("settings_changed", { key: params.key });
       return { ok: true };
     },

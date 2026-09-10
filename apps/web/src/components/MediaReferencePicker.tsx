@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ImagePlus, Upload, X } from "lucide-react";
 import type { MediaKind, MediaPluginKind } from "@framebaker/shared";
 import { api, materialFileUrl, materialImageUrl, type Material } from "../api";
 import { useT } from "../i18n";
@@ -8,7 +8,9 @@ import IconBtn from "./IconBtn";
 import {
   acceptedReferenceMediaKinds,
   filterMaterialsForPlugin,
+  localFileAcceptedAsReference,
   maxReferenceCountForPlugin,
+  referenceFileAccept,
 } from "../mediaPluginUiState";
 
 interface Props {
@@ -20,22 +22,26 @@ interface Props {
 
 export default function MediaReferencePicker({ kind, constraints = {}, value, onChange }: Props) {
   const t = useT();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [mats, setMats] = useState<Material[] | null>(null);
   const [v, setV] = useState(() => Date.now());
+  const [over, setOver] = useState(false);
+  const [busy, setBusy] = useState(false);
   const max = maxReferenceCountForPlugin(kind, constraints);
   const accepted = acceptedReferenceMediaKinds(kind, constraints);
 
+  const reload = async () => {
+    const list = await api.listMaterials();
+    setMats(list);
+    setV(Date.now());
+    return list;
+  };
+
   useEffect(() => {
-    if (!open || mats !== null) return;
-    api
-      .listMaterials()
-      .then((list) => {
-        setMats(list);
-        setV(Date.now());
-      })
-      .catch((e) => notify(t("msg.load_materials_failed_msg", { msg: (e as Error).message })));
-  }, [open, mats, t]);
+    if (mats !== null) return;
+    void reload().catch((e) => notify(t("msg.load_materials_failed_msg", { msg: (e as Error).message })));
+  }, [mats, t]);
 
   const filtered = useMemo(
     () => (mats ? filterMaterialsForPlugin(mats, kind, constraints) : []),
@@ -52,6 +58,40 @@ export default function MediaReferencePicker({ kind, constraints = {}, value, on
       return;
     }
     onChange([...value, id]);
+  };
+
+  const ingestFiles = async (fileList: FileList | File[]) => {
+    const files = [...fileList];
+    if (!files.length || busy) return;
+    setBusy(true);
+    try {
+      let ids = [...value];
+      for (const file of files) {
+        if (ids.length >= max) {
+          notify(t("mediaPlugin.ref.limit", { max }));
+          break;
+        }
+        if (!localFileAcceptedAsReference(file, accepted)) {
+          notify(t("mediaPlugin.ref.fileKind"));
+          continue;
+        }
+        const fd = new FormData();
+        fd.append("file", file);
+        const r = await api.uploadMaterial(fd);
+        const id = "materialId" in r && typeof r.materialId === "string" ? r.materialId : undefined;
+        if (!id) {
+          notify(t("mediaPlugin.ref.queuedExtract"));
+          continue;
+        }
+        if (!ids.includes(id)) ids = [...ids, id];
+      }
+      await reload().catch(() => {});
+      onChange(ids);
+    } catch (e) {
+      notify(t("mediaPlugin.ref.uploadFailed", { msg: (e as Error).message }));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const thumb = (m: Material) => {
@@ -95,11 +135,36 @@ export default function MediaReferencePicker({ kind, constraints = {}, value, on
           })}
         </div>
       )}
-      <div className="file-drop" onClick={() => setOpen((o) => !o)}>
+      <input
+        ref={fileRef}
+        hidden
+        type="file"
+        multiple={max > 1}
+        accept={referenceFileAccept(accepted)}
+        onChange={(event) => {
+          void ingestFiles(event.target.files ?? []);
+          event.currentTarget.value = "";
+        }}
+      />
+      <div
+        className={`file-drop${over ? " over" : ""}`}
+        onClick={() => !busy && fileRef.current?.click()}
+        onDragEnter={(e) => { e.preventDefault(); setOver(true); }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setOver(true); }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setOver(false);
+          void ingestFiles(e.dataTransfer.files);
+        }}
+      >
         <span className="ref-empty">
-          <ImagePlus size={16} /> {t("mediaPlugin.ref.choose")} ({value.length}/{max})
+          <Upload size={16} /> {busy ? t("mediaPlugin.ref.uploading") : t("mediaPlugin.ref.drop")} ({value.length}/{max})
         </span>
       </div>
+      <button type="button" className="px-btn" disabled={busy} onClick={() => setOpen((o) => !o)}>
+        <ImagePlus size={14} /> {t("mediaPlugin.ref.library")}
+      </button>
       {open && (
         <div className="ref-panel">
           <div className="mat-pick-grid ref-grid">

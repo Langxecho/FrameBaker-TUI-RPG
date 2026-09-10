@@ -1,5 +1,5 @@
 import type { GenProvider, GenProviderType, ImageLayerSettings, MattingSettings, PromptEnhancer } from "@framebaker/shared";
-import { GEN_PROVIDER_TYPES } from "@framebaker/shared";
+import { GEN_PROVIDER_TYPES, MONSTER_IMAGE_PROVIDER_ID } from "@framebaker/shared";
 import { db } from "./db";
 
 // 生成 / 抠图 / 提示词加强的运行配置：设置页（settings 表）优先，环境变量兜底
@@ -100,6 +100,9 @@ export function providerConfigured(p: GenProvider): boolean {
  * - 没传 → 第一个 configured 的 provider，都没有则第一个
  */
 export function resolveGenProvider(providerId?: string): GenProvider | null {
+  if (providerId === MONSTER_IMAGE_PROVIDER_ID) {
+    return (require("./monsterImage") as typeof import("./monsterImage")).getMonsterImageProvider();
+  }
   const list = getGenProviders();
   if (providerId) return list.find((p) => p.id === providerId) ?? null;
   return list.find(providerConfigured) ?? list[0] ?? null;

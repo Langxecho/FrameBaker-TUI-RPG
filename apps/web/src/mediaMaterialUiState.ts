@@ -23,6 +23,7 @@ function inferMediaKindFromPath(path: unknown): MediaKind | null {
   if (/\.(mp4|mov|webm|avi)$/i.test(path)) return "video";
   if (/\.(mp3|wav|ogg|flac|m4a)$/i.test(path)) return "audio";
   if (/\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(path)) return "image";
+  if (/\.zip$/i.test(path)) return "archive";
   return null;
 }
 

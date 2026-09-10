@@ -1,5 +1,5 @@
 import { buildFbanimV2Entries, type MotionClip, type SkeletalProjectDocument, type Skeleton } from "@framebaker/shared";
-import { api, frameImageUrl, materialImageUrl, type Frame, type TimelineResponse } from "./api";
+import { api, frameImageUrl, materialDownloadUrl, materialImageUrl, type Frame, type TimelineResponse } from "./api";
 import type { AttackEffectCell } from "./api";
 import { attackEffectBounds, drawAttackEffect } from "./attackEffect";
 import { transformedFrameRectBounds } from "./frameGeometry";
@@ -55,6 +55,14 @@ export async function downloadMaterialImage(
   const blob = await res.blob();
   const suffix = slot === "processed" ? "_matted" : "_raw";
   download(blob, `${safeFilename(name)}_${id.slice(0, 6)}${suffix}.png`);
+}
+
+/** 下载任意素材文件（压缩包/视频/音频）：走 fetch+blob，避免中文 Content-Disposition 被 Chrome 下载栏判失败。 */
+export async function downloadMaterialFile(id: string, name: string, ext: string, v?: number): Promise<void> {
+  const res = await fetch(materialDownloadUrl(id, v, "raw"));
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const suffix = ext.replace(/^\./, "") || "bin";
+  download(await res.blob(), `${safeFilename(name)}.${suffix}`);
 }
 
 /** 批量导出：打包成 ZIP 下载；返回成功/跳过/失败计数 */

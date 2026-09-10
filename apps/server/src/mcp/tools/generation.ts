@@ -2,6 +2,7 @@ import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { db } from "../../db";
 import { createGenerationJobs } from "../../queue";
+import { startMonsterPipeline, startMonsterReferenceJob } from "../../monsterPipeline";
 import { checkVideoSupport, resolveReferencePaths } from "../../providerAdapter";
 import { ok, err } from "../helpers";
 
@@ -131,6 +132,107 @@ export function register(server: McpServer) {
         folderId: body.folderId,
       });
       return ok({ jobId: jobIds[0], jobIds });
+    }
+  );
+
+  server.registerTool(
+    "generate_monster_reference",
+    {
+      title: "Generate Monster Reference",
+      description:
+        "Generate a single full-body monster identity still (transparent background). Uses the Monster tab image connection (settings.monsterImage / Euzhi GPT Image 2 plugin key), not the skeleton GenProvider list. Does not start action video or extract. Returns jobId. Pick the resulting material as referenceMaterialId for generate_monster_pipeline. Does not accept local filesystem paths.",
+      inputSchema: z.object({
+        appearance: z.string().describe("Monster appearance"),
+        name: z.string().optional(),
+        providerId: z.string().optional(),
+        model: z.string().optional(),
+        size: z.string().optional(),
+        width: z.number().int().min(64).max(2048).optional(),
+        height: z.number().int().min(64).max(2048).optional(),
+        autoMatting: z.boolean().optional(),
+        folderId: z.string().optional(),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    },
+    async (args) => {
+      try {
+        return ok(startMonsterReferenceJob(args));
+      } catch (e) {
+        return err(e instanceof Error ? e.message : "怪物参考图生成失败");
+      }
+    }
+  );
+
+  server.registerTool(
+    "generate_monster_pipeline",
+    {
+      title: "Generate Monster Pipeline",
+      description:
+        "Start action stills → image-to-video → extract from an existing image material used as identity lock. Image jobs use the Monster tab connection (settings.monsterImage), not skeleton GenProviders. Does not generate the identity still; call generate_monster_reference or upload first. referenceMaterialId is required. Optional action prompts skip empty slots unless a matching *Video prompt is set. With video on, idle still is generated first and every I2VA clip uses it as Picture 1. durationSeconds defaults to 4. width/height default to 256 (API stills request 1024 then sprite-fit). Video uses an installed .vap plugin (default MiniMax H3 I2V). Returns pipelineId, first jobId, and material folderId. Does not accept local filesystem paths.",
+      inputSchema: z.object({
+        appearance: z.string().describe("Optional extra appearance lock text").optional(),
+        name: z.string().optional(),
+        referenceMaterialId: z.string().describe("Required image material UUID used as identity keyframe"),
+        idle: z.string().optional(),
+        attack: z.string().optional(),
+        special: z.string().optional(),
+        hurt: z.string().optional(),
+        death: z.string().optional(),
+        providerId: z.string().optional(),
+        model: z.string().optional(),
+        size: z.string().optional(),
+        width: z.number().int().min(64).max(2048).describe("Still output width in pixels (default 256)").optional(),
+        height: z.number().int().min(64).max(2048).describe("Still output height in pixels (default 256)").optional(),
+        idleVideo: z.string().optional(),
+        attackVideo: z.string().optional(),
+        specialVideo: z.string().optional(),
+        hurtVideo: z.string().optional(),
+        deathVideo: z.string().optional(),
+        videoPluginId: z.string().describe("Installed video plugin id; omit for default H3 I2V; empty string skips video").optional(),
+        durationSeconds: z.number().min(4).max(15).describe("Video duration in seconds (default 4)").optional(),
+        extractFps: z.array(z.number().int().min(1).max(60)).optional(),
+        autoMatting: z.boolean().optional(),
+        folderId: z.string().optional(),
+        importProjectId: z.string().describe("Optional frame project UUID to import extracted frames").optional(),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    },
+    async (args) => {
+      try {
+        const result = startMonsterPipeline({
+          appearance: args.appearance,
+          name: args.name,
+          referenceMaterialId: args.referenceMaterialId,
+          actions: {
+            "monster-01-idle": args.idle,
+            "monster-02-attack": args.attack,
+            "monster-03-special": args.special,
+            "monster-04-hurt": args.hurt,
+            "monster-05-death": args.death,
+          },
+          videoPrompts: {
+            "monster-01-idle": args.idleVideo,
+            "monster-02-attack": args.attackVideo,
+            "monster-03-special": args.specialVideo,
+            "monster-04-hurt": args.hurtVideo,
+            "monster-05-death": args.deathVideo,
+          },
+          providerId: args.providerId,
+          model: args.model,
+          size: args.size,
+          width: args.width,
+          height: args.height,
+          videoPluginId: args.videoPluginId,
+          durationSeconds: args.durationSeconds,
+          extractFps: args.extractFps,
+          autoMatting: args.autoMatting,
+          folderId: args.folderId ?? null,
+          importProjectId: args.importProjectId ?? null,
+        });
+        return ok(result);
+      } catch (e) {
+        return err(e instanceof Error ? e.message : "怪物流水线启动失败");
+      }
     }
   );
 }

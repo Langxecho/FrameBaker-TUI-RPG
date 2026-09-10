@@ -6,6 +6,8 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ### Added
 
+- Monster pipeline packs extracted frames into a downloadable zip material (`mediaKind=archive`, `{name}/{action}/{fps}fps/*.png`) in the same folder after the last extract job.
+
 - Motion editing can import a video/GIF/still as a reference skin under or over the character (neither blocks posing); video can follow the clip timeline. Session-only, not saved into the action package.
 - Skeleton editing can drag joints and bones on the character canvas with Move/Rotate/Scale, not only numeric inspector fields.
 - Wrapped the MiniMax H3 T8 ComfyUI `.cfp` image-to-video workflow as a FrameBaker `.vap` (`minimax-h3-t8-i2v`), with I2VA prompt help on `/generate` and a project Cursor skill at `.cursor/skills/h3-prompt-writing`.
@@ -18,6 +20,9 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ### Fixed
 
+- Monster still postprocess no longer calls `ffprobe`; PNG size comes from the IHDR, and missing ffmpeg reports the install command instead of a raw PATH error.
+- Monster I2VA no longer uploads the 256 transparent PNG to the video plugin; it sends an RGB JPEG of the idle still and retries Comfy upload 502/503/504.
+- Material downloads with non-ASCII names use RFC 5987 `filename*` and fetch-to-blob, so Chrome no longer fails zip downloads with “contact your organization”.
 - Skeleton editing now uses the same left-canvas / right-inspector split as material binding, so the toolbar no longer becomes an empty column and numeric fields stay scrollable instead of clipped.
 - Step 5 now shows a copyable motion clip ID bar, with a copy button on each action in the left list, so it is not confused with the game action name or the weapon stance profile ID.
 - Semantic event markers show the event type (for example `footstep.left`) instead of a leftover default name `fire`, and inserting a non-fire type no longer keeps the name `fire`.

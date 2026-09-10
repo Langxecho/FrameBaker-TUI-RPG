@@ -57,7 +57,14 @@ async function saveFirstImage(json: ImagesResponse, outPath: string, signal?: Ab
   throw new Error("生成 API 响应缺少 data[0].b64_json / data[0].url");
 }
 
-/** 通用下载（生成图/视频写盘）；视频较大，超时放宽到 300s */
+function rethrowApiConnect(error: unknown, which: string, url: string): never {
+  if (error instanceof JobCancelledError) throw error;
+  const detail = error instanceof Error ? error.message : String(error);
+  if (/unable to connect|failed to connect|econnrefused|enotfound|getaddrinfo|timed out|network/i.test(detail)) {
+    throw new Error(`${which}连不上 ${url}（${detail}）。请检查设置里该 Provider 的 Base URL，以及本机能否访问该域名（代理/VPN/防火墙）。`);
+  }
+  throw error instanceof Error ? error : new Error(detail);
+}
 async function downloadFile(url: string, outPath: string, signal?: AbortSignal): Promise<void> {
   const res = await fetch(url, { signal: fetchSignal(signal, 300_000) });
   if (!res.ok) throw new Error(`下载生成文件失败: HTTP ${res.status}`);
@@ -66,6 +73,11 @@ async function downloadFile(url: string, outPath: string, signal?: AbortSignal):
 
 async function readError(res: Response, which: string): Promise<Error> {
   const text = (await res.text()).slice(0, 500);
+  if (res.status === 405) {
+    return new Error(
+      `生成 API ${which} 返回 405: ${text}\nOpenAI 兼容生图的 Base 应是 …/v1（服务端会再拼 /images/generations），不要填图匠 admin.euzhi.com/tujiang/api/v1，也不要把完整 /images/generations 当 Base。怪物页请用顶部独立生图连接（默认 https://euzhi.vip/v1 + gpt-image-2）。`,
+    );
+  }
   return new Error(`生成 API ${which} 返回 ${res.status}: ${text}`);
 }
 
@@ -84,7 +96,7 @@ async function generateViaOpenAI(
   signal?: AbortSignal
 ): Promise<void> {
   if (signal?.aborted) throw new JobCancelledError();
-  const base = cfg.apiBaseUrl.trim().replace(/\/+$/, "");
+  const base = cfg.apiBaseUrl.trim().replace(/\/+$/, "").replace(/\/images\/(?:generations|edits)$/i, "").replace(/\/+$/, "");
   const auth = { Authorization: `Bearer ${cfg.apiKey.trim()}` };
 
   let res: Response;
@@ -102,7 +114,7 @@ async function generateViaOpenAI(
       headers: auth,
       body: form,
       signal: fetchSignal(signal, IMAGE_GENERATION_TIMEOUT),
-    });
+    }).catch((error) => rethrowApiConnect(error, "OpenAI 兼容 images/edits", `${base}/images/edits`));
     if (!res.ok) throw await readError(res, "images/edits（引用图）");
   } else {
     const body: Record<string, unknown> = { model, prompt, n: 1 };
@@ -112,7 +124,7 @@ async function generateViaOpenAI(
       headers: { ...auth, "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: fetchSignal(signal, IMAGE_GENERATION_TIMEOUT),
-    });
+    }).catch((error) => rethrowApiConnect(error, "OpenAI 兼容 images/generations", `${base}/images/generations`));
     if (!res.ok) throw await readError(res, "images/generations");
   }
   await saveFirstImage((await res.json()) as ImagesResponse, outPath, signal);

@@ -53,14 +53,15 @@ if ($Uv) {
   & $Python -m venv $Venv
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+  $VenvPython = Join-Path $Venv "Scripts\python.exe"
   $Pip = Join-Path $Venv "Scripts\pip.exe"
 
   Write-Host "Upgrading pip"
-  & $Pip install --upgrade pip
+  & $VenvPython -m pip install --upgrade pip
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   Write-Host "Installing $RembgPkg (this can take a while)"
-  & $Pip install $RembgPkg
+  & $VenvPython -m pip install $RembgPkg
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

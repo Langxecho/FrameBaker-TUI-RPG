@@ -20,8 +20,7 @@ if (Test-Path $VenvPython) {
     & $UvExisting.Source pip install --python $VenvPython --link-mode copy @RuntimeDeps
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   } else {
-    $Pip = Join-Path $Venv "Scripts\pip.exe"
-    & $Pip install @RuntimeDeps
+    & $VenvPython -m pip install @RuntimeDeps
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   }
   Write-Host "Ready: $VenvPython"
@@ -53,13 +52,12 @@ if ($Uv) {
   & $Python -m venv $Venv
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-  $Pip = Join-Path $Venv "Scripts\pip.exe"
   Write-Host "Upgrading pip"
-  & $Pip install --upgrade pip
+  & $VenvPython -m pip install --upgrade pip
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   Write-Host "Installing base runtime deps: $($RuntimeDeps -join ', ')"
-  & $Pip install @RuntimeDeps
+  & $VenvPython -m pip install @RuntimeDeps
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

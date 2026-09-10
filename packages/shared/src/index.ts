@@ -10,3 +10,4 @@ export * from "./equipment";
 export * from "./actionComposition";
 export * from "./twoBoneIk";
 export * from "./types";
+export * from "./monster";

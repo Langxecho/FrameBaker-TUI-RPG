@@ -73,11 +73,13 @@ function stripSecrets(value: unknown): unknown {
 export function resolveMediaPluginReferences(
   kind: MediaPluginKind,
   references: string[] | undefined,
+  pathOverrides?: string[] | undefined,
 ): { ids: string[]; imageUrls: string[]; audioUrls: string[] } {
   const ids = (references ?? []).map((id) => String(id ?? "").trim()).filter(Boolean);
   const imageUrls: string[] = [];
   const audioUrls: string[] = [];
-  for (const id of ids) {
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i]!;
     if (id.includes("/") || id.includes("\\") || id.includes(":") || id.includes("..")) {
       throw new MediaPluginServiceError("PLUGIN_PARAMETER_INVALID", `参考素材必须是素材 ID，不能是路径: ${id}`);
     }
@@ -94,10 +96,12 @@ export function resolveMediaPluginReferences(
           `该插件仅接受图片参考素材，收到 ${mediaKind}: ${id}`,
         );
       }
-      if (!row.raw_path || !existsSync(row.raw_path)) {
+      const override = pathOverrides?.[i]?.trim();
+      const imagePath = override ? resolveOverrideImagePath(override) : row.raw_path;
+      if (!imagePath || !existsSync(imagePath)) {
         throw new MediaPluginServiceError("PLUGIN_PARAMETER_INVALID", `参考素材文件缺失: ${id}`);
       }
-      imageUrls.push(pathToFileURL(resolve(row.raw_path)).href);
+      imageUrls.push(pathToFileURL(resolve(imagePath)).href);
     } else {
       // audio_api：图片参考走 imageUrls，音频参考走 audioUrls
       if (mediaKind === "image") {
@@ -119,6 +123,17 @@ export function resolveMediaPluginReferences(
     }
   }
   return { ids, imageUrls, audioUrls };
+}
+
+function resolveOverrideImagePath(path: string): string {
+  const resolved = resolve(path);
+  if (!isPathInside(resolved, STORAGE_ROOT)) {
+    throw new MediaPluginServiceError("PLUGIN_PATH_INVALID", "参考图覆盖路径未落在 STORAGE_ROOT 内");
+  }
+  if (!existsSync(resolved)) {
+    throw new MediaPluginServiceError("PLUGIN_PARAMETER_INVALID", "参考图覆盖文件不存在");
+  }
+  return resolved;
 }
 
 function importImageMaterialToProject(m: MaterialRow, projectId: string): void {

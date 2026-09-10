@@ -2,8 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Bone, Check, Crop, Download, Eye, Film, Grid3x3, ImageDown, Layers3, Package, Pencil, PersonStanding, RefreshCw, Scan, Send, Sparkles, Trash2, Undo2, Upload, Wand2, X } from "lucide-react";
 import { MEDIA_KINDS, SOURCE_COLORS } from "@framebaker/shared";
-import { api, materialDownloadUrl, materialFileUrl, materialImageUrl, wsClient, type Folder, type Material } from "../api";
-import { downloadMaterialImage, downloadMaterialImages } from "../export";
+import { api, materialFileUrl, materialImageUrl, wsClient, type Folder, type Material } from "../api";
+import { downloadMaterialFile, downloadMaterialImage, downloadMaterialImages } from "../export";
 import { cropImage, findOpaqueBounds } from "../imageops/client";
 import { useModalEscClose } from "../hooks/useModalEscClose";
 import { getLocale, useT } from "../i18n";
@@ -78,6 +78,10 @@ const MaterialCard = memo(function MaterialCard({
           )
         ) : mediaKind === "audio" ? (
           <div className="mat-thumb-audio" aria-hidden />
+        ) : mediaKind === "archive" ? (
+          <div className="mat-thumb-archive" aria-hidden>
+            <Package size={28} />
+          </div>
         ) : (
           <img src={materialImageUrl(m.id, imgV, "processed", 320)} alt="" draggable={false} loading="lazy" decoding="async" />
         )}
@@ -93,6 +97,7 @@ const MaterialCard = memo(function MaterialCard({
         </span>
         {mediaKind === "video" && <span className="mat-badge-video">{t("msg.video")}</span>}
         {mediaKind === "audio" && <span className="mat-badge-audio">{t("msg.audio")}</span>}
+        {mediaKind === "archive" && <span className="mat-badge-archive">{t("msg.archive")}</span>}
         {m.status === "matted" && mediaKind === "image" && <span className="mat-badge-matted">{t("msg.matted_431ee1")}</span>}
         <span className="mat-src" style={{ background: themedSourceColor(SOURCE_COLORS[m.source] ?? "#888", theme) }}>
           {t(SOURCE_LABEL_KEYS[m.source] ?? m.source)}
@@ -252,7 +257,13 @@ export default function MaterialsPage() {
   );
 
   const mediaCounts = useMemo(() => {
-    const counts = { all: folderVisible.length, image: 0, video: 0, audio: 0 };
+    const counts: Record<"all" | (typeof MEDIA_KINDS)[number], number> = {
+      all: folderVisible.length,
+      image: 0,
+      video: 0,
+      audio: 0,
+      archive: 0,
+    };
     for (const m of folderVisible) counts[materialKind(m)] += 1;
     return counts;
   }, [folderVisible]);
@@ -725,8 +736,14 @@ export default function MaterialsPage() {
               items.push({
                 label: t("msg.download_material"),
                 icon: <Download size={13} />,
-                onClick: () => {
-                  window.open(materialDownloadUrl(ctxMat.id, v, "raw"), "_blank", "noopener,noreferrer");
+                onClick: async () => {
+                  try {
+                    const ext = kind === "archive" ? "zip" : kind === "video" ? "mp4" : "bin";
+                    await downloadMaterialFile(ctxMat.id, ctxMat.name, ext, v);
+                    toast(t("msg.download_material"));
+                  } catch (e) {
+                    notify(t("msg.export_failed_msg", { msg: (e as Error).message }));
+                  }
                 },
               });
             }

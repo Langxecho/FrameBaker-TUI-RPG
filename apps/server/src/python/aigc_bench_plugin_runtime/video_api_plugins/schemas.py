@@ -63,7 +63,7 @@ class VideoApiPluginSpec:
                     errors.append(f"params_schema.{key} must be an object")
                     continue
                 typ = str(spec.get("type") or "").strip()
-                if typ not in ("string", "integer", "number", "boolean", "json", ""):
+                if typ not in ("string", "integer", "number", "boolean", "enum", "json", ""):
                     errors.append(f"params_schema.{key} has invalid type: {typ!r}")
                 if "enum" in spec and not isinstance(spec["enum"], list):
                     errors.append(f"params_schema.{key}.enum must be an array")

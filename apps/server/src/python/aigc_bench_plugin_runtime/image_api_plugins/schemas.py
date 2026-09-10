@@ -58,7 +58,7 @@ class ImageApiPluginSpec:
                     errors.append(f"params_schema.{pk} must be an object")
                     continue
                 t = str(spec.get("type") or "").strip()
-                if t not in ("string", "integer", "number", "boolean", "json", ""):
+                if t not in ("string", "integer", "number", "boolean", "enum", "json", ""):
                     errors.append(f"params_schema.{pk} has invalid type: {t!r}")
                 if "enum" in spec:
                     en = spec["enum"]

@@ -121,6 +121,7 @@ export async function matteMaterial(materialId: string, signal?: AbortSignal): P
   const m = getMaterial(materialId);
   if (!m) throw new Error(`素材不存在: ${materialId}`);
   if (!m.raw_path) throw new Error(`素材缺少 raw 文件: ${materialId}`);
+  if (/\.zip$/i.test(m.raw_path)) throw new Error("压缩包不能抠图");
 
   const outPath = join(STORAGE_ROOT, "materials", materialId, "processed.png");
   mkdirSync(dirname(outPath), { recursive: true });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Bone, Crop, Download, Film, Grid3x3, Layers3, MoveHorizontal, Pencil, PersonStanding, RefreshCw, Send, Trash2, Undo2, Wand2, X } from "lucide-react";
+import { Bone, Crop, Download, Film, Grid3x3, Layers3, MoveHorizontal, Package, Pencil, PersonStanding, RefreshCw, Send, Trash2, Undo2, Wand2, X } from "lucide-react";
 import { api, materialDownloadUrl, materialFileUrl, materialImageUrl, type Material, type Project } from "../api";
 import { getLocale, useT } from "../i18n";
 import { useModalEscClose } from "../hooks/useModalEscClose";
@@ -9,6 +9,7 @@ import {
   materialActionAvailability,
   materialDurationSeconds,
 } from "../mediaMaterialUiState";
+import { downloadMaterialFile } from "../export";
 import { askConfirm, notify } from "../notice";
 import { SOURCE_LABEL_KEYS } from "../sourceLabel";
 import { useServerConfig } from "../config";
@@ -42,6 +43,7 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
   const mediaKind = m.mediaKind ?? m.kind;
   const isVideo = mediaKind === "video";
   const isAudio = mediaKind === "audio";
+  const isArchive = mediaKind === "archive";
   const isImage = mediaKind === "image";
   const actions = materialActionAvailability(mediaKind);
   const duration = materialDurationSeconds(m.metadata);
@@ -68,7 +70,7 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
   const imageLayersAvailable = cfg?.imageLayers.configured ?? false;
 
   useEffect(() => {
-    if (initialAction !== "crop" || isVideo) return;
+    if (initialAction !== "crop" || !isImage) return;
     let alive = true;
     setBusy(true);
     const slot = m.processed_path ? "processed" : "raw";
@@ -239,6 +241,24 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
             </a>
             <div className="mat-media-hint">{t("msg.materials_image_only_actions")}</div>
           </div>
+        ) : isArchive ? (
+          <div className="mat-audio-wrap">
+            <div className="mat-thumb-archive mat-archive-preview" aria-hidden>
+              <Package size={36} />
+            </div>
+            <button
+              type="button"
+              className="px-btn accent"
+              onClick={() => {
+                void downloadMaterialFile(m.id, m.name, "zip", v).catch((error) => {
+                  notify(t("msg.export_failed_msg", { msg: (error as Error).message }));
+                });
+              }}
+            >
+              <Download size={14} /> {t("msg.download_material")}
+            </button>
+            <div className="mat-media-hint">{t("monster.form.packHint")}</div>
+          </div>
         ) : m.processed_path ? (
           <div
             className="compare"
@@ -272,7 +292,7 @@ export default function MaterialModal({ material: m, v, initialAction, onClose, 
 
         <div className="mat-meta">
           <span>{t("msg.source")} {t(SOURCE_LABEL_KEYS[m.source] ?? m.source)}</span>
-          <span>{isVideo ? t("msg.video") : isAudio ? t("msg.audio") : m.status === "matted" ? t("msg.matted_431ee1") : t("msg.original")}</span>
+          <span>{isVideo ? t("msg.video") : isAudio ? t("msg.audio") : isArchive ? t("msg.archive") : m.status === "matted" ? t("msg.matted_431ee1") : t("msg.original")}</span>
           <span>{new Date(m.created_at).toLocaleString(getLocale())}</span>
           {isImage && (
             <span className={`engine-status ${engineAvailable ? "ok" : "bad"}`}>

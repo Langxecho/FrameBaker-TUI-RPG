@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import type { Folder, Job, MediaPluginDetail, MediaPluginSummary, Project } from "@framebaker/shared";
 import { api, wsClient } from "../api";
@@ -7,6 +7,7 @@ import { notify } from "../notice";
 import MediaPluginForm from "./MediaPluginForm";
 import MediaReferencePicker from "./MediaReferencePicker";
 import MediaResultPreview, { type MediaGenerationResultItem } from "./MediaResultPreview";
+import MonsterPipelinePage from "./MonsterPipelinePage";
 import {
   MEDIA_GENERATE_TABS,
   buildMediaGenerationRequest,
@@ -28,8 +29,10 @@ interface Props {
 
 export default function MediaGenerationPage({ onOpenMaterials }: Props) {
   const t = useT();
-  const [tab, setTab] = useState<MediaGenerateTab>("image");
-  const kind = pluginKindForTab(tab);
+  const [tab, setTab] = useState<MediaGenerateTab | "monster">("image");
+  const lastPluginTab = useRef<MediaGenerateTab>("image");
+  if (tab !== "monster") lastPluginTab.current = tab;
+  const kind = pluginKindForTab(tab === "monster" ? lastPluginTab.current : tab);
   const [plugins, setPlugins] = useState<MediaPluginSummary[]>([]);
   const [pluginId, setPluginId] = useState("");
   const [detail, setDetail] = useState<MediaPluginDetail | null>(null);
@@ -90,6 +93,7 @@ export default function MediaGenerationPage({ onOpenMaterials }: Props) {
   }, [kind, t]);
 
   useEffect(() => {
+    if (tab === "monster") return;
     setReferences([]);
     setDetail(null);
     setParams({});
@@ -197,6 +201,9 @@ export default function MediaGenerationPage({ onOpenMaterials }: Props) {
   );
 
   const trackedJobs = trackedJobIds.map((id) => jobMap[id]).filter(Boolean) as Job[];
+  const h3Prompt = detail?.constraints?.prompt_preset === "minimax-h3-i2va";
+  const durationMin = typeof detail?.constraints?.min_duration_seconds === "number" ? Number(detail.constraints.min_duration_seconds) : 0.1;
+  const durationMax = typeof detail?.constraints?.max_duration_seconds === "number" ? Number(detail.constraints.max_duration_seconds) : 600;
 
   const submit = async () => {
     const schema = detail?.paramsSchema ?? {};
@@ -207,10 +214,13 @@ export default function MediaGenerationPage({ onOpenMaterials }: Props) {
       params,
       kind,
       projectId: projectId || null,
+      references,
+      constraints: detail?.constraints ?? {},
     });
     if (!check.ok) {
       if (check.field === "pluginId") notify(t("mediaPlugin.form.pickPlugin"));
       else if (check.field === "prompt") notify(t("mediaPlugin.form.promptRequired"));
+      else if (check.field === "references") notify(t("mediaPlugin.form.referencesRequired"));
       else if (check.field === "projectId") notify(t("mediaPlugin.form.projectImageOnly"));
       else notify(t(`mediaPlugin.paramError.${check.code}`, { field: check.field }));
       return;
@@ -270,8 +280,20 @@ export default function MediaGenerationPage({ onOpenMaterials }: Props) {
             {t(`mediaPlugin.tab.${id}`)}
           </button>
         ))}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "monster"}
+          className={`tab ${tab === "monster" ? "active" : ""}`}
+          onClick={() => setTab("monster")}
+        >
+          {t("monster.tab")}
+        </button>
       </div>
 
+      {tab === "monster" ? (
+        <MonsterPipelinePage onOpenMaterials={onOpenMaterials} />
+      ) : (
       <div className="media-generate-layout">
         <section className="media-generate-form card-panel">
           <MediaPluginForm
@@ -289,12 +311,22 @@ export default function MediaGenerationPage({ onOpenMaterials }: Props) {
             <span>{t("mediaPlugin.form.prompt")} *</span>
             <textarea
               className="px-input"
-              rows={4}
+              rows={h3Prompt ? 12 : 4}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder={t("mediaPlugin.form.promptPlaceholder")}
+              placeholder={h3Prompt ? t("mediaPlugin.h3.promptPlaceholder") : t("mediaPlugin.form.promptPlaceholder")}
             />
           </label>
+          {h3Prompt && (
+            <details className="media-h3-prompt-help">
+              <summary>{t("mediaPlugin.h3.helpTitle")}</summary>
+              <p>{t("mediaPlugin.h3.helpBody")}</p>
+              <pre>{t("mediaPlugin.h3.i2vaTemplate")}</pre>
+              <button type="button" className="px-btn" onClick={() => setPrompt(t("mediaPlugin.h3.i2vaTemplate"))}>
+                {t("mediaPlugin.h3.fillTemplate")}
+              </button>
+            </details>
+          )}
 
           <label className="field">
             <span>{t("mediaPlugin.form.name")}</span>
@@ -328,11 +360,11 @@ export default function MediaGenerationPage({ onOpenMaterials }: Props) {
               <input
                 className="px-input"
                 type="number"
-                min={0.1}
-                max={600}
+                min={durationMin}
+                max={durationMax}
                 step={0.1}
                 value={durationSeconds}
-                onChange={(e) => setDurationSeconds(Math.max(0.1, Math.min(600, Number(e.target.value) || 0.1)))}
+                onChange={(e) => setDurationSeconds(Math.max(durationMin, Math.min(durationMax, Number(e.target.value) || durationMin)))}
               />
             </label>
           )}
@@ -396,6 +428,7 @@ export default function MediaGenerationPage({ onOpenMaterials }: Props) {
           <MediaResultPreview results={results} cacheKey={cacheKey} onOpenMaterials={onOpenMaterials} />
         </section>
       </div>
+      )}
     </div>
   );
 }

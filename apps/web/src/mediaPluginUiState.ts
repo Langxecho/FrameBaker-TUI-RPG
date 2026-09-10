@@ -25,7 +25,9 @@ export function mediaKindForPluginKind(kind: MediaPluginKind): MediaKind {
 }
 
 export function tabForPluginKind(kind: MediaPluginKind): MediaGenerateTab {
-  return mediaKindForPluginKind(kind);
+  if (kind === "image_api") return "image";
+  if (kind === "video_api") return "video";
+  return "audio";
 }
 
 export function allowedPluginArchiveExtensions(): string[] {
@@ -151,6 +153,13 @@ function constraintInt(constraints: Record<string, unknown>, key: string, fallba
   return fallback;
 }
 
+export function minReferenceCountForPlugin(
+  _kind: MediaPluginKind,
+  constraints: Record<string, unknown> = {},
+): number {
+  return constraintInt(constraints, "min_reference_images", 0);
+}
+
 export function maxReferenceCountForPlugin(
   kind: MediaPluginKind,
   constraints: Record<string, unknown> = {},
@@ -174,6 +183,28 @@ export function acceptedReferenceMediaKinds(
   if (maxImages > 0) kinds.push("image");
   if (maxAudios > 0) kinds.push("audio");
   return kinds.length ? kinds : ["image", "audio"];
+}
+
+/** 本地文件能否作为该插件参考素材直接入库（静图；GIF/视频走拆帧任务，不能立刻当参考 ID）。 */
+export function inferLocalReferenceKind(file: File): MediaKind | null {
+  const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+  const type = (file.type || "").toLowerCase();
+  if (type.startsWith("audio/") || ["mp3", "wav", "ogg", "m4a", "flac", "aac"].includes(ext)) return "audio";
+  if (type.startsWith("video/") || ["mp4", "webm", "mov", "m4v", "ogv", "gif"].includes(ext)) return "video";
+  if (type.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "bmp"].includes(ext)) return "image";
+  return null;
+}
+
+export function localFileAcceptedAsReference(file: File, accepted: readonly MediaKind[]): boolean {
+  const kind = inferLocalReferenceKind(file);
+  return kind !== null && accepted.includes(kind) && kind !== "video";
+}
+
+export function referenceFileAccept(accepted: readonly MediaKind[]): string {
+  const parts: string[] = [];
+  if (accepted.includes("image")) parts.push("image/png,image/jpeg,image/webp,image/bmp,.png,.jpg,.jpeg,.webp");
+  if (accepted.includes("audio")) parts.push("audio/*,.mp3,.wav,.ogg,.m4a");
+  return parts.join(",");
 }
 
 export function filterMaterialsForPlugin(
@@ -223,11 +254,17 @@ export function validateGenerationForm(input: {
   params: Record<string, unknown>;
   kind: MediaPluginKind;
   projectId?: string | null;
+  references?: string[];
+  constraints?: Record<string, unknown>;
 }): { ok: true } | { ok: false; field: string; code: string } {
   if (!input.pluginId.trim()) return { ok: false, field: "pluginId", code: "required" };
   if (!input.prompt.trim()) return { ok: false, field: "prompt", code: "required" };
   if (input.projectId && !canUseProjectTarget(input.kind)) {
     return { ok: false, field: "projectId", code: "image_only" };
+  }
+  const minRefs = minReferenceCountForPlugin(input.kind, input.constraints ?? {});
+  if ((input.references ?? []).length < minRefs) {
+    return { ok: false, field: "references", code: "min_references" };
   }
   const paramErrors = validateMediaPluginParams(input.schema, input.params);
   const first = Object.entries(paramErrors)[0];

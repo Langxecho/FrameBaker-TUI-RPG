@@ -201,7 +201,7 @@ Materials are first generated/uploaded to the library, matted, compared, then im
 }
 ```
 
-`kind` and `mediaKind` are always present and use the same rule (`image` | `video` | `audio`): valid `metadata.mediaKind` wins, otherwise inferred from the file path. Prefer `mediaKind` in new clients; `kind` remains for older UI filters. Absolute server paths such as `metadata.thumbnailPath` are omitted from the public payload; when `storage/materials/<id>/thumb.png` exists, `metadata.hasThumbnail` is `true`.
+`kind` and `mediaKind` are always present and use the same rule (`image` | `video` | `audio` | `archive`): valid `metadata.mediaKind` wins, otherwise inferred from the file path. Prefer `mediaKind` in new clients; `kind` remains for older UI filters. Absolute server paths such as `metadata.thumbnailPath` are omitted from the public payload; when `storage/materials/<id>/thumb.png` exists, `metadata.hasThumbnail` is `true`. `archive` is a downloadable zip (crop/matting/import-to-project are disabled).
 
 ### PATCH /api/materials/:id
 
@@ -236,6 +236,14 @@ curl -F "file=@walk.gif" -F "autoMatting=true" http://localhost:3000/api/materia
 ### POST /api/materials/generate
 
 `{ "prompt": "pixel slime", "count": 4, "autoMatting": false, "references": [{ "kind": "material", "id": "…" }] }` → `{ "jobId": "…", "jobIds": ["…", "…", "…", "…"] }` (provider resolution, independent image jobs, and multi-reference rules are the same as `/api/import/generate`). Each completed material job broadcasts `materials_changed`, so an open material library refreshes incrementally. Optional `name`: material naming base (defaults to first 24 chars of prompt); output named `name #i` (count>1) — material detail "multi-action generation" passes "materialName_action". Supports `mediaKind: "video"`: only generates and saves video material (`kind=video`), **no frame extraction**; use the extract endpoint below to split into frames. Skeletal part generation accepts paired `gridRows` / `gridCols` values from 1–8; both generated metadata and the grid-split editor preserve them. The humanoid default is `gridRows: 3`, `gridCols: 4` (12 parts). A `skeletal-character` two-stage request may put the same fields inside `followUp` for its generated parts sheet. Skeletal requests no longer need a pre-created `characterPartSetId`: when omitted, the server creates the internal part set automatically and returns its ID alongside `jobId`; an explicit ID remains supported for API compatibility.
+
+### POST /api/materials/monster-reference
+
+Generate a single identity still only. `{ "appearance": "left-facing pixel flyer", "width": 256, "height": 256 }` → `{ "jobId" }`. Image jobs always use the Monster-tab connection (`settings.monsterImage`, default Base `https://euzhi.vip/v1`, model `gpt-image-2`), not Settings GenProviders. Empty Key falls back to the installed `euzhi_gpt_image2` plugin secret. The API request size is `1024x1024`; `width`/`height` are the sprite-fit canvas. Does not start action video or extract. After you accept the still, pass its material id to the pipeline.
+
+### POST /api/materials/monster-pipeline
+
+Start action stills → image-to-video → extract from a chosen identity image. `{ "referenceMaterialId": "…", "actions": { "monster-02-attack": "slash" }, "width": 256, "height": 256, "extractFps": [4] }` → `{ "pipelineId", "jobId", "folderId" }`. `referenceMaterialId` is required; this endpoint does not generate the identity still. Empty action slots are skipped unless `videoPrompts` has a matching key. With video enabled, idle still is always generated first and every I2VA job uses that idle image as `<Picture 1>` (the plugin receives an RGB JPEG of the idle still, not the transparent 256 PNG). Default `durationSeconds` is 4 (clamped 4–15). Optional `videoPrompts` is a map of full I2VA text per action; empty falls back to the H3 template. `width`/`height` (64–2048, default 256) set extract `spriteFit`; still API size comes from `monsterImage`. Omit `videoPluginId` to use MiniMax H3 I2V when installed; `null` or `""` skips video. Stills are image-to-image from the reference (no magenta). Optional `importProjectId` (frame project) receives extracted frames. After the last extract job, frames are packed as `{name}/{action}/{fps}fps/*.png` into one zip material in the same folder. `providerId` / `model` / `size` in the body are ignored.
 
 ### POST /api/materials/:id/extract
 
@@ -376,7 +384,7 @@ Returns entire kv object (values JSON-parsed):
 ### PUT /api/settings/:key
 
 ```json
-// Request (key allowlist: layout, theme, lang, genProviders, matting, imageLayers, promptEnhancers; other keys return 400)
+// Request (key allowlist: layout, theme, lang, genProviders, matting, imageLayers, monsterImage, promptEnhancers, queueConcurrency; other keys return 400)
 { "value": { "sidebarW": 260, "timelineH": 160 } }
 // Response
 { "ok": true }
@@ -391,6 +399,8 @@ Returns entire kv object (values JSON-parsed):
 `matting`: structured matting command `cliBin` / `cliInputArg` / `cliOutputArg` / `cliModelArg` (all empty → falls back to env `FRAMEBAKER_MATTING_CLI` template → auto-detection); `model` empty falls back to `FRAMEBAKER_MATTING_MODEL` / default `u2net`.
 
 `imageLayers`: standalone image-layer service configuration `{ "apiBaseUrl", "apiKey", "model" }`. It is independent from generation providers and calls `POST {apiBaseUrl}/images/layers`. If this setting has never been saved, the server temporarily reads the first legacy `genProviders[].layerModels` entry for migration compatibility.
+
+`monsterImage`: Monster-tab image generation `{ "apiBaseUrl", "apiKey", "model" }`, independent from Settings GenProviders. Defaults are `https://euzhi.vip/v1` and `gpt-image-2`. Empty `apiKey` reuses the installed `euzhi_gpt_image2` plugin secret. Trailing `/images/generations` is stripped so the server can append it.
 
 ### POST /api/materials/:id/layers
 
@@ -492,6 +502,13 @@ Creates async queue jobs only (does not execute the plugin inline):
     "configured": true,
     "model": "Qwen-Image-Layered"
   },
+  "monsterImage": {
+    "apiBaseUrl": "https://euzhi.vip/v1",
+    "model": "gpt-image-2",
+    "configured": true,
+    "hasKey": true,
+    "usingPluginFallback": false
+  },
   "gen": {
     "providers": [
       { "id": "…", "name": "OpenAI", "type": "api", "models": ["gpt-image-1"], "configured": true }
@@ -507,7 +524,7 @@ Creates async queue jobs only (does not execute the plugin inline):
 }
 ```
 
-  `engine`: `custom-cli` (settings page matting.cliTemplate or `FRAMEBAKER_MATTING_CLI`) / `rembg-bundled` (`.venv-matting` bundled) / `rembg-path` (found in PATH) / `none` (not installed, matting only copies raw, `hint` contains install instructions). `model` is rembg model name (settings page matting.model → `FRAMEBAKER_MATTING_MODEL` → default `u2net`); `modelCached` indicates model file exists in `storage/models` (uncached models auto-download on first matting). `imageLayers` reports the standalone image-layer service state without exposing its API key. `gen.providers` is a summary of all generation providers (no apiKey; model capability lists feed generation dialogs, `configured` indicates key fields are complete, `video` indicates video generation support — CLI/DashScope/MiniMax only, mapping in shared constant `PROVIDER_VIDEO_SUPPORT`). `mediaPlugins` reports `.venv-media` availability and installed plugin count without credentials.
+  `engine`: `custom-cli` (settings page matting.cliTemplate or `FRAMEBAKER_MATTING_CLI`) / `rembg-bundled` (`.venv-matting` bundled) / `rembg-path` (found in PATH) / `none` (not installed, matting only copies raw, `hint` contains install instructions). `model` is rembg model name (settings page matting.model → `FRAMEBAKER_MATTING_MODEL` → default `u2net`); `modelCached` indicates model file exists in `storage/models` (uncached models auto-download on first matting). `imageLayers` reports the standalone image-layer service state without exposing its API key. `monsterImage` reports the Monster-tab image connection (no apiKey). `gen.providers` is a summary of all generation providers (no apiKey; model capability lists feed generation dialogs, `configured` indicates key fields are complete, `video` indicates video generation support — CLI/DashScope/MiniMax only, mapping in shared constant `PROVIDER_VIDEO_SUPPORT`). `mediaPlugins` reports `.venv-media` availability and installed plugin count without credentials.
 - `GET /api/doctor` → health check: checks storage directory writable / ffmpeg / matting engine & model cache / standalone image-layer service / each generation provider (CLI validates command existence; OpenAI-compatible sends `GET /models`, Gemini sends `GET /v1beta/models`, DashScope sends `GET /compatible-mode/v1/models` for connectivity test; MiniMax has no probe endpoint, field validation only) / media-plugin Python (`.venv-media`) / installed media-plugin count → `{ "checks": [{ "id", "ok", "label", "detail" }] }`.
 - `POST /api/provider/test` → API provider connectivity test (uses current form values, no need to save first): `{ "type"?, "apiBaseUrl", "apiKey", "apiModel?" }`; api sends `GET {baseUrl}/models` + Bearer, gemini sends `GET {baseUrl}/v1beta/models` (x-goog-api-key), dashscope sends `GET {baseUrl}/compatible-mode/v1/models` + Bearer, returns `{ "ok", "status", "latencyMs", "modelsFound" }` (401/403 = authentication failure); minimax has no lightweight probe endpoint, field validation only with explanation in `note`.
 - `POST /api/provider/models` → API provider model list (settings page "Fetch Models", uses current form values, no need to save first): `{ "type", "apiBaseUrl", "apiKey" }` → `{ "ok", "models": ["…"] }`; endpoints same source as connectivity test (api `/models`, dashscope `/compatible-mode/v1/models`, gemini `/v1beta/models` strips `models/` prefix; minimax best-effort tries `/v1/models`); failure returns `{ "ok": false, "error" }`, frontend keeps manual input.
@@ -580,7 +597,7 @@ Copy and paste the following to your AI agent to get started:
 ```
 FrameBaker is running at http://localhost:3000 with an MCP server at /mcp (Streamable HTTP).
 Connect to it and use `list_projects` to get started.
-Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, list_media_plugins, get_media_plugin, generate_with_media_plugin, matting_material, list_jobs, get_config, and 40 more (51 total).
+Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, list_media_plugins, get_media_plugin, generate_with_media_plugin, generate_monster_reference, generate_monster_pipeline, matting_material, list_jobs, get_config, and 41 more (53 total).
 All tools manage pixel-art animation projects — frames, materials, generation, media plugins, matting, folders, jobs, and settings.
 ```
 
@@ -624,6 +641,8 @@ After handshake, send `notifications/initialized` notification (no response need
 | `reorder_frames` | Reorder frames |
 | `generate_frames` | Generate frames for a project (AI provider) |
 | `generate_materials` | Generate materials (AI provider) |
+| `generate_monster_reference` | Generate a single monster identity still (material IDs / text only) |
+| `generate_monster_pipeline` | Start action stills→video→extract from an existing reference material |
 | `list_media_plugins` | List installed `.iap`/`.vap`/`.aap` media plugins (optional `kind`: image\|video\|audio\|all); returns summaries/configured/runnable — never secret values |
 | `get_media_plugin` | Get one installed media plugin detail (params schema, constraints, secret configuration status only — no plaintext secrets) |
 | `generate_with_media_plugin` | Create async media-plugin generation jobs; `references` must be material IDs only (no local paths); returns `jobId`/`jobIds` |

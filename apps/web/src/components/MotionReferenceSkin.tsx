@@ -42,7 +42,7 @@ export default function MotionReferenceSkin({
   const [order, setOrder] = useState<MotionReferenceOrder>("behind");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [materials, setMaterials] = useState<Material[] | null>(null);
-  const sourceRef = useRef<Source>();
+  const sourceRef = useRef<Source | undefined>(undefined);
   sourceRef.current = source;
   const closePicker = useCallback(() => setPickerOpen(false), []);
   useModalEscClose(closePicker, pickerOpen);

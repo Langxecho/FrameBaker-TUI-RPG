@@ -7,12 +7,15 @@ import {
   createParamDefaults,
   filterMaterialsForPlugin,
   folderPathLabel,
+  inferLocalReferenceKind,
   isAllowedPluginArchiveFilename,
   isHttpConflictStatus,
+  localFileAcceptedAsReference,
   maxReferenceCountForPlugin,
   parseMaterialIdsFromJobProgress,
   pluginArchiveFileAccept,
   pluginKindForTab,
+  referenceFileAccept,
   validateGenerationForm,
   validateMediaPluginParams,
 } from "../apps/web/src/mediaPluginUiState";
@@ -77,6 +80,14 @@ describe("media plugin ui state", () => {
     expect(maxReferenceCountForPlugin("video_api", {})).toBe(1);
   });
 
+  test("local drop files: still images can be references, gif/video cannot", () => {
+    expect(inferLocalReferenceKind(new File([], "a.png", { type: "image/png" }))).toBe("image");
+    expect(inferLocalReferenceKind(new File([], "a.gif"))).toBe("video");
+    expect(localFileAcceptedAsReference(new File([], "a.png", { type: "image/png" }), ["image"])).toBeTrue();
+    expect(localFileAcceptedAsReference(new File([], "a.gif"), ["image"])).toBeFalse();
+    expect(referenceFileAccept(["image"])).toContain(".png");
+  });
+
   test("project target is image-only and request strips projectId for non-image", () => {
     expect(canUseProjectTarget("image_api")).toBeTrue();
     expect(canUseProjectTarget("video_api")).toBeFalse();
@@ -97,6 +108,31 @@ describe("media plugin ui state", () => {
         projectId: "proj",
       }),
     ).toEqual({ ok: false, field: "projectId", code: "image_only" });
+  });
+
+  test("i2v 插件可要求至少一张参考图", () => {
+    expect(
+      validateGenerationForm({
+        pluginId: "minimax-h3-t8-i2v",
+        prompt: "x",
+        schema: {},
+        params: {},
+        kind: "video_api",
+        references: [],
+        constraints: { min_reference_images: 1 },
+      }),
+    ).toEqual({ ok: false, field: "references", code: "min_references" });
+    expect(
+      validateGenerationForm({
+        pluginId: "minimax-h3-t8-i2v",
+        prompt: "x",
+        schema: {},
+        params: {},
+        kind: "video_api",
+        references: ["m1"],
+        constraints: { min_reference_images: 1 },
+      }).ok,
+    ).toBeTrue();
   });
 
   test("accepts only plugin archive extensions and treats 409 as replace conflict", () => {

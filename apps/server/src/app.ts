@@ -5,7 +5,8 @@ import type { ServerConfig } from "@framebaker/shared";
 import { ENHANCE_PROMPT_INTENTS, PROVIDER_VIDEO_SUPPORT } from "@framebaker/shared";
 import { db } from "./db";
 import { getMattingInfo } from "./jobs/matting";
-import { enhancerConfigured, getGenProviders, getImageLayerSettings, getPromptEnhancers, imageLayerConfigured, providerConfigured } from "./provider";
+import { getGenProviders, getImageLayerSettings, getPromptEnhancers, imageLayerConfigured, providerConfigured, enhancerConfigured } from "./provider";
+import { getMonsterImagePublic } from "./monsterImage";
 import { isModelCached, listApiProviderModels, runDoctor, testApiProvider } from "./doctor";
 import { enhancePrompt } from "./enhance";
 import { projectsApi } from "./api/projects";
@@ -143,6 +144,7 @@ export const app = new Elysia()
         .map((e) => ({ id: e.id, name: e.name, model: e.model })),
       queueConcurrency: getQueueConcurrency(),
       mediaPlugins: getMediaPluginRuntimeInfo(),
+      monsterImage: getMonsterImagePublic(),
     };
   })
   // 提示词加强：调用设置页配置的加强模型（OpenAI 兼容 chat/completions），原提示词由前端保留

@@ -77,7 +77,7 @@ Scene layering reconstructs a flat image as independently editable, hideable, an
 - **Cassette Futurism themes** — dark "Magnetic Night" / light "Beige Terminal"; follows system preference until you pick one (tri-state toggle)
 - **Live sync** — WebSocket broadcasts for job progress and frame/material changes
 - **Adjustable layout** — drag the split dividers to resize the frame list and timeline (persisted)
-- **MCP server** — built-in [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`POST /mcp`, Streamable HTTP) exposing 51 tools for AI assistants (Claude Desktop, Cursor, Windsurf) to manage projects, frames, materials, generation, matting, jobs, and settings programmatically
+- **MCP server** — built-in [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`POST /mcp`, Streamable HTTP) exposing 53 tools for AI assistants (Claude Desktop, Cursor, Windsurf) to manage projects, frames, materials, generation, matting, jobs, and settings programmatically
 
 ## System Requirements
 

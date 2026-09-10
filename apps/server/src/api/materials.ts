@@ -6,6 +6,7 @@ import { IMAGE_LAYER_COUNT_MAX, IMAGE_LAYER_COUNT_MIN } from "@framebaker/shared
 import { db, getMaterial, nextFrameIdx, renameMaterial, serializeMaterial, STORAGE_ROOT, uid } from "../db";
 import { createGenerationJobs, createJob, createMattingJob } from "../queue";
 import { EXTRACT_TIMESTAMPS_MAX, normalizeExtractTimestamps } from "../jobs/extract";
+import { startMonsterPipeline, startMonsterReferenceJob } from "../monsterPipeline";
 import { checkImageReferenceSupport, checkVideoSupport, resolveReferencePaths } from "../providerAdapter";
 import { getImageLayerSettings, imageLayerConfigured } from "../provider";
 import { broadcast } from "../ws";
@@ -76,6 +77,9 @@ function prepareMaterialFrame(m: MaterialRow, projectId: string): NewFrameCell {
   const mediaKind = serializeMaterial(m).mediaKind;
   if (mediaKind === "video") {
     throw new Error(`「${m.name}」是视频素材，请先抽帧再导入项目`);
+  }
+  if (mediaKind === "archive") {
+    throw new Error(`「${m.name}」是压缩包，请先下载解压，不能直接导入项目`);
   }
   if (mediaKind !== "image") {
     throw new Error(`「${m.name}」是音频等非图片素材，不能导入项目`);
@@ -336,7 +340,7 @@ export const materialsApi = new Elysia({ prefix: "/api" })
         mediaKind: t.Optional(t.Union([t.Literal("image"), t.Literal("video")])),
         fps: t.Optional(t.Integer({ minimum: 1, maximum: 60 })),
         folderId: t.Optional(t.Union([t.String(), t.Null()])),
-        intent: t.Optional(t.Union([t.Literal("frame-image"), t.Literal("frame-sheet"), t.Literal("frame-video"), t.Literal("skeletal-character"), t.Literal("skeletal-parts"), t.Literal("skeletal-decompose"), t.Literal("skeletal-repair-part"), t.Literal("motion-clip")])),
+        intent: t.Optional(t.Union([t.Literal("frame-image"), t.Literal("frame-sheet"), t.Literal("frame-video"), t.Literal("skeletal-character"), t.Literal("skeletal-parts"), t.Literal("skeletal-decompose"), t.Literal("skeletal-repair-part"), t.Literal("motion-clip"), t.Literal("monster-reference"), t.Literal("monster-action-still"), t.Literal("monster-action-video")])),
         characterPartSetId: t.Optional(t.String()),
         gridRows: t.Optional(t.Integer({ minimum: 1, maximum: 8 })),
         gridCols: t.Optional(t.Integer({ minimum: 1, maximum: 8 })),
@@ -356,6 +360,61 @@ export const materialsApi = new Elysia({ prefix: "/api" })
           }
         }
       },
+    }
+  )
+  .post(
+    "/materials/monster-reference",
+    ({ body, status }) => {
+      try {
+        return startMonsterReferenceJob(body);
+      } catch (e) {
+        return status(400, (e as Error).message);
+      }
+    },
+    {
+      body: t.Object({
+        appearance: t.String({ minLength: 1 }),
+        name: t.Optional(t.String()),
+        providerId: t.Optional(t.String()),
+        model: t.Optional(t.String()),
+        size: t.Optional(t.String()),
+        width: t.Optional(t.Integer({ minimum: 64, maximum: 2048 })),
+        height: t.Optional(t.Integer({ minimum: 64, maximum: 2048 })),
+        autoMatting: t.Optional(t.Boolean()),
+        folderId: t.Optional(t.Union([t.String(), t.Null()])),
+      }),
+    }
+  )
+  .post(
+    "/materials/monster-pipeline",
+    ({ body, status }) => {
+      try {
+        return startMonsterPipeline(body);
+      } catch (e) {
+        return status(400, (e as Error).message);
+      }
+    },
+    {
+      body: t.Object({
+        appearance: t.Optional(t.String()),
+        name: t.Optional(t.String()),
+        referenceMaterialId: t.String({ minLength: 1 }),
+        actions: t.Optional(t.Record(t.String(), t.Union([t.String(), t.Null()]))),
+        videoPrompts: t.Optional(t.Record(t.String(), t.Union([t.String(), t.Null()]))),
+        providerId: t.Optional(t.String()),
+        model: t.Optional(t.String()),
+        size: t.Optional(t.String()),
+        width: t.Optional(t.Integer({ minimum: 64, maximum: 2048 })),
+        height: t.Optional(t.Integer({ minimum: 64, maximum: 2048 })),
+        videoPluginId: t.Optional(t.Union([t.String(), t.Null()])),
+        durationSeconds: t.Optional(t.Number()),
+        extractFps: t.Optional(t.Array(t.Integer({ minimum: 1, maximum: 60 }))),
+        extraFps: t.Optional(t.Union([t.Number(), t.Null()])),
+        autoMatting: t.Optional(t.Boolean()),
+        bgKey: t.Optional(t.Union([t.Literal("flood"), t.Literal("none")])),
+        folderId: t.Optional(t.Union([t.String(), t.Null()])),
+        importProjectId: t.Optional(t.Union([t.String(), t.Null()])),
+      }),
     }
   )
   // 图片场景分层：使用独立配置，前置校验后创建异步任务
@@ -392,6 +451,7 @@ export const materialsApi = new Elysia({ prefix: "/api" })
     if (!m) return status(404, "素材不存在");
     if (!m.raw_path || !existsSync(m.raw_path)) return status(400, "素材缺少 raw 文件");
     if (/\.(mp4|mov|webm|avi)$/i.test(m.raw_path)) return status(400, "视频素材不能抠图，请先抽帧");
+    if (/\.zip$/i.test(m.raw_path)) return status(400, "压缩包不能抠图");
     const r = createMattingJob("", "material", params.id);
     if (r.duplicate) return status(409, "该素材已有进行中的抠图任务");
     return { jobId: r.jobId };
@@ -465,7 +525,7 @@ export const materialsApi = new Elysia({ prefix: "/api" })
       for (const id of body.ids) {
         const m = getMaterial(id);
         if (!m || !m.raw_path || !existsSync(m.raw_path)) continue;
-        if (/\.(mp4|mov|webm|avi)$/i.test(m.raw_path) || m.status === "matted") {
+        if (/\.(mp4|mov|webm|avi|zip)$/i.test(m.raw_path) || m.status === "matted") {
           skipped++;
           continue;
         }

@@ -10,9 +10,11 @@ import type {
 } from "@framebaker/shared";
 import { normalizeDashscopeBaseUrl } from "@framebaker/shared";
 import { STORAGE_ROOT } from "./db";
+import { ffmpegInstallHint, resolveFfmpegBin } from "./jobs/ffmpegBin";
 import { bundledRembg, getMattingInfo } from "./jobs/matting";
 import { getMediaPluginRuntimeInfo } from "./mediaPlugins/diagnostics";
 import { enhancerConfigured, getGenProviders, getImageLayerSettings, getMattingSettings, getPromptEnhancers, imageLayerConfigured, providerConfigured, resolveEnhancerRuntime } from "./provider";
+import { getMonsterImageProvider, monsterImageConfigured } from "./monsterImage";
 import { listProviderModels, probeProviderModels } from "./providerAdapter";
 
 /** provider 类型展示名（doctor 标签用） */
@@ -86,19 +88,13 @@ export async function runDoctor(): Promise<DoctorResponse> {
     checks.push({ id: "storage", ok: false, label: "存储目录", detail: `不可写: ${(e as Error).message}` });
   }
 
-  // ffmpeg（GIF/MP4 拆帧）
-  const ffmpeg = Bun.which("ffmpeg");
+  // ffmpeg（GIF/MP4 拆帧、怪物静图去背贴画）
+  const ffmpeg = resolveFfmpegBin();
   checks.push({
     id: "ffmpeg",
     ok: !!ffmpeg,
-    label: "ffmpeg（GIF/MP4 拆帧）",
-    detail:
-      ffmpeg ??
-      (process.platform === "win32"
-        ? "未找到：winget install ffmpeg（或 https://ffmpeg.org/download.html）"
-        : process.platform === "darwin"
-          ? "未找到：brew install ffmpeg"
-          : "未找到：用系统包管理器安装 ffmpeg（如 apt install ffmpeg）"),
+    label: "ffmpeg（拆帧 / 精灵去背）",
+    detail: ffmpeg ?? `未找到：${ffmpegInstallHint()}`,
   });
 
   // 抠图引擎
@@ -150,6 +146,31 @@ export async function runDoctor(): Promise<DoctorResponse> {
       label: `图片分层模型 ${imageLayers.model}`,
       detail: r.ok
         ? `${imageLayers.apiBaseUrl} 连通（${r.latencyMs}ms）${r.modelsFound === false ? "，但模型列表中未找到该模型" : ""}`
+        : (r.error ?? "连接失败"),
+    });
+  }
+
+  const monsterImage = getMonsterImageProvider();
+  if (!monsterImageConfigured(monsterImage)) {
+    checks.push({
+      id: "monster-image",
+      ok: false,
+      label: "怪物生图",
+      detail: "未配置：请在怪物页顶部填写 Base URL / API Key，或安装并填写 Euzhi GPT Image 2 插件密钥",
+    });
+  } else {
+    const r = await testApiProvider({
+      type: "api",
+      apiBaseUrl: monsterImage.apiBaseUrl,
+      apiKey: monsterImage.apiKey,
+      apiModel: monsterImage.imageModels[0],
+    });
+    checks.push({
+      id: "monster-image",
+      ok: r.ok,
+      label: `怪物生图 ${monsterImage.imageModels[0] || ""}`,
+      detail: r.ok
+        ? `${monsterImage.apiBaseUrl} 连通（${r.latencyMs}ms）${r.modelsFound === false ? "，但模型列表中未找到该模型" : ""}`
         : (r.error ?? "连接失败"),
     });
   }

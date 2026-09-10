@@ -30,6 +30,13 @@ async function fetchConfig(): Promise<ServerConfig | null> {
         installRoot: raw.mediaPlugins?.installRoot ?? "",
         hint: raw.mediaPlugins?.hint ?? null,
       },
+      monsterImage: {
+        apiBaseUrl: raw.monsterImage?.apiBaseUrl ?? "https://euzhi.vip/v1",
+        model: raw.monsterImage?.model ?? "gpt-image-2",
+        configured: Boolean(raw.monsterImage?.configured),
+        hasKey: Boolean(raw.monsterImage?.hasKey),
+        usingPluginFallback: Boolean(raw.monsterImage?.usingPluginFallback),
+      },
     };
     cache = cfg;
     listeners.forEach((l) => l(cfg));

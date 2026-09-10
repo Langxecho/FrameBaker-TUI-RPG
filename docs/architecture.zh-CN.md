@@ -10,7 +10,7 @@
                         │  Timeline(DnD) PlaybackBar    ImportModal   │
                         │  MaterialsPage MaterialModal(对比滑杆/剪裁)   │
                         │  MotionsPage（/motions 直达路由）             │
-                        │  MediaGenerationPage（/generate 三标签）      │
+                        │  MediaGenerationPage（/generate 四标签）      │
                         │  CropModal ─ imageops/（Web Worker 图像处理） │
                         │  JobPanel（右侧常驻任务队列，WS 驱动）          │
                         │        │ fetch /api        │ WebSocket /ws   │
@@ -35,7 +35,7 @@
 │   └─ /api/jobs(/:id)   任务列表（面板初始加载）/ 单任务查询          │
 │                                                                     │
 │  mcp/（MCP 服务端：POST /mcp JSON-RPC 2.0 Streamable HTTP）        │
-│       51 个工具直接操作 db/内部模块，供 AI 助手调用                 │
+│       53 个工具直接操作 db/内部模块，供 AI 助手调用                 │
 │                                                                     │
 │  provider.ts（多生成 provider / 抠图配置解析：settings 优先 env 兜底）│
 │  providerAdapter.ts（生成校验/执行 adapter + provider 模型探测）      │
@@ -114,7 +114,7 @@
 - **导入工作流**（`apps/web/src/hooks/useImportWorkflow.ts`）：项目导入与素材导入共用文件状态转换、顺序上传、任务轮询、部分失败、计时器清理与完成汇总；两个 modal 仅提供各自的 FormData/API adapter，剪裁阶段继续由 `useCropQueue` 负责。
 - **前端客户端边界**：`apps/web/src/api.ts` 保留为类型化 HTTP API 方法与共享响应类型的兼容门面；素材/帧图片 URL 构造位于 `api/mediaUrls.ts`，带重连的应用级 WebSocket 客户端位于 `api/ws.ts`。新增传输职责应放回所属模块，不再继续膨胀门面文件。
 - **独立媒体插件体系**（`.iap` / `.vap` / `.aap`，与 `GenProvider` 并行——不得合并执行路径）：Bun 负责发现、Zip Slip 安全安装到 `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`、设置（密钥/参数默认值；密钥永不回显）、API、队列任务（`media_plugin_image|video|audio`）、素材归档（`source=media-plugin:<plugin-id>`，`metadata.mediaKind`）、`/generate` 前端与 MCP 查询/生成工具。Python 仅作受控 JSON 文件子进程：`apps/server/src/python/media_plugin_runner.py` + 拷贝的 `aigc_bench_plugin_runtime/` 在 `.venv-media` 中加载可信 `provider.py`（`scripts/setup_media.sh` / `setup_media.ps1`；基础依赖仅 `requests`——首期**不**自动安装插件自带依赖）。通信为 `storage/media-plugin-runs/<run-id>/` 下的 `request.json` / `result.json`（prompt/参数不经 argv 转义）。取消/超时会尽力终止 Python 进程树（`Bun.spawn().kill()`；Windows 在可得 PID 时另发 `taskkill /PID <pid> /T /F`——Bun 无跨平台进程组 API），并由 `cleanupMediaPluginRunDir` 删除运行目录；失败/取消不得残留插件产出或密钥明文。结果处理拒绝 `file:` / 非 http(s) 下载，要求本地 `image_path`/`video_path`/`audio_path` 已位于当前 run `outputDir`（禁止任意绝对路径复制），限制下载与 ZIP 压缩/解压体积，保留小数 `durationSeconds`，Python stderr/traceback 仅服务端日志（任务/MCP 返回稳定安全错误码）。插件包是**可信可执行代码**（UI 必须警告）；提供路径隔离、包校验、超时与密钥脱敏——**不承诺操作系统级沙箱**。缺少 `.venv-media` → `PYTHON_RUNTIME_UNAVAILABLE` / `GET /api/config.mediaPlugins.pythonAvailable=false` 并给出安装提示；生成/测试拒绝执行。可选覆盖：`FRAMEBAKER_MEDIA_PYTHON`、`FRAMEBAKER_MEDIA_PLUGIN_ROOT`。MCP 仅暴露 `list_media_plugins`、`get_media_plugin`、`generate_with_media_plugin`（只接受素材 ID——禁止安装/删除/改密钥/本地路径/任意 Python）。HTTP 细节见 `docs/api.zh-CN.md`「媒体插件 / 媒体生成」。
-- **生成 provider adapter 与产物提交**：`providerAdapter.ts` 每次任务实时解析 provider，封装配置/模型/能力校验、CLI argv、API/CLI 产出分发及 doctor 的模型探测；`jobs/generatedArtifacts.ts` 拥有产物 allocation、媒体分类、帧/素材/视频入库、暂存清理、广播与自动抠图收尾。`jobs/extract.ts` 只协调“产出 → 提交”，API 厂商协议仍位于 `jobs/generateApi.ts`。
+- **生成 provider adapter 与产物提交**：`providerAdapter.ts` 每次任务实时解析 provider，封装配置/模型/能力校验、CLI argv、API/CLI 产出分发及 doctor 的模型探测；`jobs/generatedArtifacts.ts` 拥有产物 allocation、媒体分类、帧/素材/视频入库、暂存清理、广播与自动抠图收尾。`jobs/extract.ts` 只协调“产出 → 提交”，API 厂商协议仍位于 `jobs/generateApi.ts`。怪物制作由调度层把这些已有任务串起来（`monsterPipeline.ts`），不合并 GenProvider 与插件 worker。
 
 ## 数据流
 
@@ -124,7 +124,7 @@
 AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
   → 服务端返回 protocolVersion/capabilities/serverInfo + Mcp-Session-Id
   → 客户端发 notifications/initialized
-  → tools/list 获取 51 个工具
+  → tools/list 获取 53 个工具
   → tools/call { name, arguments } → 直接 db 操作 → 返回 { content: [{ type:"text", text:JSON }] }
 ```
 
@@ -222,10 +222,10 @@ storage/
 
 - `App.tsx`：`/` 项目列表 ↔ `/project/:id` 编辑器 ↔ `/materials` 素材库 ↔ `/motions` 动作工作台 ↔ `/generate` 生成中心 ↔ `/settings` 设置页（history.pushState + popstate）；全局屏蔽浏览器原生右键菜单（输入框/文本域保留用于粘贴，帧项走自定义 ContextMenu）
 - `TopNav`：一级导航（项目 / 素材库 / 生成中心 / 设置）+ 主题切换（三态：跟随系统/浅色/深色）+ 界面语言切换（zh/en，`LangToggle`）；`/motions` 仍为直达路由（不在 TopNav 标签中）；编辑器页有自己的顶栏不显示
-- `MediaGenerationPage` + `MediaPluginForm` / `MediaReferencePicker` / `MediaResultPreview`：`/generate` 三标签（生图/生视频/生音频）；按 `params_schema` 动态表单；参考仅素材 ID；经 `/api/media-generation` 异步入队，JobPanel + `job_done.materialIds` 绑定结果
+- `MediaGenerationPage` + `MediaPluginForm` / `MediaReferencePicker` / `MediaResultPreview` + `MonsterPipelinePage`：`/generate` 四标签（生图/生视频/生音频插件表单不改行为，另加怪物身份参考图与动作流水线）；插件页仍走 `/api/media-generation`；怪物页先 `/api/materials/monster-reference` 再 `/api/materials/monster-pipeline`。怪物静图用 `settings.monsterImage`（`monsterImage.ts`，`providerId=monster-image`），不走设置页骨架 GenProvider。图生视频把待机静图转成 RGB JPEG 再交给插件；全部拆帧结束后在同一文件夹写入 zip 素材。
 - `SettingsPage`：生成 provider 列表管理（CLI / API 多个共存，增删改 + 保存 + API 测试连接）、**媒体插件设置**（`MediaPluginSettings`：导入 `.iap/.vap/.aap`、可信代码警告、密钥/参数/测试/导出/删除）、抠图配置（CLI 模板 / 默认模型 datalist + 缓存状态）、体检（doctor 结果列表）
 - `ProjectList`：像素卡片网格（motion stagger 入场、hover 上浮）、新建/删除弹窗
-- `MaterialsPage`：素材库页——左目录树（`FolderTree`）+ 右卡片网格（全部/图片/视频/音频筛选；来源彩色徽标按 provider / `media-plugin:<id>`、视频海报+播放器、音频播放器、图片左下角「已抠图」徽标、复选框 + Cmd/Shift 多选、拖拽入文件夹）、批量条（删除/导入项目[仅图片]/批量抠图仅 raw/取消）
+- `MaterialsPage`：素材库页——左目录树（`FolderTree`）+ 右卡片网格（全部/图片/视频/音频/压缩包筛选；来源彩色徽标按 provider / `media-plugin:<id>`、视频海报+播放器、音频播放器、压缩包下载卡片、图片左下角「已抠图」徽标、复选框 + Cmd/Shift 多选、拖拽入文件夹）、批量条（删除/导入项目[仅图片]/批量抠图仅 raw/取消）
 - `ProjectList`：项目列表同左树右网格布局，新建落入当前文件夹
 - `FolderTree`：全部 / 未分组 + 多级文件夹 CRUD / HTML5 DnD
 - `MaterialModal`：素材详情——原图/抠图对比滑杆（pointer 拖动 clip 比例）、抠图/还原、剪裁（CropModal，作用于当前显示图槽位）、网格切分（GridSplitModal：多宫格精灵图按行×列逐格切成独立素材，网格线预览，复用 imageops cropImage + `/api/materials/upload` 单图入库，原素材保留）、多动作生成（ActionGenModal：以当前素材为引用图，按 shared `ACTION_PRESETS` 动作预设逐动作调 `/api/materials/generate`，可选 `name` 按「素材名_动作」命名，每动作一个生成任务）、导入项目（选项目+复制帧数）、删除（二次确认）
