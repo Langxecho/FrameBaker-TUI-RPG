@@ -1,5 +1,9 @@
 # FrameBaker Architecture
 
+## LIAF pipeline coordination
+
+The [mission directory](../mission/README.md) records authoring/export assignments, a versioned shared-contract mirror, and producer/consumer handoff evidence. The development branch is `shy`. The backend team coordinates the program; the terminal-client team owns LIAF assembly and playback. These documents describe planned integration, not completed runtime capabilities.
+
 ## Overview
 
 ```
