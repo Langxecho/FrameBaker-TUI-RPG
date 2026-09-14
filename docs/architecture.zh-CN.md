@@ -167,8 +167,10 @@ AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
 拉取全部可见时间轴单元格 → createImageBitmap
   → 为变换后的图片与矢量攻击特效计算统一全局包围盒
   → 关闭 imageSmoothing，选择烘焙为独立透明 PNG 序列或单张横向精灵图 PNG
-  → ZIP 内附 <name>.frames.json（file/x/y/w/h/duration、原点及 FPS）
+  → ZIP 内附 <name>.frames.json（file/x/y/w/h/duration 格数、durationSeconds=duration/fps、原点及 FPS）
 ```
+
+骨骼页「导出骨骼包」写出 **fbanim v2** 制作预览（不含装备），**不是** LIAF 交付入口；LIAF 走第 6 步发布导出的 **fbanim v3**。怪物流水线拆帧 zip 目录为 `{名称}/{actionId}/{fps}fps/*.png`，并附带标明 `liafPipeline: "R0-draft"` 且 `notARuntimeContract: true` 的 `sidecar.json` 草稿，**不是**已冻结的 `.monster` 运行时包。
 
 ### 素材库（素材 → 抠图 → 导入项目）
 

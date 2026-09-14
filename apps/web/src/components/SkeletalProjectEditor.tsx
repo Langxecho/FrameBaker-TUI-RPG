@@ -549,7 +549,8 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
         <input ref={importInputRef} hidden type="file" accept=".zip,.fbanim,application/zip" onChange={(event) => { void importPackage(event.target.files?.[0]); event.currentTarget.value = ""; }} />
         <div className="skeletal-project-actions">
           <button type="button" className="skeletal-tab-action" disabled={busy} onClick={() => importInputRef.current?.click()}><Upload size={17} /> {t("skeletal.import.runtime")}</button>
-          <button type="button" className="skeletal-tab-action" disabled={busy || !binding || !document.animations.length} onClick={() => void exportPackage()}><Download size={17} /> {t("skeletal.export.runtime")}</button>
+          <button type="button" className="skeletal-tab-action" title={t("skeletal.export.runtimeHint")} disabled={busy || !binding || !document.animations.length} onClick={() => void exportPackage()}><Download size={17} /> {t("skeletal.export.runtime")}</button>
+          <p className="skeletal-export-runtime-hint">{t("skeletal.export.runtimeHint")}</p>
         </div>
       </nav>
 

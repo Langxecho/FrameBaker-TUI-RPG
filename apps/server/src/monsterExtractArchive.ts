@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { monsterActionById } from "@framebaker/shared";
 import { db, STORAGE_ROOT, uid } from "./db";
 import { createStoreZip } from "./mediaPlugins/zipArchive";
-import { buildMonsterExtractZipFiles } from "./monsterExtractZip";
+import { buildMonsterExtractSidecar, buildMonsterExtractZipFiles } from "./monsterExtractZip";
 import type { MonsterPipelineRun } from "./monsterPipelineTypes";
 import { broadcast } from "./ws";
 
@@ -27,7 +27,7 @@ function assetPath(id: string): string | null {
 
 /** 把本次流水线全部拆帧打成 zip，写入素材库（可下载）。 */
 export function packMonsterExtractArchive(run: MonsterPipelineRun): string | null {
-  const clips: Array<{ actionTitle: string; fps: number; frames: Uint8Array[] }> = [];
+  const clips: Array<{ actionId: string; actionTitle: string; fps: number; frames: Uint8Array[] }> = [];
   const keys = Object.keys(run.extractFrameIds ?? {}).sort();
   for (const key of keys) {
     const colon = key.lastIndexOf(":");
@@ -44,10 +44,12 @@ export function packMonsterExtractArchive(run: MonsterPipelineRun): string | nul
     }
     if (!frames.length) continue;
     const actionTitle = run.actions.find((a) => a.id === actionId)?.title ?? monsterActionById(actionId)?.title ?? actionId;
-    clips.push({ actionTitle, fps, frames });
+    clips.push({ actionId, actionTitle, fps, frames });
   }
   if (!clips.length) return null;
   const files = buildMonsterExtractZipFiles(run.name, clips);
+  const sidecar = buildMonsterExtractSidecar(run.name, clips);
+  files["sidecar.json"] = new TextEncoder().encode(`${JSON.stringify(sidecar, null, 2)}\n`);
   const bytes = createStoreZip(files);
   const id = uid();
   const dir = join(STORAGE_ROOT, "materials", id);

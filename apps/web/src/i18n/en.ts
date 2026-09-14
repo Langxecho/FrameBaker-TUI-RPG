@@ -1532,6 +1532,7 @@ export const en = {
   "skeletal.animations.editOnCharacter": "Edit action on this character",
   "skeletal.animations.editOnCharacterHint": "The canvas shows the bound character parts using the same skeleton and coordinates.",
   "skeletal.export.runtime": "Export skeletal package",
+  "skeletal.export.runtimeHint": "Export skeletal package is an fbanim v2 authoring preview without equipment — not a LIAF delivery. For LIAF use step 6 publish export (v3).",
   "skeletal.export.done": "Skeletal runtime package exported",
   "skeletal.export.failed": "Could not export skeletal runtime package: {msg}",
   "skeletal.thumbnail.set": "Set as thumbnail",

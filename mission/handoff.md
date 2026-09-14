@@ -2,17 +2,17 @@
 
 负责人：FrameBaker 组员。
 初始化读取基线：shy / 6a055621a2b4239bb4fc9e4b42902d8bc75b001b。
-当前工作区：shy / 11e69fc（已拉取 mission 文档）+ 未提交的 `mission/FB-00.md` 审计报告。
+当前工作区：shy / 778566f（FB-00 审计已提交）+ Task 1 本地加固（actionId zip / sidecar / durationSeconds / v2≠LIAF 文案，提交后更新哈希）。
 契约：LIAF-PIPELINE R0；接口尚未冻结。
-本轮仅创建 mission 文档；未执行下列产品任务、运行验收或向组员发送消息。
+本组不把 sidecar 当作已冻结 `.monster`。FB-01…04 等待 G0/Q-01/Q-02 冻结。
 已有功能不自动算新流水线任务完成，接手先核对最新 branch/HEAD/status。
 
 ## 本组任务状态
 
 | 任务 | 状态 | 开始条件/下一步 | 证据 |
 | --- | --- | --- | --- |
-| FB-00 | 进行中 | 审计报告已写，待 C-00 用真实包复核消费者结果；Q-01/02/06/07 提案见报告，契约仍为 R0 | `mission/FB-00.md`；基线 `11e69fc` |
-| FB-01 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
+| FB-00 | 进行中 | 审计已提交；待 C-00 用真实包复核。Q-01/02/06/07 提案见报告，契约仍为 R0 | `mission/FB-00.md`；commit `778566f` |
+| FB-01 | 待开始 | **受阻：G0 / Q-01 / Q-02 未冻结。** 无契约风险的 zip/sidecar/durationSeconds 已做，**不算**本任务完成 | 见下方交付记录；勿将 sidecar 当 R1 |
 | FB-02 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 | FB-03 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 | FB-04 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |

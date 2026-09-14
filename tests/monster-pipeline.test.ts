@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { MAGENTA, fitSpriteNearest, keySpriteBackground, processSpritePixels, readPngSize } from "../apps/server/src/jobs/spriteKey";
 import { applyMonsterPipelineProduct, listMonsterPipelineSteps, shouldPackMonsterExtractArchive } from "../apps/server/src/monsterPipeline";
-import { monsterExtractZipEntryPath } from "../apps/server/src/monsterExtractZip";
+import { buildMonsterExtractSidecar, monsterExtractZipEntryPath } from "../apps/server/src/monsterExtractZip";
 import { isRetryableMediaPluginUploadError } from "../apps/server/src/jobs/mediaPlugin";
 import type { MonsterPipelineRun } from "../apps/server/src/monsterPipelineTypes";
 
@@ -107,9 +107,25 @@ describe("怪物流水线步骤", () => {
     const afterAtkVideo = applyMonsterPipelineProduct(afterIdleExtract, ["vid-atk"]);
     const afterAtkExtract = applyMonsterPipelineProduct(afterAtkVideo, ["g1"]);
     expect(shouldPackMonsterExtractArchive(afterAtkVideo, afterAtkExtract)).toBe(true);
-    expect(monsterExtractZipEntryPath({ monsterName: "刀刃守卫", actionTitle: "平A", fps: 4, frameIndex: 1 })).toBe(
-      "刀刃守卫/平A/4fps/0001.png",
-    );
+    expect(monsterExtractZipEntryPath({
+      monsterName: "刀刃守卫",
+      actionTitle: "平A",
+      actionId: "monster-02-attack",
+      fps: 4,
+      frameIndex: 1,
+    })).toBe("刀刃守卫/monster-02-attack/4fps/0001.png");
+    const sidecar = buildMonsterExtractSidecar("刀刃守卫", [
+      { actionId: "monster-02-attack", actionTitle: "平A", fps: 4, frames: [new Uint8Array([1])] },
+    ]);
+    expect(sidecar.liafPipeline).toBe("R0-draft");
+    expect(sidecar.notARuntimeContract).toBe(true);
+    expect(sidecar.facing).toBe("left");
+    expect(sidecar.actions[0]).toMatchObject({
+      id: "monster-02-attack",
+      title: "平A",
+      fps: 4,
+      files: ["刀刃守卫/monster-02-attack/4fps/0001.png"],
+    });
     expect(isRetryableMediaPluginUploadError("PLUGIN_RUNTIME_ERROR: 上传参考图失败 HTTP 502")).toBe(true);
     expect(isRetryableMediaPluginUploadError("生成失败")).toBe(false);
   });

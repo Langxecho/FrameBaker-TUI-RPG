@@ -6,7 +6,7 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ### Added
 
-- Monster pipeline packs extracted frames into a downloadable zip material (`mediaKind=archive`, `{name}/{action}/{fps}fps/*.png`) in the same folder after the last extract job.
+- Monster pipeline packs extracted frames into a downloadable zip material (`mediaKind=archive`, `{name}/{actionId}/{fps}fps/*.png` plus draft `sidecar.json`) in the same folder after the last extract job. Frame sequence export writes `durationSeconds` beside tick `duration`. The skeletal “Export skeletal package” control states it is fbanim v2 preview, not LIAF (publish v3).
 
 - Motion editing can import a video/GIF/still as a reference skin under or over the character (neither blocks posing); video can follow the clip timeline. Session-only, not saved into the action package.
 - Skeleton editing can drag joints and bones on the character canvas with Move/Rotate/Scale, not only numeric inspector fields.

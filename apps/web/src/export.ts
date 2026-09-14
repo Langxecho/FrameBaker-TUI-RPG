@@ -5,6 +5,7 @@ import { attackEffectBounds, drawAttackEffect } from "./attackEffect";
 import { transformedFrameRectBounds } from "./frameGeometry";
 import { findOpaqueBounds } from "./imageops/client";
 import { transformedFrameBounds } from "./frameGeometry";
+import { buildFrameExportCell } from "./frameExportMeta";
 import { createZip } from "./zip";
 
 function download(blob: Blob, filename: string) {
@@ -20,7 +21,7 @@ function safeFilename(name: string): string {
   return name.replace(/[/\\?%*:|"<>]/g, "_").trim() || "material";
 }
 
-/** 导出可直接接入游戏运行时的骨骼包：骨架、项目角色、动作配置、MotionClip 与 PNG 纹理闭包。 */
+/** 导出 fbanim v2 制作预览包（不含装备）。LIAF 交付走发布导出 v3，不要把本函数当成运行时入口。 */
 export async function exportSkeletalProjectPackage(name: string, document: SkeletalProjectDocument, skeleton: Skeleton): Promise<void> {
   if (!document.character) throw new Error("项目尚未组装角色");
   const actions = await Promise.all(document.animations.map(async (action) => {
@@ -194,7 +195,7 @@ export async function exportAnimation(timeline: TimelineResponse, name: string, 
     const sheetLayout = format === "spritesheet" ? spriteSheetLayout(cellW, cellH, ordered.length) : null;
 
     const meta = {
-      frames: [] as Array<{ file: string; x: number; y: number; w: number; h: number; duration: number; frameIds: string[]; effectIds: string[] }>,
+      frames: [] as Array<{ file: string; x: number; y: number; w: number; h: number; duration: number; durationSeconds: number; frameIds: string[]; effectIds: string[] }>,
       meta: {
         axisId: timeline.axis.id,
         axisName: timeline.axis.name,
@@ -248,7 +249,7 @@ export async function exportAnimation(timeline: TimelineResponse, name: string, 
         const png = await canvasBlob(canvas);
         entries.push({ name: filename, data: new Uint8Array(await png.arrayBuffer()) });
       }
-      meta.frames.push({ file: sheet ? `${name}.png` : filename, x: cellX, y: cellY, w: cellW, h: cellH, duration: step.duration, frameIds: contributors.map((f)=>f.id), effectIds: effectContributors.map((cell)=>cell.id) });
+      meta.frames.push(buildFrameExportCell({ file: sheet ? `${name}.png` : filename, x: cellX, y: cellY, w: cellW, h: cellH, duration: step.duration, frameIds: contributors.map((f)=>f.id), effectIds: effectContributors.map((cell)=>cell.id) }, timeline.axis.fps));
     }
 
     if (sheet) {

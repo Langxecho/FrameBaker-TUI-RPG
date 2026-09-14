@@ -176,8 +176,10 @@ Timeline HTML5 DnD → frontend optimistic reorder → POST /api/projects/:id/re
 Fetch all visible timeline cells → createImageBitmap
   → compute one global bounding box for transformed images and vector attack effects
   → bake with imageSmoothing off as either individual transparent PNGs or one horizontal sprite-sheet PNG
-  → ZIP images plus <name>.frames.json (file/x/y/w/h/duration, origin and FPS)
+  → ZIP images plus <name>.frames.json (file/x/y/w/h/duration in ticks, durationSeconds=duration/fps, origin and FPS)
 ```
+
+The skeletal page “Export skeletal package” writes an **fbanim v2** authoring preview (no equipment). That is **not** the LIAF delivery path; LIAF uses step 6 publish export (**fbanim v3**). Monster extract zips use `{name}/{actionId}/{fps}fps/*.png` plus a draft `sidecar.json` marked `liafPipeline: "R0-draft"` and `notARuntimeContract: true` — not a frozen `.monster` runtime package.
 
 ### Material Library (Material → Matting → Import to Project)
 

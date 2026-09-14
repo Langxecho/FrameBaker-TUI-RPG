@@ -648,6 +648,7 @@ input[type="range"] {
 .skeletal-project-tabs button:disabled { opacity: .45; cursor: not-allowed; }
 .skeletal-project-tabs button span { min-width: 20px; padding: 1px 5px; border: 1px solid var(--border); background: var(--elevated); font-size: 11px; }
 .skeletal-project-tabs .skeletal-project-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.skeletal-export-runtime-hint { margin: 0; max-width: 18rem; font-size: 11px; line-height: 1.35; color: var(--text-muted); }
 .skeletal-project-tabs .skeletal-tab-action { color: var(--accent); }
 .skeletal-character-workspace, .skeletal-animation-workspace { width: 100%; display: grid; grid-template-columns: clamp(238px, 17vw, 300px) minmax(0, 1fr); gap: 10px; align-items: start; }
 .skeletal-setup-panel, .skeletal-action-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
