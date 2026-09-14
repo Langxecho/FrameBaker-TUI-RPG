@@ -2,7 +2,7 @@
 
 负责人：FrameBaker 组员。
 初始化读取基线：shy / 6a055621a2b4239bb4fc9e4b42902d8bc75b001b。
-当前工作区：shy / 778566f（FB-00 审计已提交）+ Task 1 本地加固（actionId zip / sidecar / durationSeconds / v2≠LIAF 文案，提交后更新哈希）。
+当前工作区：shy / `9298add`（Task 1 本地加固：actionId zip / sidecar / durationSeconds / v2≠LIAF）。FB-00 审计为 `778566f`。
 契约：LIAF-PIPELINE R0；接口尚未冻结。
 本组不把 sidecar 当作已冻结 `.monster`。FB-01…04 等待 G0/Q-01/Q-02 冻结。
 已有功能不自动算新流水线任务完成，接手先核对最新 branch/HEAD/status。
@@ -60,7 +60,7 @@ Fixture/测试代码属于正式可审查交付；大日志和临时运行产物
 ## 交付记录
 
 - 任务 ID / 状态 / 实际执行人：FB-00 / 进行中 / FrameBaker shy 组员
-- 代码 branch、commit；若有影响结果的未提交修改，明确列出：`shy` @ `11e69fc`；未提交 `mission/FB-00.md`、本文件状态行
+- 代码 branch、commit；若有影响结果的未提交修改，明确列出：`shy` @ `778566f`（审计）；无未提交修改时以 git 为准
 - 使用的契约修订及规范源 commit/hash：LIAF-PIPELINE R0（本仓 `mission/contracts.md` @ `11e69fc`）
 - 本次解决的问题与最终行为：完成导出入口代码审计与 Q-01/02/06/07 提案，未改导出器行为
 - 改动路径、可审查 diff 或 PR：`mission/FB-00.md`
@@ -72,3 +72,17 @@ Fixture/测试代码属于正式可审查交付；大日志和临时运行产物
 - 性能：不适用
 - 已知问题、对下游影响与建议下一步：怪物 ZIP ≠ `.monster`；v2 工程导出丢装备；v3 拒绝 warp。下一步等 Q-01/02 冻结或做无契约风险的目录/sidecar 草稿
 - 需要总体负责人决定的事项：Q-01 怪物清单格式名；Q-02 标记是否剔除 `combat.hitbox`；Q-06 Gunner skeleton/BodyProfile 正式 id
+
+- 任务 ID / 状态 / 实际执行人：本地加固（不算 FB-01）/ 进行中停于 G0 / FrameBaker shy 组员
+- 代码 branch、commit；若有影响结果的未提交修改，明确列出：`shy` @ `9298add`
+- 使用的契约修订及规范源 commit/hash：LIAF-PIPELINE R0（未冻结）
+- 本次解决的问题与最终行为：拆帧 zip 目录改用 `actionId`；写入 `sidecar.json`（`liafPipeline: "R0-draft"`、`notARuntimeContract: true`）；逐帧 `frames.json` 增加 `durationSeconds`；UI/文档标明「导出骨骼包 ≠ LIAF」
+- 改动路径、可审查 diff 或 PR：`9298add`（本文件哈希行可能另有一次 docs 提交）
+- 生产者输入：未执行新生成
+- 给消费者的输出：草稿 sidecar **不是**冻结 `.monster`；路径示例 `刀刃守卫/monster-02-attack/4fps/0001.png`
+- 测试：`bun test tests/monster-pipeline.test.ts tests/frame-export-meta.test.ts` 8 pass；`bun run typecheck` 通过
+- 联合验收：未执行
+- 人工观察：本机 `localhost:3000` 当时未在跑，未做浏览器点击复核；骨骼页增加 `skeletal.export.runtimeHint`
+- 性能：不适用
+- 已知问题、对下游影响与建议下一步：**FB-01…04 受阻于 G0/Q-01/Q-02**。勿把 sidecar 当运行时契约
+- 需要总体负责人决定的事项：同 FB-00 三条 Q
