@@ -2,17 +2,17 @@
 
 负责人：FrameBaker 组员。
 初始化读取基线：shy / 6a055621a2b4239bb4fc9e4b42902d8bc75b001b。
-当前工作区：shy / `9298add`（Task 1 本地加固：actionId zip / sidecar / durationSeconds / v2≠LIAF）。FB-00 审计为 `778566f`。
-契约：LIAF-PIPELINE R0；接口尚未冻结。
-本组不把 sidecar 当作已冻结 `.monster`。FB-01…04 等待 G0/Q-01/Q-02 冻结。
+当前工作区：shy / `83f1f18`（第 8 节 C-00 清单已更正）。加固代码 `9298add`；审计 `778566f`。
+契约：LIAF-PIPELINE **R0 未冻结**。规范源纠正见后端 `codex/liaf-next-phase-handbook` @ `d71b735`。
+`9298add` 的 sidecar 仍是 R0 草稿。后端 `framebaker-monster-sprite-extract-v1` 仅为 **R1 候选**，不是正式合同。`c42f899`「FB-01 已解除阻塞」**作废**。FB-01 继续等 C-00，再与 FB-00 对表后由总体负责人冻 R1。
 已有功能不自动算新流水线任务完成，接手先核对最新 branch/HEAD/status。
 
 ## 本组任务状态
 
 | 任务 | 状态 | 开始条件/下一步 | 证据 |
 | --- | --- | --- | --- |
-| FB-00 | 进行中 | 审计已提交；第 8 节已改为当前 zip（actionId + 草稿 sidecar）。待 C-00 用真实包复核 | `mission/FB-00.md`；审计 `778566f`；清单更正见本轮提交 |
-| FB-01 | 待开始 | **受阻：G0 / Q-01 / Q-02 未冻结。** 无契约风险的 zip/sidecar/durationSeconds 已做，**不算**本任务完成 | 见下方交付记录；勿将 sidecar 当 R1 |
+| FB-00 | 待联合验收 | 总体负责人已正式接收（`d71b735`）。待 C-00 用真实 `.monster` loader、`durationMs`、动作 ID、逐帧 anchor/marker、`.fbanim v3` 复核后对表冻 R1 | `mission/FB-00.md`；`778566f` / `9298add` / `83f1f18` |
+| FB-01 | 待开始 | **受阻：等 C-00 与 R1。** 勿按候选 schema 或 R0 sidecar 开工；`c42f899` 解阻结论作废 | 后端 `mission/fixtures/g0/` 仅为候选 |
 | FB-02 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 | FB-03 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 | FB-04 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
@@ -100,3 +100,17 @@ Fixture/测试代码属于正式可审查交付；大日志和临时运行产物
 - 性能：不适用
 - 已知问题、对下游影响与建议下一步：第 1/3 节矩阵仍描述审计基线旧路径，第 8 节已声明以 `9298add` 为准
 - 需要总体负责人决定的事项：同 FB-00；Q-06 按规范源改为正式职业而非 Gunner
+
+- 任务 ID / 状态 / 实际执行人：FB-00 / 待联合验收 / FrameBaker shy 组员（记录总监纠正）
+- 代码 branch、commit；若有影响结果的未提交修改，明确列出：本仓 `shy`（本提交）；规范源 `d71b735`
+- 使用的契约修订及规范源 commit/hash：LIAF-PIPELINE R0；后端 `d71b735 docs(mission): restore cross-team contract gate`
+- 本次解决的问题与最终行为：确认 FB-00 已被正式接收；R0 sidecar 仍为草稿；逐帧 v1 schema 仅为 R1 候选；作废 `c42f899` 对 FB-01 的解阻；FB-01 等 C-00
+- 改动路径、可审查 diff 或 PR：本文件状态表与第 9 节
+- 生产者输入：总监纠正原文（handbook `d71b735`）
+- 给消费者的输出：本组不再按候选 schema 开工
+- 测试：未执行（状态记录）
+- 联合验收：待 C-00
+- 人工观察：未执行
+- 性能：不适用
+- 已知问题、对下游影响与建议下一步：C-00 审计真实 `.monster` loader、`durationMs`、动作 ID、逐帧 anchor/marker、`.fbanim v3`；然后对表冻 R1
+- 需要总体负责人决定的事项：收到 C-00 后合并 FB-00/C-00 冻结 R1
