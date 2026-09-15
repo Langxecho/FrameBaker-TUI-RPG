@@ -170,7 +170,7 @@ AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
   → ZIP 内附 <name>.frames.json（file/x/y/w/h/duration 格数、durationSeconds=duration/fps、原点及 FPS）
 ```
 
-骨骼页「导出骨骼包」写出 **fbanim v2** 制作预览（不含装备），**不是** LIAF 交付入口；LIAF 走第 6 步发布导出的 **fbanim v3**。怪物流水线拆帧 zip 目录为 `{名称}/{actionId}/{fps}fps/*.png`，并附带标明 `liafPipeline: "R0-draft"` 且 `notARuntimeContract: true` 的 `sidecar.json` 草稿，**不是**已冻结的 `.monster` 运行时包。
+骨骼页「导出骨骼包」写出 **fbanim v2** 制作预览（不含装备），**不是** LIAF 交付入口；LIAF 角色只收第 6 步发布的 **fbanim v3**。怪物流水线拆帧 zip 为 `frames/{actionId}/*.png` + R1-A `sidecar.json`（`framebaker.monster-sprite-extract`），**禁止**把该 zip 改名为 `.monster`（由 C-01 显式转换）。
 
 ### 素材库（素材 → 抠图 → 导入项目）
 

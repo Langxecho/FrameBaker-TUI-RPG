@@ -1,13 +1,13 @@
-# LIAF 流水线共享契约与待决事项
+﻿# LIAF 流水线共享契约与待决事项
 
-契约编号：LIAF-PIPELINE；修订：R0；状态：设计草案，尚未冻结 wire schema。
-R0 汇总团队已讨论的方向，不代表以下能力已经实现或验收通过。
+契约编号：LIAF-PIPELINE；修订：R1；状态：仅冻结边界 A 的怪物逐帧素材子合同。
+R1 不代表 G0 整体、正式 wire schema 或后续关口已经验收通过；未冻结事项明确保留在本文件。
 
 规范源：后端仓库 `挂机game/mission/contracts.md`。
-客户端和 FrameBaker 的同名文件是相同修订的完整镜像，便于各组独立阅读。
+客户端和 FrameBaker 的同名文件应同步本规范源的同一修订，便于各组独立阅读。
 总体负责人维护规范源、决策记录并同步镜像；组员通过本仓库 handoff 提出变更，
-不得在镜像中单独发明另一份字段合同。R1 冻结时必须交付 schema、样例及迁移说明，
-不能只把本文件的标题改成“已冻结”。
+不得在镜像中单独发明另一份字段合同。本次 R1 已交付 schema、样例及转换边界；
+其余部分不能仅因本文件修订升级而视为冻结。
 
 ## 职责与内容对象
 
@@ -39,6 +39,42 @@ LIAF 的必要修正保存为显式覆盖，重新导入时不反向改写制作
 v2 普通导出与 v3 发布的收敛、warp/mesh 的拒绝或烘焙范围需按现有代码冻结，
 不得静默丢弃装备、事件或动态换装能力。
 
+### R1 冻结子合同：FrameBaker 怪物逐帧素材 v1
+
+Q-01/Q-02 中“无骨骼怪物逐帧素材交给 LIAF”的 Boundary A 输入冻结为
+[`framebaker-monster-sprite-extract-v1.schema.json`](fixtures/g0/framebaker-monster-sprite-extract-v1.schema.json)。
+这是制作交付 ZIP 根目录中的 `sidecar.json` 合同，不是 `.monster`，不包含机制、数值或
+服务端可执行内容。它只冻结 FrameBaker 的怪物逐帧 source material；不冻结 G0 整体、
+Q-03/Q-05/Q-07、真实包联合验收或新的后端 wire。
+
+- FB-01 负责按本 schema 产生 `sidecar.json` 和其列出的 `frames/` PNG；不得把现有 PNG ZIP
+  直接改为 `.monster` 扩展名，也不得把 R0 draft sidecar 冒充运行时包。
+- C-01 负责显式转换已校验的 sidecar/frames 到既有 `.monster` assets manifest、`content.json`
+  和 package-scoped assets：逐帧 `durationMs`、action binding 和 package checksum 必须由该转换
+  产物明确写入/重算，不能由 loader 猜测或沿用 ZIP 名称。
+
+- ZIP 内帧路径固定为 `frames/{actionId}/{nnnn}.png`，路径和 `actionId` 不使用显示名称；
+  `source.projectId` 用于重导入关联，`source.exportId` 标识一次不可变导出。
+- 所有帧保持同一完整画布，像素坐标原点为左上，X 向右、Y 向下；`objectOriginPx`
+  是所有动作共享的对象落点。v1 不允许逐帧裁剪，因此不需要猜测 trim offset。
+- 面向方向显式声明。关于 X 轴镜像，连续坐标按 `x' = canvas.width - x` 转换对象原点、
+  anchor 与方向；像素采样由消费者按 `width - 1 - pixelX` 处理。
+- 时间使用非负整数毫秒。每帧同时给绝对 `startTimeMs` 和正数 `durationMs`，相邻帧必须连续；
+  24 FPS 可使用 42/42/41ms 等误差分配，`sampleRateHz` 只是制作采样信息，不是战斗 tick。
+- `loopMode` 只允许 `once`、`loop`、`hold`，与当前 `.monster` loader 的实际交集一致；
+  `ping_pong` 未被该 loader 支持，schema 必须拒绝，不能回退为 `loop` 后静默接受。
+- anchor 是表现定位点，可随帧变化；marker 必须带 `presentationOnly: true` 且位于动作时长内。
+  `combat.hitbox.*` 被 schema 拒绝，素材标记绝不决定命中、伤害或目标。
+- schema 之外仍必须校验 actionId、帧路径和 anchor ID 唯一、帧连续、marker 未越界，
+  并按每个小写 SHA-256 校验实际 PNG 字节。缺少下游绑定声明为必需的 anchor 时应 fail-closed。
+
+正例、负例与可执行检查位于 [`mission/fixtures/g0`](fixtures/g0)。之后的破坏性变化必须发布
+`schemaVersion: 2`；消费者仍须拒绝未知必需能力。
+骨骼角色继续只把 `.fbanim v3` 作为发布准备输入；v2 工程 ZIP 不是角色交付物。
+骨骼的 socket、正式职业 rig 与装备闭包仍不属于本子合同。C-00 已核对真实 `.monster` loader 的
+`durationMs`、动作 ID、逐帧 anchor/marker 和 `.fbanim v3` 边界；因此 FB-01/C-01 的 Q-01/Q-02
+契约阻塞解除，但两项实现和 G1 联合验收均未完成。
+
 ## 边界 B：LIAF → 后端/客户端
 
 游戏内容包闭合身份、注册机制引用、受控参数、动作语义、
@@ -69,6 +105,37 @@ sequence 负责排序/去重，行动身份负责因果关联，不能互相替�
 美术发射标记对齐权威阶段；脚步/抛壳等标记仅触发表现。
 同 tick 顺序和真实飞行是否已在正式路径实现，必须先做 B-00 审计，
 不能因为存在 ActionDefinition/projectile_ms 字段就宣称已支持。
+
+### 当前后端候选 combatFacts v2（未冻结为 R1）
+
+后端 B-02 已在内部 snapshot 候选结构中生成 `schemaVersion = 2`，但正式
+WebSocket 尚未公开，客户端也尚未声明消费；因此本节仍是联调候选，不会因 Boundary A 的
+R1 子合同而自动冻结。它仍须经三仓样例、负例和迁移说明验收后冻结。
+
+每条事实共有：`sequence`、`actionId`、`parentSequence`、`atMs`、
+`sourceId`、`abilityId`、`contentRef`、`kind`、`payload`。
+`sequence` 是战斗内单调序号；`actionId` 聚合同一权威行动；
+`parentSequence` 精确指向已先发布的直接原因事实，三者不可互相替代。
+
+当前候选事实种类：
+
+- `action.launched`：冻结目标集合与 delivery。
+- `action.impact`：结构化 `targetId`、`outcome`、`resolvedDamage`、
+  `hpLoss`、`hpAfter`、`critical`、`killed`。
+- `action.finished`：权威收尾完成。
+- `effect.started` / `effect.refreshed` / `effect.tick` / `effect.ended`：
+  持续效果身份、代次、剩余次数、下一 tick 和结构化 tick 结果。
+- `reaction.damage`：装备追加伤害；携带触发/root/parent 内部事件 ID、
+  equipment instance/template、release、effect、compatibility rule 及同形
+  `ImpactFact`。它的外层 `actionId` 归属原权威行动，`parentSequence`
+  指向触发它的公开 launch/impact/effect 事实，外层 `contentRef` 指向冻结装备来源。
+
+候选 `contentSources` 使用 `sourceKind = player | monster | equipment`。
+怪物来源可冻结注册实体、定义版本、包/资源摘要和 asset refs；Gunner 玩家来源冻结
+`.class` package/version/archive/content 摘要与 asset refs；装备来源冻结
+release、instance、template、content hash、frame manifest version，以及 `.equipment`
+package/version/archive/content 摘要与 asset refs。其他职业包接入、召唤物来源、正式资源下载、
+鉴权与缓存合同仍未完成，不能据此宣称资源分发契约已经闭合。
 
 ## 表现与时钟
 
@@ -102,14 +169,15 @@ LIAF 离线预览、权威调试、正式战斗共用表现编排器，事件来
 区分机制契约兼容版本、机制实现身份/registryVersion、
 包归档摘要与内容摘要。调试记录全部身份、有效参数与 seed。
 内容修订保持当前会话冻结，新版本重跑后生效。
-不把不可变资源身份设计等同于恢复复杂运营发布流程。
+不把不可变资源身份等同于恢复复杂运营发布流程。
 
 ## 分期边界
 
 G0：现状审计、最小 schema/事件样例、负例、版本与时间契约冻结。
 G1：A1 从 FrameBaker 交付到 LIAF 组装，再到权威调试完整演出。
 G2：同一包进入本地正式后端关卡，正式客户端资源分发与表现验收。
-G3：标准 Gunner rig + rifle_two_hand + muzzle + 一个装备关联效果。
+G3：首个经产品确认的正式职业 + 标准 rig + 一件适配装备 + 一个装备关联效果。
+Gunner 仅可作为现有链路测试夹具，不是正式职业、产品范围或跨组验收硬依赖。
 G4：一把传说武器专属动作/特效及一项明确技能交互；真实机制扩展另有后端测试。
 G1 如 A1 现有语义为即时命中，使用曳光；不得为展示慢弹道改变机制。
 真实延迟弹道先单独冻结后端语义和用例，再进入后续能力增量。
@@ -119,12 +187,12 @@ G1 如 A1 现有语义为即时命中，使用曳光；不得为展示慢弹道�
 
 | 编号 | 需确定的内容 | 提案输入 | 阻塞范围 |
 | --- | --- | --- | --- |
-| Q-01 | 现有素材包的最小增量 schema、v2/v3 转换与兼容规则 | FB-00、C-00 | FB-01、C-01 |
-| Q-02 | 坐标/方向/单位、时间精度、标记与镜像规则 | FB-00、C-00 | 素材导出与挂点采样 |
+| Q-01 | R1 已冻结 Boundary A 怪物逐帧 source-material schema；C-01 显式转换为既有 `.monster` assets manifest，FB-01 交付 sidecar/frames | FB-00、C-00 | FB-01、C-01 可开工；真实包联合验收仍在 G1 |
+| Q-02 | R1 已冻结怪物像素坐标、毫秒时间、表现 marker、镜像及 `once`/`loop`/`hold`；骨骼 socket 消费不在本子合同 | FB-00、C-00 | 怪物素材导出与挂点采样可开工；骨骼部分仍待 Q-06 |
 | Q-03 | A1 权威行动路径、事件身份/顺序、目标与同 tick 命中 | B-00、C-00 | B-02、C-02 |
 | Q-04 | 参数覆盖范围、合成规则、机制版本兼容 | B-00 | B-01、C-03 |
 | Q-05 | 分发接口、战斗依赖冻结、缓存与重新加载策略 | B-00、C-00 | B-04、C-04 |
-| Q-06 | Gunner rig 身份、装备闭包、武器动作覆盖与不支持能力 | FB-00、C-00、B-00 | G3/G4 |
+| Q-06 | 首个正式职业的 rig 身份、装备闭包、武器动作覆盖与不支持能力 | FB-00、C-00、B-00 | G3/G4 |
 | Q-07 | 性能基线、时钟误差、资源及并发预算与测量方案 | C-00、FB-00、B-00 | G1 性能验收 |
 
 总体负责人在后端 mission/program.md 记录决策、原因、受影响任务及契约修订。

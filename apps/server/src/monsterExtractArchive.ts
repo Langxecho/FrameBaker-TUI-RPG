@@ -2,8 +2,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { monsterActionById } from "@framebaker/shared";
 import { db, STORAGE_ROOT, uid } from "./db";
+import { readPngSize } from "./jobs/spriteKey";
 import { createStoreZip } from "./mediaPlugins/zipArchive";
-import { buildMonsterExtractSidecar, buildMonsterExtractZipFiles } from "./monsterExtractZip";
+import {
+  buildMonsterExtractSidecar,
+  buildMonsterExtractZipFiles,
+  type MonsterExtractClipInput,
+} from "./monsterExtractZip";
 import type { MonsterPipelineRun } from "./monsterPipelineTypes";
 import { broadcast } from "./ws";
 
@@ -25,9 +30,28 @@ function assetPath(id: string): string | null {
   return processed ?? raw;
 }
 
-/** 把本次流水线全部拆帧打成 zip，写入素材库（可下载）。 */
+function toolVersion(): string {
+  try {
+        const pkg = JSON.parse(readFileSync(join(import.meta.dir, "../package.json"), "utf8")) as { version?: string };
+    return pkg.version?.slice(0, 64) || "0.4.0";
+  } catch {
+    return "0.4.0";
+  }
+}
+
+/** 同一动作多 fps 时只保留最高采样，避免 sidecar 动作 ID 重复。 */
+function pickClipsByAction(clips: MonsterExtractClipInput[]): MonsterExtractClipInput[] {
+  const best = new Map<string, MonsterExtractClipInput>();
+  for (const clip of clips) {
+    const prev = best.get(clip.actionId);
+    if (!prev || clip.fps > prev.fps) best.set(clip.actionId, clip);
+  }
+  return [...best.values()];
+}
+
+/** 把本次流水线全部拆帧打成 R1-A zip（sidecar.json + frames/），写入素材库。不是 .monster。 */
 export function packMonsterExtractArchive(run: MonsterPipelineRun): string | null {
-  const clips: Array<{ actionId: string; actionTitle: string; fps: number; frames: Uint8Array[] }> = [];
+  const collected: MonsterExtractClipInput[] = [];
   const keys = Object.keys(run.extractFrameIds ?? {}).sort();
   for (const key of keys) {
     const colon = key.lastIndexOf(":");
@@ -44,11 +68,31 @@ export function packMonsterExtractArchive(run: MonsterPipelineRun): string | nul
     }
     if (!frames.length) continue;
     const actionTitle = run.actions.find((a) => a.id === actionId)?.title ?? monsterActionById(actionId)?.title ?? actionId;
-    clips.push({ actionId, actionTitle, fps, frames });
+    collected.push({ actionId, actionTitle, fps, frames });
   }
+  const clips = pickClipsByAction(collected);
   if (!clips.length) return null;
-  const files = buildMonsterExtractZipFiles(run.name, clips);
-  const sidecar = buildMonsterExtractSidecar(run.name, clips);
+
+  let canvas = { width: run.spriteFit.width, height: run.spriteFit.height };
+  const firstSize = readPngSize(clips[0]!.frames[0]!);
+  if (firstSize) canvas = firstSize;
+  for (const clip of clips) {
+    for (const frame of clip.frames) {
+      const size = readPngSize(frame);
+      if (!size || size.width !== canvas.width || size.height !== canvas.height) return null;
+    }
+  }
+
+  const files = buildMonsterExtractZipFiles(clips);
+  const sidecar = buildMonsterExtractSidecar({
+    displayName: run.name,
+    projectId: run.pipelineId,
+    exportId: uid(),
+    toolVersion: toolVersion(),
+    exportedAt: new Date().toISOString(),
+    canvas,
+    clips,
+  });
   files["sidecar.json"] = new TextEncoder().encode(`${JSON.stringify(sidecar, null, 2)}\n`);
   const bytes = createStoreZip(files);
   const id = uid();
@@ -60,6 +104,9 @@ export function packMonsterExtractArchive(run: MonsterPipelineRun): string | nul
     mediaKind: "archive",
     pipelineId: run.pipelineId,
     monsterName: run.name,
+    format: "framebaker.monster-sprite-extract",
+    schemaVersion: 1,
+    notAMonsterPackage: true,
   });
   db.query(
     "INSERT INTO materials (id, name, raw_path, status, source, folder_id, metadata, created_at) VALUES (?, ?, ?, 'raw', ?, ?, ?, ?)",

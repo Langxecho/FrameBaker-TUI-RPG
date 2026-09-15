@@ -2,9 +2,8 @@
 
 负责人：FrameBaker 组员。
 初始化读取基线：shy / 6a055621a2b4239bb4fc9e4b42902d8bc75b001b。
-当前工作区：shy / `83f1f18`（第 8 节 C-00 清单已更正）。加固代码 `9298add`；审计 `778566f`。
-契约：LIAF-PIPELINE **R0 未冻结**。规范源纠正见后端 `codex/liaf-next-phase-handbook` @ `d71b735`。
-`9298add` 的 sidecar 仍是 R0 草稿。后端 `framebaker-monster-sprite-extract-v1` 仅为 **R1 候选**，不是正式合同。`c42f899`「FB-01 已解除阻塞」**作废**。FB-01 继续等 C-00，再与 FB-00 对表后由总体负责人冻 R1。
+当前工作区：shy（FB-01 按规范源 `138c0d2` 实现 R1-A sidecar/frames）。
+契约：LIAF-PIPELINE **R1 仅冻结边界 A 怪物逐帧子合同**。ZIP 不得改名为 `.monster`。loopMode 仅 `once`/`loop`/`hold`。骨骼发布仍只接受 `.fbanim` v3。Q-03/Q-05/Q-07 不阻塞本项。
 已有功能不自动算新流水线任务完成，接手先核对最新 branch/HEAD/status。
 
 ## 本组任务状态
@@ -12,7 +11,7 @@
 | 任务 | 状态 | 开始条件/下一步 | 证据 |
 | --- | --- | --- | --- |
 | FB-00 | 待联合验收 | 总体负责人已正式接收（`d71b735`）。待 C-00 用真实 `.monster` loader、`durationMs`、动作 ID、逐帧 anchor/marker、`.fbanim v3` 复核后对表冻 R1 | `mission/FB-00.md`；`778566f` / `9298add` / `83f1f18` |
-| FB-01 | 待开始 | **受阻：等 C-00 与 R1。** 勿按候选 schema 或 R0 sidecar 开工；`c42f899` 解阻结论作废 | 后端 `mission/fixtures/g0/` 仅为候选 |
+| FB-01 | 进行中 | **可开始 / 实现中。** 输出 R1-A `sidecar.json` + `frames/{actionId}/*.png`；C-01 再转 `.monster` | 规范源 `138c0d2`；本仓 `mission/fixtures/g0/` |
 | FB-02 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 | FB-03 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 | FB-04 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
@@ -114,3 +113,17 @@ Fixture/测试代码属于正式可审查交付；大日志和临时运行产物
 - 性能：不适用
 - 已知问题、对下游影响与建议下一步：C-00 审计真实 `.monster` loader、`durationMs`、动作 ID、逐帧 anchor/marker、`.fbanim v3`；然后对表冻 R1
 - 需要总体负责人决定的事项：收到 C-00 后合并 FB-00/C-00 冻结 R1
+
+- 任务 ID / 状态 / 实际执行人：FB-01 / 进行中 / FrameBaker shy 组员
+- 代码 branch、commit；若有影响结果的未提交修改，明确列出：`shy`（本提交）；规范源 `138c0d2`
+- 使用的契约修订及规范源 commit/hash：LIAF-PIPELINE R1-A（Boundary A 怪物逐帧）@ `138c0d2`
+- 本次解决的问题与最终行为：拆帧 ZIP 改为 `sidecar.json` + `frames/{actionId}/*.png`；sha256、durationMs、startTimeMs、once/loop/hold；禁止改名为 `.monster`
+- 改动路径、可审查 diff 或 PR：`monsterExtractZip.ts`、`monsterExtractArchive.ts`、`mission/fixtures/g0/`
+- 生产者输入：规范源 schema 与 valid.json
+- 给消费者的输出：C-01 转换用 sidecar/frames；本包不是 `.monster`
+- 测试：`bun test tests/monster-pipeline.test.ts` 7 pass；`bun run typecheck` 通过
+- 联合验收：未执行（待 C-01 / G1）
+- 人工观察：未跑付费流水线真包
+- 性能：不适用
+- 已知问题、对下游影响与建议下一步：挂点/标记仍为空数组，FB-02 再补发射素材。同一动作多 fps 只保留最高 fps
+- 需要总体负责人决定的事项：无（Q-03/05/07 不阻塞本项）

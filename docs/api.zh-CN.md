@@ -243,7 +243,7 @@ curl -F "file=@walk.gif" -F "autoMatting=true" http://localhost:3000/api/materia
 
 ### POST /api/materials/monster-pipeline
 
-从已选定的身份图开始：动作静图 → 图生视频 → 拆帧。`{ "referenceMaterialId": "…", "actions": { "monster-02-attack": "挥砍" }, "width": 256, "height": 256, "extractFps": [4] }` → `{ "pipelineId", "jobId", "folderId" }`。必须传 `referenceMaterialId`，本接口不再生成参考图。空动作槽跳过；`videoPrompts` 有对应键时仍会收录该动作。开启视频时会先生成待机静图，**所有动作的 I2VA 都以该待机图为 `<Picture 1>`**（交给插件的是待机图转成的 RGB JPEG，不是 256 透明 PNG）。`durationSeconds` 默认 4（限制 4–15）。可选 `videoPrompts` 为每个动作的完整 I2VA 文案，空则回退 H3 模板。`width`/`height`（64–2048，默认 256）用于拆帧贴画；静图 API 尺寸来自 `monsterImage`。不传 `videoPluginId` 时尽量用已安装的 MiniMax H3 I2V；`null` 或 `""` 只生成静图。动作静图用参考图做图生图（不要品红）。可选 `importProjectId`（逐帧项目）接收拆出的帧。全部拆帧结束后会打成 `{名称}/{actionId}/{fps}fps/*.png` 的 zip 素材（另含草稿 `sidecar.json`，标明 R0、非运行时契约），落在同一文件夹。请求体里的 `providerId` / `model` / `size` 会被忽略。
+从已选定的身份图开始：动作静图 → 图生视频 → 拆帧。`{ "referenceMaterialId": "…", "actions": { "monster-02-attack": "挥砍" }, "width": 256, "height": 256, "extractFps": [4] }` → `{ "pipelineId", "jobId", "folderId" }`。必须传 `referenceMaterialId`，本接口不再生成参考图。空动作槽跳过；`videoPrompts` 有对应键时仍会收录该动作。开启视频时会先生成待机静图，**所有动作的 I2VA 都以该待机图为 `<Picture 1>`**（交给插件的是待机图转成的 RGB JPEG，不是 256 透明 PNG）。`durationSeconds` 默认 4（限制 4–15）。可选 `videoPrompts` 为每个动作的完整 I2VA 文案，空则回退 H3 模板。`width`/`height`（64–2048，默认 256）用于拆帧贴画；静图 API 尺寸来自 `monsterImage`。不传 `videoPluginId` 时尽量用已安装的 MiniMax H3 I2V；`null` 或 `""` 只生成静图。动作静图用参考图做图生图（不要品红）。可选 `importProjectId`（逐帧项目）接收拆出的帧。全部拆帧结束后会打成 `frames/{actionId}/*.png` 的 zip 素材（根目录 `sidecar.json` 为 R1-A `framebaker.monster-sprite-extract`，**不是** `.monster`；`loopMode` 仅 `once`/`loop`/`hold`），落在同一文件夹。请求体里的 `providerId` / `model` / `size` 会被忽略。
 
 ### POST /api/materials/:id/extract
 

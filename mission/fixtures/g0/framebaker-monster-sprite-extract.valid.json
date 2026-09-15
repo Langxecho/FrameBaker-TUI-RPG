@@ -1,0 +1,74 @@
+﻿{
+  "format": "framebaker.monster-sprite-extract",
+  "schemaVersion": 1,
+  "source": {
+    "projectId": "pipeline-a1-drone",
+    "exportId": "export-a1-drone-001",
+    "toolName": "FrameBaker",
+    "toolVersion": "0.1.0",
+    "exportedAt": "2026-09-15T08:00:00Z"
+  },
+  "displayName": "A1 Drone",
+  "canvas": { "width": 256, "height": 256 },
+  "coordinateSystem": {
+    "space": "pixel_2d",
+    "xAxis": "right",
+    "yAxis": "down",
+    "origin": "top_left",
+    "mirrorAxis": "x"
+  },
+  "objectOriginPx": { "x": 128, "y": 224 },
+  "defaultFacing": "left",
+  "actions": [
+    {
+      "actionId": "monster-01-idle",
+      "displayName": "Idle",
+      "loopMode": "loop",
+      "sampleRateHz": 24,
+      "frames": [
+        {
+          "relativePath": "frames/monster-01-idle/0001.png",
+          "startTimeMs": 0,
+          "durationMs": 42,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "anchors": []
+        },
+        {
+          "relativePath": "frames/monster-01-idle/0002.png",
+          "startTimeMs": 42,
+          "durationMs": 42,
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "anchors": []
+        },
+        {
+          "relativePath": "frames/monster-01-idle/0003.png",
+          "startTimeMs": 84,
+          "durationMs": 41,
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "anchors": []
+        }
+      ],
+      "markers": []
+    },
+    {
+      "actionId": "monster-02-attack",
+      "displayName": "Basic attack",
+      "loopMode": "once",
+      "sampleRateHz": 24,
+      "frames": [
+        {
+          "relativePath": "frames/monster-02-attack/0001.png",
+          "startTimeMs": 0,
+          "durationMs": 42,
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "anchors": [
+            { "id": "muzzle", "x": 42, "y": 116, "directionDegrees": 180 }
+          ]
+        }
+      ],
+      "markers": [
+        { "id": "weapon.fire", "atMs": 0, "presentationOnly": true }
+      ]
+    }
+  ]
+}

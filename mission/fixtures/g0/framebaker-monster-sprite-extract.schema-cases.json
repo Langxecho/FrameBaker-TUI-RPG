@@ -1,0 +1,12 @@
+﻿[
+  { "name": "wrong-format", "field": "format", "value": "monster", "valid": false },
+  { "name": "unsupported-version", "field": "schemaVersion", "value": 2, "valid": false },
+  { "name": "unsafe-frame-path", "field": "actions.0.frames.0.relativePath", "value": "../idle.png", "valid": false },
+  { "name": "fractional-frame-time", "field": "actions.0.frames.0.durationMs", "value": 41.6667, "valid": false },
+  { "name": "uppercase-digest", "field": "actions.0.frames.0.sha256", "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "valid": false },
+  { "name": "authoritative-hitbox-marker", "field": "actions.1.markers.0.id", "value": "combat.hitbox.start", "valid": false },
+  { "name": "marker-must-be-presentation-only", "field": "actions.1.markers.0.presentationOnly", "value": false, "valid": false },
+  { "name": "right-facing-source", "field": "defaultFacing", "value": "right", "valid": true },
+  { "name": "hold-loop-mode", "field": "actions.1.loopMode", "value": "hold", "valid": true },
+  { "name": "ping-pong-loop-mode", "field": "actions.1.loopMode", "value": "ping_pong", "valid": false }
+]

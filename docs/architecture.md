@@ -179,7 +179,7 @@ Fetch all visible timeline cells → createImageBitmap
   → ZIP images plus <name>.frames.json (file/x/y/w/h/duration in ticks, durationSeconds=duration/fps, origin and FPS)
 ```
 
-The skeletal page “Export skeletal package” writes an **fbanim v2** authoring preview (no equipment). That is **not** the LIAF delivery path; LIAF uses step 6 publish export (**fbanim v3**). Monster extract zips use `{name}/{actionId}/{fps}fps/*.png` plus a draft `sidecar.json` marked `liafPipeline: "R0-draft"` and `notARuntimeContract: true` — not a frozen `.monster` runtime package.
+The skeletal page “Export skeletal package” writes an **fbanim v2** authoring preview (no equipment). That is **not** the LIAF delivery path; LIAF characters use step 6 publish export (**fbanim v3**) only. Monster extract zips are `frames/{actionId}/*.png` plus R1-A `sidecar.json` (`framebaker.monster-sprite-extract`). Do **not** rename that zip to `.monster` — C-01 performs the explicit conversion.
 
 ### Material Library (Material → Matting → Import to Project)
 

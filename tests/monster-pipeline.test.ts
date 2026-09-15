@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { MAGENTA, fitSpriteNearest, keySpriteBackground, processSpritePixels, readPngSize } from "../apps/server/src/jobs/spriteKey";
 import { applyMonsterPipelineProduct, listMonsterPipelineSteps, shouldPackMonsterExtractArchive } from "../apps/server/src/monsterPipeline";
-import { buildMonsterExtractSidecar, monsterExtractZipEntryPath } from "../apps/server/src/monsterExtractZip";
+import { buildMonsterExtractSidecar, frameDurationsMs, loopModeForActionId, monsterExtractZipEntryPath, sha256Hex } from "../apps/server/src/monsterExtractZip";
 import { isRetryableMediaPluginUploadError } from "../apps/server/src/jobs/mediaPlugin";
 import type { MonsterPipelineRun } from "../apps/server/src/monsterPipelineTypes";
 
@@ -113,19 +113,39 @@ describe("怪物流水线步骤", () => {
       actionId: "monster-02-attack",
       fps: 4,
       frameIndex: 1,
-    })).toBe("刀刃守卫/monster-02-attack/4fps/0001.png");
-    const sidecar = buildMonsterExtractSidecar("刀刃守卫", [
-      { actionId: "monster-02-attack", actionTitle: "平A", fps: 4, frames: [new Uint8Array([1])] },
-    ]);
-    expect(sidecar.liafPipeline).toBe("R0-draft");
-    expect(sidecar.notARuntimeContract).toBe(true);
-    expect(sidecar.facing).toBe("left");
-    expect(sidecar.actions[0]).toMatchObject({
-      id: "monster-02-attack",
-      title: "平A",
-      fps: 4,
-      files: ["刀刃守卫/monster-02-attack/4fps/0001.png"],
+    })).toBe("frames/monster-02-attack/0001.png");
+    expect(frameDurationsMs(3, 24)).toEqual([42, 42, 41]);
+    expect(loopModeForActionId("monster-01-idle")).toBe("loop");
+    expect(loopModeForActionId("monster-02-attack")).toBe("once");
+    expect(loopModeForActionId("monster-05-death")).toBe("hold");
+    const png = new Uint8Array([1, 2, 3]);
+    const sidecar = buildMonsterExtractSidecar({
+      displayName: "刀刃守卫",
+      projectId: "pipeline-blade-guard",
+      exportId: "export-001",
+      toolVersion: "0.4.0",
+      exportedAt: "2026-09-15T08:00:00Z",
+      canvas: { width: 256, height: 256 },
+      clips: [{ actionId: "monster-02-attack", actionTitle: "平A", fps: 4, frames: [png] }],
     });
+    expect(sidecar.format).toBe("framebaker.monster-sprite-extract");
+    expect(sidecar.schemaVersion).toBe(1);
+    expect(sidecar.defaultFacing).toBe("left");
+    expect(sidecar.objectOriginPx).toEqual({ x: 128, y: 256 });
+    expect(sidecar.actions[0]).toMatchObject({
+      actionId: "monster-02-attack",
+      displayName: "平A",
+      loopMode: "once",
+      sampleRateHz: 4,
+    });
+    expect(sidecar.actions[0]!.frames[0]).toMatchObject({
+      relativePath: "frames/monster-02-attack/0001.png",
+      startTimeMs: 0,
+      durationMs: 250,
+      sha256: sha256Hex(png),
+      anchors: [],
+    });
+    expect(sidecar.actions[0]!.loopMode).not.toBe("ping_pong");
     expect(isRetryableMediaPluginUploadError("PLUGIN_RUNTIME_ERROR: 上传参考图失败 HTTP 502")).toBe(true);
     expect(isRetryableMediaPluginUploadError("生成失败")).toBe(false);
   });
