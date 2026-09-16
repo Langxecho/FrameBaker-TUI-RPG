@@ -11,6 +11,7 @@ import { EXTRACT_TIMESTAMPS_MAX, normalizeExtractTimestamps } from "../../jobs/e
 import { getImageLayerSettings, imageLayerConfigured } from "../../provider";
 import { ok, err, sortMaterialsByFrameNumber, importMaterialToProject } from "../helpers";
 import { invalidateProjectUndo } from "../../undo";
+import { importMonsterSpriteExtractFromMaterial } from "../../monsterSpriteImport";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -302,6 +303,54 @@ export function register(server: McpServer) {
       db.query("UPDATE materials SET status = 'raw', processed_path = NULL WHERE id = ?").run(m.id);
       broadcast("material_updated", { id: m.id });
       return ok({ material: serializeMaterial(getMaterial(m.id)!) });
+    }
+  );
+
+  server.registerTool(
+    "import_monster_sprite_extract",
+    {
+      title: "Import Monster Sprite Extract",
+      description:
+        "Pack an existing ZIP of PNG action folders already in the material library into an R1-A framebaker.monster-sprite-extract archive (sidecar.json + frames/{actionId}/*.png). Not a .monster package. Requires explicit action mapping with loopMode once|loop|hold, defaultFacing, objectOriginPx, and sampleRateHz=24. Does not generate images or accept local filesystem paths.",
+      inputSchema: z.object({
+        sourceMaterialId: z.string().describe("Existing zip material UUID (PNG folders inside)"),
+        displayName: z.string().min(1).max(120),
+        projectId: z.string().min(1).max(96),
+        defaultFacing: z.enum(["left", "right"]),
+        originX: z.number().int(),
+        originY: z.number().int(),
+        folderId: z.string().describe("Destination material folder UUID").optional(),
+        actions: z.array(z.object({
+          folder: z.string(),
+          actionId: z.string(),
+          displayName: z.string().optional(),
+          loopMode: z.enum(["once", "loop", "hold"]),
+        })).min(1),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    },
+    async (args) => {
+      const result = await importMonsterSpriteExtractFromMaterial({
+        sourceMaterialId: args.sourceMaterialId,
+        folderId: args.folderId ?? null,
+        spec: {
+          displayName: args.displayName,
+          projectId: args.projectId,
+          sampleRateHz: 24,
+          defaultFacing: args.defaultFacing,
+          objectOriginPx: { x: args.originX, y: args.originY },
+          actions: args.actions.map((a) => ({
+            folder: a.folder,
+            actionId: a.actionId,
+            displayName: a.displayName ?? a.actionId,
+            loopMode: a.loopMode,
+          })),
+        },
+      });
+      if ("error" in result) return err(result.error);
+      const material = getMaterial(result.materialId);
+      if (!material) return err("素材写入失败");
+      return ok({ materialId: result.materialId, material: serializeMaterial(material) });
     }
   );
 }

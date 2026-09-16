@@ -42,7 +42,7 @@ The [mission directory](../mission/README.md) records authoring/export assignmen
 │   └─ /api/jobs(/:id)   Job list (panel initial load) / single query │
 │                                                                     │
 │  mcp/ (MCP server: POST /mcp JSON-RPC 2.0 Streamable HTTP)         │
-│       53 tools directly operating db/internal modules for AI agents │
+│       54 tools directly operating db/internal modules for AI agents │
 │                                                                     │
 │  provider.ts (multi-gen provider / matting config: settings > env)  │
 │  providerAdapter.ts (generation validation/execution adapter +      │
@@ -137,7 +137,7 @@ Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy an
 AI client → POST /mcp { jsonrpc, method: "initialize" }
   → server returns protocolVersion/capabilities/serverInfo + Mcp-Session-Id
   → client sends notifications/initialized
-  → tools/list returns 53 tools
+  → tools/list returns 54 tools
   → tools/call { name, arguments } → direct db ops → returns { content: [{ type:"text", text:JSON }] }
 ```
 
@@ -179,7 +179,7 @@ Fetch all visible timeline cells → createImageBitmap
   → ZIP images plus <name>.frames.json (file/x/y/w/h/duration in ticks, durationSeconds=duration/fps, origin and FPS)
 ```
 
-The skeletal page “Export skeletal package” writes an **fbanim v2** authoring preview (no equipment). That is **not** the LIAF delivery path; LIAF characters use step 6 publish export (**fbanim v3**) only. Monster extract zips are `frames/{actionId}/*.png` plus R1-A `sidecar.json` (`framebaker.monster-sprite-extract`). Do **not** rename that zip to `.monster` — C-01 performs the explicit conversion.
+The skeletal page “Export skeletal package” writes an **fbanim v2** authoring preview (no equipment). That is **not** the LIAF delivery path; LIAF characters use step 6 publish export (**fbanim v3**) only. Monster extract zips are `frames/{actionId}/*.png` plus R1-A `sidecar.json` (`framebaker.monster-sprite-extract`). Do **not** rename that zip to `.monster` — C-01 performs the explicit conversion. The Monster tab can also pack an existing PNG-folder zip through `POST /api/materials/monster-sprite-extract` (explicit `loopMode` / facing / origin, 24 Hz, natural filename order, same canvas).
 
 ### Material Library (Material → Matting → Import to Project)
 

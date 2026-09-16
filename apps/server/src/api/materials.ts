@@ -7,6 +7,7 @@ import { db, getMaterial, nextFrameIdx, renameMaterial, serializeMaterial, STORA
 import { createGenerationJobs, createJob, createMattingJob } from "../queue";
 import { EXTRACT_TIMESTAMPS_MAX, normalizeExtractTimestamps } from "../jobs/extract";
 import { startMonsterPipeline, startMonsterReferenceJob } from "../monsterPipeline";
+import { importMonsterSpriteExtract, listPngFolders, pngsFromZip } from "../monsterSpriteImport";
 import { checkImageReferenceSupport, checkVideoSupport, resolveReferencePaths } from "../providerAdapter";
 import { getImageLayerSettings, imageLayerConfigured } from "../provider";
 import { broadcast } from "../ws";
@@ -416,6 +417,63 @@ export const materialsApi = new Elysia({ prefix: "/api" })
         importProjectId: t.Optional(t.Union([t.String(), t.Null()])),
       }),
     }
+  )
+  .post(
+    "/materials/monster-sprite-extract-preview",
+    async ({ body, status }) => {
+      try {
+        const bytes = new Uint8Array(await body.archive.arrayBuffer());
+        const listed = await pngsFromZip(bytes);
+        if (!listed.ok) return status(400, listed.error);
+        return { folders: listPngFolders(listed.pngs.map((p) => p.relativePath)) };
+      } catch (e) {
+        return status(400, (e as Error).message);
+      }
+    },
+    { body: t.Object({ archive: t.File() }) },
+  )
+  .post(
+    "/materials/monster-sprite-extract",
+    async ({ body, status }) => {
+      try {
+        const bytes = new Uint8Array(await body.archive.arrayBuffer());
+        const result = await importMonsterSpriteExtract({
+          zipBytes: bytes,
+          spec: body.spec,
+          folderId: body.folderId || null,
+        });
+        if ("error" in result) return status(400, result.error);
+        const material = getMaterial(result.materialId);
+        if (!material) return status(500, "素材写入失败");
+        return { materialId: result.materialId, material: serializeMaterial(material) };
+      } catch (e) {
+        return status(400, (e as Error).message);
+      }
+    },
+    {
+      body: t.Object({
+        archive: t.File(),
+        spec: t.Union([
+          t.String({ minLength: 2 }),
+          t.Object({
+            displayName: t.String(),
+            projectId: t.String(),
+            sampleRateHz: t.Number(),
+            defaultFacing: t.Union([t.Literal("left"), t.Literal("right")]),
+            objectOriginPx: t.Object({ x: t.Number(), y: t.Number() }),
+            actions: t.Array(
+              t.Object({
+                folder: t.String(),
+                actionId: t.String(),
+                displayName: t.Optional(t.String()),
+                loopMode: t.Union([t.Literal("once"), t.Literal("loop"), t.Literal("hold")]),
+              }),
+            ),
+          }),
+        ]),
+        folderId: t.Optional(t.String()),
+      }),
+    },
   )
   // 图片场景分层：使用独立配置，前置校验后创建异步任务
   .post(

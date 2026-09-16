@@ -163,9 +163,9 @@ export async function createZip(entries: ZipEntry[]): Promise<Blob> {
   eocd.setUint16(20, 0, true); // comment len
 
   return new Blob(
-    [...localParts, ...centralParts, new Uint8Array(eocd.buffer)].map((p) =>
-      p instanceof Uint8Array ? p.buffer : p
-    ) as BlobPart[],
+    [...localParts, ...centralParts, new Uint8Array(eocd.buffer)].map(
+      (p) => p.buffer.slice(p.byteOffset, p.byteOffset + p.byteLength) as ArrayBuffer,
+    ),
     { type: "application/zip" }
   );
 }

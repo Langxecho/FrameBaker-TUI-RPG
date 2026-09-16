@@ -39,7 +39,7 @@
 │   └─ /api/jobs(/:id)   任务列表（面板初始加载）/ 单任务查询          │
 │                                                                     │
 │  mcp/（MCP 服务端：POST /mcp JSON-RPC 2.0 Streamable HTTP）        │
-│       53 个工具直接操作 db/内部模块，供 AI 助手调用                 │
+│       54 个工具直接操作 db/内部模块，供 AI 助手调用                 │
 │                                                                     │
 │  provider.ts（多生成 provider / 抠图配置解析：settings 优先 env 兜底）│
 │  providerAdapter.ts（生成校验/执行 adapter + provider 模型探测）      │
@@ -128,7 +128,7 @@
 AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
   → 服务端返回 protocolVersion/capabilities/serverInfo + Mcp-Session-Id
   → 客户端发 notifications/initialized
-  → tools/list 获取 53 个工具
+  → tools/list 获取 54 个工具
   → tools/call { name, arguments } → 直接 db 操作 → 返回 { content: [{ type:"text", text:JSON }] }
 ```
 
@@ -170,7 +170,7 @@ AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
   → ZIP 内附 <name>.frames.json（file/x/y/w/h/duration 格数、durationSeconds=duration/fps、原点及 FPS）
 ```
 
-骨骼页「导出骨骼包」写出 **fbanim v2** 制作预览（不含装备），**不是** LIAF 交付入口；LIAF 角色只收第 6 步发布的 **fbanim v3**。怪物流水线拆帧 zip 为 `frames/{actionId}/*.png` + R1-A `sidecar.json`（`framebaker.monster-sprite-extract`），**禁止**把该 zip 改名为 `.monster`（由 C-01 显式转换）。
+骨骼页「导出骨骼包」写出 **fbanim v2** 制作预览（不含装备），**不是** LIAF 交付入口；LIAF 角色只收第 6 步发布的 **fbanim v3**。怪物流水线拆帧 zip 为 `frames/{actionId}/*.png` + R1-A `sidecar.json`（`framebaker.monster-sprite-extract`），**禁止**把该 zip 改名为 `.monster`（由 C-01 显式转换）。怪物页也可把已有 PNG 文件夹 zip 经 `POST /api/materials/monster-sprite-extract` 打成同一格式（必须显式 `loopMode` / 朝向 / 原点，24 Hz，文件名自然序号，同一画布）。
 
 ### 素材库（素材 → 抠图 → 导入项目）
 

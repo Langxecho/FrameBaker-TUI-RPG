@@ -7,6 +7,7 @@ This document records features, changes, and bug fixes by release. Main releases
 ### Added
 
 - Monster pipeline packs extracted frames as `frames/{actionId}/*.png` plus R1-A `sidecar.json` (`framebaker.monster-sprite-extract`, not a `.monster` package). `loopMode` is `once` / `loop` / `hold` only.
+- The Monster tab can pack an existing PNG-folder zip into that same R1-A archive. Mapping requires an explicit `loopMode` (no `electric_loop`→special heuristic), facing, origin, 24 Hz, natural filename order, and one shared canvas.
 
 - Motion editing can import a video/GIF/still as a reference skin under or over the character (neither blocks posing); video can follow the clip timeline. Session-only, not saved into the action package.
 - Skeleton editing can drag joints and bones on the character canvas with Move/Rotate/Scale, not only numeric inspector fields.

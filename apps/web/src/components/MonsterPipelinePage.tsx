@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Archive, Sparkles } from "lucide-react";
 import {
   MONSTER_ACTIONS,
   MONSTER_DEFAULT_DURATION_SECONDS,
@@ -21,6 +21,7 @@ import {
   type ProviderTestResponse,
 } from "@framebaker/shared";
 import { api, materialImageUrl, wsClient } from "../api";
+import { createZip } from "../zip";
 import { refreshServerConfig, useServerConfig } from "../config";
 import { useT } from "../i18n";
 import { notify } from "../notice";
@@ -41,6 +42,23 @@ const ACTION_LABEL: Record<(typeof MONSTER_ACTIONS)[number]["id"], "monster.acti
   "monster-04-hurt": "monster.action.hurt",
   "monster-05-death": "monster.action.death",
 };
+
+const A1_FOLDER_PRESET = [
+  { folder: "idle", actionId: "monster-01-idle", loopMode: "loop" as const, label: "monster.action.idle" as const },
+  { folder: "attack", actionId: "monster-02-attack", loopMode: "once" as const, label: "monster.action.attack" as const },
+  { folder: "electric_loop", actionId: "monster-03-special", loopMode: "loop" as const, label: "monster.action.special" as const },
+  { folder: "hit_received", actionId: "monster-04-hurt", loopMode: "once" as const, label: "monster.action.hurt" as const },
+  { folder: "death", actionId: "monster-05-death", loopMode: "hold" as const, label: "monster.action.death" as const },
+];
+
+type ImportLoop = "once" | "loop" | "hold";
+
+function pngParentFolder(relativePath: string): string | null {
+  const n = relativePath.replace(/\\/g, "/");
+  const slash = n.lastIndexOf("/");
+  if (slash <= 0) return null;
+  return n.slice(0, slash).split("/").filter(Boolean).pop() ?? null;
+}
 
 export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
   const t = useT();
@@ -78,6 +96,14 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
   const [jobMap, setJobMap] = useState<Record<string, Job>>({});
   const [results, setResults] = useState<MediaGenerationResultItem[]>([]);
   const [cacheKey, setCacheKey] = useState(() => Date.now());
+  const [importFolders, setImportFolders] = useState<string[]>([]);
+  const [importMap, setImportMap] = useState<Record<string, { actionId: string; displayName: string; loopMode: ImportLoop | "" }>>({});
+  const [importZip, setImportZip] = useState<File | null>(null);
+  const [importDirFiles, setImportDirFiles] = useState<File[]>([]);
+  const [importFacing, setImportFacing] = useState<"left" | "right">("left");
+  const [importOriginX, setImportOriginX] = useState("80");
+  const [importOriginY, setImportOriginY] = useState("160");
+  const [importSubmitting, setImportSubmitting] = useState(false);
 
   const imageReady = Boolean(imageApiKey.trim() && normalizeMonsterImageBaseUrl(imageBaseUrl)) || Boolean(cfg?.monsterImage?.configured);
   const tujiangWarn = /tujiang/i.test(imageBaseUrl);
@@ -271,10 +297,220 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
     }
   };
 
+  const applyImportFolders = (folders: string[]) => {
+    const unique = [...new Set(folders)].sort((a, b) => a.localeCompare(b, "en"));
+    setImportFolders(unique);
+    setImportMap((prev) => {
+      const next: typeof prev = {};
+      for (const folder of unique) {
+        next[folder] = prev[folder] ?? { actionId: "", displayName: "", loopMode: "" };
+      }
+      return next;
+    });
+  };
+
+  const applyA1Preset = () => {
+    setImportMap((prev) => {
+      const next = { ...prev };
+      for (const row of A1_FOLDER_PRESET) {
+        if (!importFolders.includes(row.folder)) continue;
+        next[row.folder] = {
+          actionId: row.actionId,
+          displayName: t(row.label),
+          loopMode: row.loopMode,
+        };
+      }
+      return next;
+    });
+  };
+
+  const onPickZip = (file: File | null) => {
+    setImportZip(file);
+    setImportDirFiles([]);
+    if (!file) {
+      applyImportFolders([]);
+      return;
+    }
+    if (!name.trim()) setName(file.name.replace(/\.zip$/i, ""));
+    const fdWait = api.previewMonsterSpriteExtract(file);
+    fdWait
+      .then((r) => applyImportFolders(r.folders))
+      .catch((e) => notify(t("monster.submitFailed", { msg: (e as Error).message })));
+  };
+
+  const onPickDir = (list: FileList | null) => {
+    const files = [...(list ?? [])].filter((f) => f.name.toLowerCase().endsWith(".png"));
+    setImportDirFiles(files);
+    setImportZip(null);
+    const folders = files
+      .map((f) => pngParentFolder((f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name))
+      .filter((v): v is string => Boolean(v));
+    applyImportFolders(folders);
+  };
+
+  const submitSpriteImport = async () => {
+    const display = name.trim();
+    if (!display) {
+      notify(t("monster.import.needName"));
+      return;
+    }
+    const actions = importFolders.flatMap((folder) => {
+      const row = importMap[folder];
+      if (!row?.actionId || (row.loopMode !== "once" && row.loopMode !== "loop" && row.loopMode !== "hold")) return [];
+      return [{ folder, actionId: row.actionId.trim(), displayName: row.displayName.trim() || row.actionId.trim(), loopMode: row.loopMode }];
+    });
+    if (!actions.length) {
+      notify(t("monster.import.needMap"));
+      return;
+    }
+    const originX = Number(importOriginX);
+    const originY = Number(importOriginY);
+    if (!Number.isFinite(originX) || !Number.isFinite(originY)) {
+      notify(t("monster.import.originHint"));
+      return;
+    }
+    let archive: Blob | null = importZip;
+    if (!archive && importDirFiles.length) {
+      const entries = [];
+      for (const file of importDirFiles) {
+        const rel = ((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name).replace(/\\/g, "/");
+        entries.push({ name: rel, data: new Uint8Array(await file.arrayBuffer()) });
+      }
+      archive = await createZip(entries);
+    }
+    if (!archive) {
+      notify(t("monster.import.noFolders"));
+      return;
+    }
+    const spec = JSON.stringify({
+      displayName: display,
+      projectId: display,
+      sampleRateHz: 24,
+      defaultFacing: importFacing,
+      objectOriginPx: { x: originX, y: originY },
+      actions,
+    });
+    setImportSubmitting(true);
+    try {
+      await api.importMonsterSpriteExtract(archive, spec, folderId || null);
+      notify(t("monster.import.done"), "info");
+      onOpenMaterials?.();
+    } catch (e) {
+      notify(t("monster.submitFailed", { msg: (e as Error).message }));
+    } finally {
+      setImportSubmitting(false);
+    }
+  };
+
   return (
     <div className="media-generate-layout">
       <section className="media-generate-form card-panel">
         <p className="hint">{t("monster.form.hint")}</p>
+        <div className="section-title">{t("monster.import.title")}</div>
+        <p className="hint">{t("monster.import.hint")}</p>
+        <label className="field">
+          <span>{t("monster.form.name")}</span>
+          <input className="px-input" value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>{t("monster.import.zip")}</span>
+          <input
+            className="px-input"
+            type="file"
+            accept=".zip,application/zip"
+            onChange={(e) => onPickZip(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <label className="field">
+          <span>{t("monster.import.dir")}</span>
+          <input
+            className="px-input"
+            type="file"
+            multiple
+            {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+            onChange={(e) => onPickDir(e.target.files)}
+          />
+        </label>
+        <p className="hint">{t("monster.import.originHint")}</p>
+        <label className="field">
+          <span>{t("monster.import.facing")}</span>
+          <PxSelect
+            value={importFacing}
+            onChange={(v) => setImportFacing(v === "right" ? "right" : "left")}
+            options={[
+              { value: "left", label: t("monster.import.facingLeft") },
+              { value: "right", label: t("monster.import.facingRight") },
+            ]}
+          />
+        </label>
+        <label className="field">
+          <span>{t("monster.import.originX")}</span>
+          <input className="px-input" value={importOriginX} onChange={(e) => setImportOriginX(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>{t("monster.import.originY")}</span>
+          <input className="px-input" value={importOriginY} onChange={(e) => setImportOriginY(e.target.value)} />
+        </label>
+        <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
+          <button type="button" className="px-btn" onClick={applyA1Preset} disabled={!importFolders.length}>
+            {t("monster.import.a1Preset")}
+          </button>
+        </div>
+        <div className="section-title">{t("monster.import.folders")}</div>
+        {importFolders.length === 0 ? (
+          <p className="hint">{t("monster.import.noFolders")}</p>
+        ) : (
+          importFolders.map((folder) => {
+            const row = importMap[folder] ?? { actionId: "", displayName: "", loopMode: "" as const };
+            return (
+              <div key={folder} className="field">
+                <span>{t("monster.import.folder")} · {folder}</span>
+                <select
+                  className="px-input"
+                  value={row.actionId}
+                  onChange={(e) => {
+                    const actionId = e.target.value;
+                    const known = MONSTER_ACTIONS.find((a) => a.id === actionId);
+                    setImportMap((prev) => ({
+                      ...prev,
+                      [folder]: {
+                        actionId,
+                        displayName: known ? t(ACTION_LABEL[known.id]) : actionId,
+                        loopMode: prev[folder]?.loopMode ?? "",
+                      },
+                    }));
+                  }}
+                >
+                  <option value="">{t("monster.import.actionId")}</option>
+                  {MONSTER_ACTIONS.map((a) => (
+                    <option key={a.id} value={a.id}>{a.id} · {t(ACTION_LABEL[a.id])}</option>
+                  ))}
+                </select>
+                <select
+                  className="px-input"
+                  value={row.loopMode}
+                  onChange={(e) => {
+                    const loopMode = e.target.value as ImportLoop | "";
+                    setImportMap((prev) => ({
+                      ...prev,
+                      [folder]: { ...(prev[folder] ?? { actionId: "", displayName: "" }), loopMode },
+                    }));
+                  }}
+                >
+                  <option value="">{t("monster.import.loopMode")}</option>
+                  <option value="once">{t("monster.import.loopOnce")}</option>
+                  <option value="loop">{t("monster.import.loopLoop")}</option>
+                  <option value="hold">{t("monster.import.loopHold")}</option>
+                </select>
+              </div>
+            );
+          })
+        )}
+        <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
+          <button type="button" className="px-btn accent" disabled={importSubmitting || !importFolders.length} onClick={() => void submitSpriteImport()}>
+            <Archive size={14} /> {importSubmitting ? t("msg.processing") : t("monster.import.submit")}
+          </button>
+        </div>
         <div className="section-title">{t("monster.form.imageSection")}</div>
         <p className="hint">{t("monster.form.imageHint")}</p>
         <span className={`engine-status ${imageReady ? "ok" : "bad"}`}>

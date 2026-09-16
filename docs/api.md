@@ -245,6 +245,14 @@ Generate a single identity still only. `{ "appearance": "left-facing pixel flyer
 
 Start action stills → image-to-video → extract from a chosen identity image. `{ "referenceMaterialId": "…", "actions": { "monster-02-attack": "slash" }, "width": 256, "height": 256, "extractFps": [4] }` → `{ "pipelineId", "jobId", "folderId" }`. `referenceMaterialId` is required; this endpoint does not generate the identity still. Empty action slots are skipped unless `videoPrompts` has a matching key. With video enabled, idle still is always generated first and every I2VA job uses that idle image as `<Picture 1>` (the plugin receives an RGB JPEG of the idle still, not the transparent 256 PNG). Default `durationSeconds` is 4 (clamped 4–15). Optional `videoPrompts` is a map of full I2VA text per action; empty falls back to the H3 template. `width`/`height` (64–2048, default 256) set extract `spriteFit`; still API size comes from `monsterImage`. Omit `videoPluginId` to use MiniMax H3 I2V when installed; `null` or `""` skips video. Stills are image-to-image from the reference (no magenta). Optional `importProjectId` (frame project) receives extracted frames. After the last extract job, frames are packed as `frames/{actionId}/*.png` into one zip material in the same folder (root `sidecar.json` is R1-A `framebaker.monster-sprite-extract`, **not** a `.monster` package; `loopMode` is only `once`/`loop`/`hold`). `providerId` / `model` / `size` in the body are ignored.
 
+### POST /api/materials/monster-sprite-extract-preview
+
+multipart `archive` (zip of PNG folders). Returns `{ "folders": ["attack", "idle"] }` from each PNG's parent folder name. Rejects Zip Slip. Does not write materials.
+
+### POST /api/materials/monster-sprite-extract
+
+multipart `archive` + `spec` (JSON string) + optional `folderId`. Groups existing PNGs by parent folder, sorts filenames by the last number in the name, requires one shared canvas and **explicit** `loopMode` / `defaultFacing` / `objectOriginPx`, and `sampleRateHz` **must be 24**. Writes an R1-A zip material (`sidecar.json` + `frames/{actionId}/NNNN.png`). Does **not** generate frames or rename to `.monster`. Example spec: `{ "displayName": "A1Drone", "projectId": "a1-drone", "sampleRateHz": 24, "defaultFacing": "left", "objectOriginPx": { "x": 80, "y": 160 }, "actions": [{ "folder": "electric_loop", "actionId": "monster-03-special", "displayName": "特殊攻击", "loopMode": "loop" }] }`. `loopMode` is never inferred from `actionId` (including `electric_loop` → special). Response `{ "materialId", "material" }`.
+
 ### POST /api/materials/:id/extract
 
 Extract video/GIF material frames into individual image materials → `{ "jobId": "…" }`. Copies source file to staging then enqueues **one** `extract_frames` job; output named "originalName #i", defaults to same folder. Non-video/GIF returns 400.
@@ -597,7 +605,7 @@ Copy and paste the following to your AI agent to get started:
 ```
 FrameBaker is running at http://localhost:3000 with an MCP server at /mcp (Streamable HTTP).
 Connect to it and use `list_projects` to get started.
-Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, list_media_plugins, get_media_plugin, generate_with_media_plugin, generate_monster_reference, generate_monster_pipeline, matting_material, list_jobs, get_config, and 41 more (53 total).
+Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, list_media_plugins, get_media_plugin, generate_with_media_plugin, generate_monster_reference, generate_monster_pipeline, import_monster_sprite_extract, matting_material, list_jobs, get_config, and 41 more (54 total).
 All tools manage pixel-art animation projects — frames, materials, generation, media plugins, matting, folders, jobs, and settings.
 ```
 
@@ -643,6 +651,7 @@ After handshake, send `notifications/initialized` notification (no response need
 | `generate_materials` | Generate materials (AI provider) |
 | `generate_monster_reference` | Generate a single monster identity still (material IDs / text only) |
 | `generate_monster_pipeline` | Start action stills→video→extract from an existing reference material |
+| `import_monster_sprite_extract` | Pack an existing PNG-folder zip material into R1-A (explicit loopMode; no local paths) |
 | `list_media_plugins` | List installed `.iap`/`.vap`/`.aap` media plugins (optional `kind`: image\|video\|audio\|all); returns summaries/configured/runnable — never secret values |
 | `get_media_plugin` | Get one installed media plugin detail (params schema, constraints, secret configuration status only — no plaintext secrets) |
 | `generate_with_media_plugin` | Create async media-plugin generation jobs; `references` must be material IDs only (no local paths); returns `jobId`/`jobIds` |

@@ -245,6 +245,14 @@ curl -F "file=@walk.gif" -F "autoMatting=true" http://localhost:3000/api/materia
 
 从已选定的身份图开始：动作静图 → 图生视频 → 拆帧。`{ "referenceMaterialId": "…", "actions": { "monster-02-attack": "挥砍" }, "width": 256, "height": 256, "extractFps": [4] }` → `{ "pipelineId", "jobId", "folderId" }`。必须传 `referenceMaterialId`，本接口不再生成参考图。空动作槽跳过；`videoPrompts` 有对应键时仍会收录该动作。开启视频时会先生成待机静图，**所有动作的 I2VA 都以该待机图为 `<Picture 1>`**（交给插件的是待机图转成的 RGB JPEG，不是 256 透明 PNG）。`durationSeconds` 默认 4（限制 4–15）。可选 `videoPrompts` 为每个动作的完整 I2VA 文案，空则回退 H3 模板。`width`/`height`（64–2048，默认 256）用于拆帧贴画；静图 API 尺寸来自 `monsterImage`。不传 `videoPluginId` 时尽量用已安装的 MiniMax H3 I2V；`null` 或 `""` 只生成静图。动作静图用参考图做图生图（不要品红）。可选 `importProjectId`（逐帧项目）接收拆出的帧。全部拆帧结束后会打成 `frames/{actionId}/*.png` 的 zip 素材（根目录 `sidecar.json` 为 R1-A `framebaker.monster-sprite-extract`，**不是** `.monster`；`loopMode` 仅 `once`/`loop`/`hold`），落在同一文件夹。请求体里的 `providerId` / `model` / `size` 会被忽略。
 
+### POST /api/materials/monster-sprite-extract-preview
+
+multipart `archive`（按动作分文件夹的 PNG zip）。返回 `{ "folders": ["attack", "idle"] }`（取每张 PNG 的父文件夹名）。拒绝 Zip Slip。不写素材。
+
+### POST /api/materials/monster-sprite-extract
+
+multipart `archive` + `spec`（JSON 字符串）+ 可选 `folderId`。按父文件夹分组已有 PNG，按文件名最后一个数字自然排序，要求同一画布，且 **必须显式** 给出 `loopMode` / `defaultFacing` / `objectOriginPx`，`sampleRateHz` **必须为 24**。写出 R1-A zip 素材（`sidecar.json` + `frames/{actionId}/NNNN.png`）。**不**重新生成帧，也**不**改名为 `.monster`。spec 示例：`{ "displayName": "A1Drone", "projectId": "a1-drone", "sampleRateHz": 24, "defaultFacing": "left", "objectOriginPx": { "x": 80, "y": 160 }, "actions": [{ "folder": "electric_loop", "actionId": "monster-03-special", "displayName": "特殊攻击", "loopMode": "loop" }] }`。不会按 `actionId` 猜测 `loopMode`（包括 `electric_loop` → special）。响应 `{ "materialId", "material" }`。
+
 ### POST /api/materials/:id/extract
 
 视频/GIF 素材抽帧成多张图片素材 → `{ "jobId": "…" }`。复制源文件到 staging 后入队**一个** `extract_frames` 任务；产出命名为「原名 #i」，默认落在同一文件夹。非视频/GIF 返回 400。
@@ -597,7 +605,7 @@ claude mcp add framebaker --transport http http://localhost:3000/mcp
 ```
 FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable HTTP）。
 请连接并调用 list_projects 开始。
-可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、list_media_plugins、get_media_plugin、generate_with_media_plugin、generate_monster_reference、generate_monster_pipeline、matting_material、list_jobs、get_config 等共 53 个。
+可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、list_media_plugins、get_media_plugin、generate_with_media_plugin、generate_monster_reference、generate_monster_pipeline、import_monster_sprite_extract、matting_material、list_jobs、get_config 等共 54 个。
 覆盖功能：像素动画项目、帧、素材、AI 生成、媒体插件查询/生成、抠图、文件夹、任务与系统设置。
 ```
 
@@ -643,6 +651,7 @@ FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable
 | `generate_materials` | 生成素材（AI provider） |
 | `generate_monster_reference` | 只生成怪物身份参考图（仅素材 ID / 文案） |
 | `generate_monster_pipeline` | 从已有参考图启动动作静图→视频→拆帧（仅素材 ID / 文案） |
+| `import_monster_sprite_extract` | 把素材库里已有的 PNG 文件夹 zip 打成 R1-A（显式 loopMode，不要本地路径） |
 | `list_media_plugins` | 列出已安装的 `.iap`/`.vap`/`.aap` 媒体插件（可选 `kind`：image\|video\|audio\|all）；返回摘要/configured/runnable——永不返回密钥明文 |
 | `get_media_plugin` | 获取单个已安装媒体插件详情（参数 schema、约束、密钥配置状态；不返回密钥明文） |
 | `generate_with_media_plugin` | 创建异步媒体插件生成任务；`references` 仅允许素材 ID（禁止本地路径）；返回 `jobId`/`jobIds` |

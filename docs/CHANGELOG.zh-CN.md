@@ -7,6 +7,7 @@
 ### 新增
 
 - 怪物流水线拆帧包改为 R1-A：`frames/{actionId}/*.png` + `sidecar.json`（`framebaker.monster-sprite-extract`，不是 `.monster`）。`loopMode` 仅 `once` / `loop` / `hold`。
+- 怪物页可将已有 PNG 文件夹 zip 打成同一 R1-A 包。映射必须手填 `loopMode`（不会把 `electric_loop` 猜成 special 的 once）、朝向、原点；固定 24 Hz、文件名自然序号、同一画布。
 
 - 动作编辑画布可导入视频/GIF/静图作为参考蒙皮（可叠在角色上或下，均不挡住拖骨骼），视频可跟随时间轴对齐；会话内有效，不写入动作包。
 - 调整骨骼时可在角色画布上用移动/旋转/缩放拖关节和骨段，不必只改右侧数值。

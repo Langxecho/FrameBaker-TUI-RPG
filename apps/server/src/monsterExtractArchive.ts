@@ -95,22 +95,37 @@ export function packMonsterExtractArchive(run: MonsterPipelineRun): string | nul
   });
   files["sidecar.json"] = new TextEncoder().encode(`${JSON.stringify(sidecar, null, 2)}\n`);
   const bytes = createStoreZip(files);
+  return commitMonsterExtractZipMaterial({
+    bytes,
+    name: `${run.name} 拆帧包`,
+    folderId: run.folderId,
+    source: "extract",
+    metadata: {
+      mediaKind: "archive",
+      pipelineId: run.pipelineId,
+      monsterName: run.name,
+      format: "framebaker.monster-sprite-extract",
+      schemaVersion: 1,
+      notAMonsterPackage: true,
+    },
+  });
+}
+
+export function commitMonsterExtractZipMaterial(opts: {
+  bytes: Uint8Array;
+  name: string;
+  folderId: string | null;
+  source: string;
+  metadata: Record<string, unknown>;
+}): string {
   const id = uid();
   const dir = join(STORAGE_ROOT, "materials", id);
   mkdirSync(dir, { recursive: true });
   const rawPath = join(dir, "raw.zip");
-  writeFileSync(rawPath, bytes);
-  const metadata = JSON.stringify({
-    mediaKind: "archive",
-    pipelineId: run.pipelineId,
-    monsterName: run.name,
-    format: "framebaker.monster-sprite-extract",
-    schemaVersion: 1,
-    notAMonsterPackage: true,
-  });
+  writeFileSync(rawPath, opts.bytes);
   db.query(
     "INSERT INTO materials (id, name, raw_path, status, source, folder_id, metadata, created_at) VALUES (?, ?, ?, 'raw', ?, ?, ?, ?)",
-  ).run(id, `${run.name} 拆帧包`, rawPath, "extract", run.folderId, metadata, Date.now());
+  ).run(id, opts.name.slice(0, 200) || "拆帧包", rawPath, opts.source, opts.folderId, JSON.stringify(opts.metadata), Date.now());
   broadcast("materials_changed", {});
   return id;
 }

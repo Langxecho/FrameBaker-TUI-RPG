@@ -48,6 +48,8 @@ export type MonsterExtractClipInput = {
   actionTitle: string;
   fps: number;
   frames: Uint8Array[];
+  /** 导入入口必填；流水线打包未传时回退 loopModeForActionId。 */
+  loopMode?: MonsterSpriteLoopMode;
 };
 
 export type MonsterSpriteExtractSidecar = {
@@ -105,10 +107,14 @@ export function buildMonsterExtractSidecar(opts: {
   exportedAt: string;
   canvas: { width: number; height: number };
   clips: MonsterExtractClipInput[];
+  objectOriginPx?: { x: number; y: number };
+  defaultFacing?: "left" | "right";
 }): MonsterSpriteExtractSidecar {
   const width = Math.max(1, Math.min(2048, Math.round(opts.canvas.width)));
   const height = Math.max(1, Math.min(2048, Math.round(opts.canvas.height)));
   const displayName = opts.displayName.trim().slice(0, 120) || "monster";
+  const originX = opts.objectOriginPx ? Math.round(opts.objectOriginPx.x) : Math.floor(width / 2);
+  const originY = opts.objectOriginPx ? Math.round(opts.objectOriginPx.y) : height;
   return {
     format: "framebaker.monster-sprite-extract",
     schemaVersion: 1,
@@ -128,8 +134,8 @@ export function buildMonsterExtractSidecar(opts: {
       origin: "top_left",
       mirrorAxis: "x",
     },
-    objectOriginPx: { x: Math.floor(width / 2), y: height },
-    defaultFacing: "left",
+    objectOriginPx: { x: originX, y: originY },
+    defaultFacing: opts.defaultFacing === "right" ? "right" : "left",
     actions: opts.clips.map((clip) => {
       const actionId = toContractId(clip.actionId);
       const durations = frameDurationsMs(clip.frames.length, clip.fps);
@@ -150,7 +156,7 @@ export function buildMonsterExtractSidecar(opts: {
       return {
         actionId,
         displayName: clip.actionTitle.trim().slice(0, 120) || actionId,
-        loopMode: loopModeForActionId(clip.actionId),
+        loopMode: clip.loopMode ?? loopModeForActionId(clip.actionId),
         sampleRateHz: Math.max(1, Math.min(60, Math.round(clip.fps))),
         frames,
         markers: [] as Array<{ id: string; atMs: number; presentationOnly: true }>,

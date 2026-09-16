@@ -1,5 +1,7 @@
+import { inflateRawSync } from "node:zlib";
+
 /**
- * 服务端 ZIP 读写：Bun.Archive 列表 + store 打包 + 安全解压辅助。
+ * 服务端 ZIP 读写：Bun.Archive 列表 + store 打包 + 中央目录解压。
  * 不解压前先校验每个条目名，避免 Zip Slip。
  */
 
@@ -45,6 +47,89 @@ export async function listZipEntries(bytes: Uint8Array): Promise<ZipArchiveEntry
 export function findZipEntry(entries: ZipArchiveEntry[], exactName: string): ZipArchiveEntry | undefined {
   const target = normalizeEntryName(exactName);
   return entries.find((e) => normalizeEntryName(e.name) === target);
+}
+
+function findEocdOffset(bytes: Uint8Array): number {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const min = Math.max(0, bytes.length - 22 - 65535);
+  for (let i = bytes.length - 22; i >= min; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      const commentLen = view.getUint16(i + 20, true);
+      if (i + 22 + commentLen === bytes.length) return i;
+    }
+  }
+  for (let i = bytes.length - 22; i >= min; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) return i;
+  }
+  throw new Error("不是 ZIP（找不到中央目录）");
+}
+
+function readUtf8(bytes: Uint8Array, start: number, length: number): string {
+  return new TextDecoder().decode(bytes.subarray(start, start + length));
+}
+
+/** 按中央目录列出条目：兼容 data descriptor、资源管理器压缩包。 */
+export function listZipPayloadEntries(
+  bytes: Uint8Array,
+  options: { maxEntries?: number; maxUncompressedBytes?: number } = {},
+): ZipArchiveEntry[] {
+  if (bytes.length < 22) throw new Error("不是 ZIP");
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const eocd = findEocdOffset(bytes);
+  const diskEntries = view.getUint16(eocd + 8, true);
+  const totalEntries = view.getUint16(eocd + 10, true);
+  let cdSize = view.getUint32(eocd + 12, true);
+  let cdOffset = view.getUint32(eocd + 16, true);
+  let count = totalEntries || diskEntries;
+  if (count === 0xffff || cdOffset === 0xffffffff || cdSize === 0xffffffff) {
+    throw new Error("ZIP64 体积过大，请拆成普通 zip 再试");
+  }
+  const maxEntries = options.maxEntries ?? 16384;
+  const maxUncompressed = options.maxUncompressedBytes ?? 2 * 1024 * 1024 * 1024;
+  if (count > maxEntries) throw new Error("ZIP 文件数超限");
+  const entries: ZipArchiveEntry[] = [];
+  let pos = cdOffset;
+  const cdEnd = cdOffset + cdSize;
+  let totalUncompressed = 0;
+  for (let i = 0; i < count; i++) {
+    if (pos + 46 > bytes.length || pos + 46 > cdEnd + 46) throw new Error("ZIP 中央目录已截断");
+    if (view.getUint32(pos, true) !== 0x02014b50) throw new Error("ZIP 中央目录损坏");
+    const flags = view.getUint16(pos + 8, true);
+    const method = view.getUint16(pos + 10, true);
+    const compressedSize = view.getUint32(pos + 20, true);
+    const uncompressedSize = view.getUint32(pos + 24, true);
+    const nameLen = view.getUint16(pos + 28, true);
+    const extraLen = view.getUint16(pos + 30, true);
+    const commentLen = view.getUint16(pos + 32, true);
+    const localOffset = view.getUint32(pos + 42, true);
+    const name = normalizeEntryName(readUtf8(bytes, pos + 46, nameLen));
+    pos += 46 + nameLen + extraLen + commentLen;
+    if (!name || name.endsWith("/")) continue;
+    if (flags & 0x1) throw new Error("不支持加密 ZIP");
+    if (method !== 0 && method !== 8) throw new Error("ZIP 压缩方式不支持（请用存储或 deflate）");
+    if (localOffset + 30 > bytes.length) throw new Error("ZIP 本地头已截断");
+    if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error("ZIP 本地头损坏");
+    const localNameLen = view.getUint16(localOffset + 26, true);
+    const localExtraLen = view.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + localNameLen + localExtraLen;
+    if (dataStart + compressedSize > bytes.length) throw new Error("ZIP 文件已截断");
+    const compressed = bytes.subarray(dataStart, dataStart + compressedSize);
+    let data: Uint8Array;
+    if (method === 0) data = new Uint8Array(compressed);
+    else {
+      try {
+        data = new Uint8Array(inflateRawSync(compressed));
+      } catch {
+        throw new Error("ZIP 解压失败");
+      }
+    }
+    totalUncompressed += data.byteLength;
+    if (uncompressedSize && data.byteLength !== uncompressedSize) throw new Error("ZIP 解压长度不一致");
+    if (totalUncompressed > maxUncompressed) throw new Error("ZIP 解压后过大");
+    entries.push({ name, data });
+  }
+  if (!entries.length) throw new Error("ZIP 里没有文件");
+  return entries;
 }
 
 /** 同步写入 store-method ZIP（无压缩），供导出且兼容 listZipEntriesSync。 */

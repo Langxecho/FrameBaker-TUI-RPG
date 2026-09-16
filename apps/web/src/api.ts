@@ -386,4 +386,19 @@ export const api = {
       method: "POST",
       ...json(body),
     }),
+  previewMonsterSpriteExtract: (archive: Blob) => {
+    const fd = new FormData();
+    fd.append("archive", archive, "frames.zip");
+    return req<{ folders: string[] }>("/api/materials/monster-sprite-extract-preview", { method: "POST", body: fd });
+  },
+  importMonsterSpriteExtract: (archive: Blob, spec: string, folderId?: string | null) => {
+    const fd = new FormData();
+    fd.append("archive", archive, "frames.zip");
+    fd.append("spec", spec);
+    if (folderId) fd.append("folderId", folderId);
+    return req<{ materialId: string; material: Material }>("/api/materials/monster-sprite-extract", {
+      method: "POST",
+      body: fd,
+    }).then((r) => ({ ...r, material: normalizeMaterial(r.material) }));
+  },
 };
