@@ -1,0 +1,14 @@
+{
+  "displayName": "A1 Drone",
+  "projectId": "a1-drone-fb02",
+  "sampleRateHz": 24,
+  "defaultFacing": "left",
+  "objectOriginPx": { "x": 80, "y": 160 },
+  "actions": [
+    { "folder": "idle", "actionId": "monster-01-idle", "displayName": "待机", "loopMode": "loop" },
+    { "folder": "attack", "actionId": "monster-02-attack", "displayName": "平A", "loopMode": "once", "anchors": [{ "id": "muzzle", "x": 12, "y": 94, "directionDegrees": 180 }], "markers": [{ "id": "weapon.fire", "atMs": 2268, "presentationOnly": true }] },
+    { "folder": "electric_loop", "actionId": "monster-03-special", "displayName": "特殊攻击", "loopMode": "loop", "anchors": [{ "id": "muzzle", "x": 29, "y": 94, "directionDegrees": 180 }], "markers": [{ "id": "effect.trigger", "atMs": 2268, "presentationOnly": true }] },
+    { "folder": "hit_received", "actionId": "monster-04-hurt", "displayName": "受击", "loopMode": "once", "anchors": [{ "id": "hit", "x": 80, "y": 95 }] },
+    { "folder": "death", "actionId": "monster-05-death", "displayName": "死亡", "loopMode": "hold" }
+  ]
+}

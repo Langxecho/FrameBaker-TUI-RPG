@@ -141,3 +141,17 @@ Fixture/测试代码属于正式可审查交付；大日志和临时运行产物
 - 性能：不适用；Q-07 仍待测量
 - 已知问题、对下游影响与建议下一步：当前表单只支持动作级固定 anchor；逐帧移动 anchor 可经 API `frameAnchors` 输入。独立枪口/曳光/火花运行时资源身份待 C-02/C-03 冻结，不能创建猜测性的资源包
 - 需要总体负责人决定的事项：Q-03/C-02 的正式 action/impact 编排与效果资源绑定；本任务不阻塞 R1-A 导出
+
+- 任务 ID / 状态 / 实际执行人：FB-02 / 待联合验收 / FrameBaker shy 组员
+- 代码 branch、commit；若有影响结果的未提交修改，明确列出：`shy`（本提交）；未跟踪 `.superpowers/`、`skills/` 保留且不纳入交付
+- 使用的契约修订及规范源 commit/hash：LIAF-PIPELINE R1 Boundary A；A1 `content.json` SHA-256 `1a9dcdb14337a4da3f7fce5dc7281bf65644a01ca0efb3e0f56f799a223e1ac0`
+- 本次解决的问题与最终行为：交付真实 A1 Drone 的可确定性重建。五个真实动作各 107 帧，attack/special 的 `muzzle` 与 hurt 的 `hit` 都已写入每帧 anchors；`weapon.fire` / `effect.trigger` 均为 `presentationOnly`。
+- 改动路径、可审查 diff 或 PR：`mission/fixtures/fb-02/`、`scripts/generate_a1_drone_fb02_fixture.ts`、`tests/a1-drone-fb02-fixture.test.ts`、R1 validator
+- 生产者输入：`F:\CodeProject\tui-rpg-terminal-engine\liaf-preview\fixtures\packages\A1Drone.monster`；160x160、24 FPS、535 PNG。
+- 给消费者的输出：运行生成脚本得到 R1-A ZIP（不是 `.monster`），SHA-256 `21dc0901578d4b237cf74f3104923f276b04de0cc5820f64b7f97e1a06946a25`；量取与重建步骤见 `mission/fixtures/fb-02/README.md`。
+- 测试：`bun test tests/a1-drone-fb02-fixture.test.ts tests/monster-sprite-import.test.ts` 10 pass；R1 validator 通过；`bun run typecheck` 通过。
+- 联合验收：未执行。待 C-02 消费该真实重导出 ZIP、C-03 用后端权威阶段编排；不得据此写 G1 通过。
+- 人工观察：以原始 160x160 帧量取 `attack/54=(12,94,180)`、`electric_loop/54=(29,94,180)`、`hit_received/54=(80,95)`；第 54 源帧时刻 `2268ms`。
+- 性能：不适用；没有重新生成或变换 PNG，只进行打包。
+- 已知问题、对下游影响与建议下一步：固定 anchors 复制到每一帧；若消费者需要移动点位，可用既有 `frameAnchors`。不添加 combat hitbox、目标、伤害或机制。
+- 需要总体负责人决定的事项：无新增；维持待联合验收。
