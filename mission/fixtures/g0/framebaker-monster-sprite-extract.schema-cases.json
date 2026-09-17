@@ -1,4 +1,4 @@
-﻿[
+[
   { "name": "wrong-format", "field": "format", "value": "monster", "valid": false },
   { "name": "unsupported-version", "field": "schemaVersion", "value": 2, "valid": false },
   { "name": "unsafe-frame-path", "field": "actions.0.frames.0.relativePath", "value": "../idle.png", "valid": false },

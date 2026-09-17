@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "combatId": "combat-q03-canonical",
+  "contentReleaseId": "release-q03-canonical",
+  "simTimeMs": 100,
+  "throughSequence": "5",
+  "items": [
+    {
+      "sequence": "0",
+      "actionId": "action-101-0",
+      "parentSequence": null,
+      "atMs": 100,
+      "sourceId": "101",
+      "abilityId": "basic_attack",
+      "contentRef": "entity:101",
+      "kind": "action.launched",
+      "payload": { "targetIds": ["1"], "delivery": "instant" }
+    },
+    {
+      "sequence": "1",
+      "actionId": "action-101-0",
+      "parentSequence": "0",
+      "atMs": 100,
+      "sourceId": "101",
+      "abilityId": "basic_attack",
+      "contentRef": "entity:101",
+      "kind": "action.impact",
+      "payload": {
+        "targetId": "1",
+        "outcome": "hit",
+        "resolvedDamage": 12,
+        "hpLoss": 12,
+        "hpAfter": 88,
+        "critical": false,
+        "killed": false
+      }
+    },
+    {
+      "sequence": "2",
+      "actionId": "action-101-0",
+      "parentSequence": "0",
+      "atMs": 100,
+      "sourceId": "101",
+      "abilityId": "basic_attack",
+      "contentRef": "entity:101",
+      "kind": "action.finished"
+    },
+    {
+      "sequence": "3",
+      "actionId": "action-102-0",
+      "parentSequence": null,
+      "atMs": 100,
+      "sourceId": "102",
+      "abilityId": "basic_attack",
+      "contentRef": "entity:102",
+      "kind": "action.launched",
+      "payload": { "targetIds": ["1"], "delivery": "instant" }
+    },
+    {
+      "sequence": "4",
+      "actionId": "action-102-0",
+      "parentSequence": "3",
+      "atMs": 100,
+      "sourceId": "102",
+      "abilityId": "basic_attack",
+      "contentRef": "entity:102",
+      "kind": "action.impact",
+      "payload": {
+        "targetId": "1",
+        "outcome": "hit",
+        "resolvedDamage": 15,
+        "hpLoss": 15,
+        "hpAfter": 73,
+        "critical": false,
+        "killed": false
+      }
+    },
+    {
+      "sequence": "5",
+      "actionId": "action-102-0",
+      "parentSequence": "3",
+      "atMs": 100,
+      "sourceId": "102",
+      "abilityId": "basic_attack",
+      "contentRef": "entity:102",
+      "kind": "action.finished"
+    }
+  ],
+  "activeEffects": [],
+  "contentSources": [
+    {
+      "contentRef": "entity:1",
+      "sourceKind": "player",
+      "entityId": "1",
+      "templateId": "player-debug-template",
+      "registeredEntityId": "player.debug",
+      "definitionVersion": "1",
+      "packageId": null,
+      "assetVersionId": null,
+      "packageVersion": null,
+      "archiveSha256": null,
+      "contentSha256": null
+    },
+    {
+      "contentRef": "entity:101",
+      "sourceKind": "monster",
+      "entityId": "101",
+      "templateId": "a1_drone",
+      "monsterId": "a1_drone",
+      "registeredEntityId": "a1_drone",
+      "definitionVersion": "1.3.0",
+      "packageId": "a1-package-101",
+      "assetVersionId": null,
+      "packageVersion": "1.3.0",
+      "archiveSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "contentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "contentRef": "entity:102",
+      "sourceKind": "monster",
+      "entityId": "102",
+      "templateId": "a1_drone",
+      "monsterId": "a1_drone",
+      "registeredEntityId": "a1_drone",
+      "definitionVersion": "1.3.0",
+      "packageId": "a1-package-102",
+      "assetVersionId": null,
+      "packageVersion": "1.3.0",
+      "archiveSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "contentSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ]
+}

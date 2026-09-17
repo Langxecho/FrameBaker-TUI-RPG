@@ -1,0 +1,85 @@
+{
+  "format": "tui-idle-rpg.q04-parameter-mechanism-contract",
+  "schemaVersion": 1,
+  "scope": "current-server-input-and-identity-contract",
+  "status": "frozen-subcontract-not-g0-or-g1-acceptance",
+  "publicParameters": [
+    { "field": "hp", "type": "integer", "unit": "hp", "minimum": 1, "maximum": 1000000000 },
+    { "field": "attack", "type": "integer", "unit": "attack", "minimum": 0, "maximum": 1000000000 },
+    { "field": "armor", "type": "integer", "unit": "armor", "minimum": 0, "maximum": 1000000000 },
+    { "field": "attackIntervalMs", "type": "integer", "unit": "ms", "minimum": 1, "maximum": 1000000000 }
+  ],
+  "sourceResolution": {
+    "registeredDefinition": "A registered mechanism supplies the complete default config for its declared fields.",
+    "package": "Admitted .monster numericConfig is a partial replacement over registered defaults for declared numeric fields; every supplied field is validated before merge.",
+    "gameContentTemplate": "An attached package materializes registered defaults plus package numeric fields into MonsterTemplate.schemaConfig. Independently, its scalar template stats read package hp/attack/armor/attackIntervalMs with the current Game Content fallback values. Attached package mechanics are locked; the two projections are not a single editable persistent override chain.",
+    "stage": "Wave hpMult/attackMult/armorMult/attackIntervalMult multiply the scalar template combat stats and round to the nearest integer. The corresponding *Final field replaces that scalar value. A multiplier and final value for the same field are mutually exclusive and reject the entry. Stage resolution does not rewrite MonsterTemplate.schemaConfig.",
+    "debug": "Package debug sandbox accepts only a package plus an object of temporary numeric replacements. It validates package and debug maps before merge, applies debug values last, then fills registered nonnumeric/default config. It is not a Game Content stage path and accepts no baseline wave plan.",
+    "notImplemented": "There is no separate persistent numeric-template resource between an admitted package and MonsterTemplate, and no generic stage-to-schemaConfig merge. Consumers must not claim either exists."
+  },
+  "gameContentOverrideFields": {
+    "hp": { "multiplier": "hpMult", "final": "hpFinal" },
+    "attack": { "multiplier": "attackMult", "final": "attackFinal" },
+    "armor": { "multiplier": "armorMult", "final": "armorFinal" },
+    "attackIntervalMs": { "multiplier": "attackIntervalMult", "final": "attackIntervalMsFinal" }
+  },
+  "failClosed": {
+    "unknownMechanism": "reject",
+    "unknownNumericField": "reject",
+    "nonIntegerNumericValue": "reject",
+    "outOfRangeNumericValue": "reject",
+    "invalidBaseConcealedByOverride": "reject",
+    "multiplierAndFinalForSameField": "reject"
+  },
+  "identities": {
+    "registryVersion": "9fac4cbcd3228db8195f1ae7e72790ef45c99352e1ff840946aafd884bc3d096",
+    "mechanismCatalogSha256": "6034a3bf95b247f9b6ba40f3d697b7f5197c502f481170272ae9accb79c9e0bb",
+    "mechanismCompatibilitySha256": {
+      "a1_drone": "43e2723a6e0b8761734619ba41f8dd9a8bcb95e9a6a32baedb817f1350fad9c4",
+      "common_grunt": "56e741304a615c1d794ae752c230856076c7f2a9929c237025d2e01d49d2902c",
+      "elite_controller": "b23132bcfa82b3294a388d1bec839f6175511dabbe40f303faa27912ea87f239",
+      "phase_boss": "1604eb7c58c173fd04891c4162097e3e3ff6cfc97aec498117a018afce28214c",
+      "summoner": "c39b92e5821cf78ff1d99e886bf5a33e5e25e74129126d7b0761b21b6a6e6307"
+    },
+    "boundary": "registryVersion identifies the legacy summary registry; mechanismCatalogSha256 identifies the full catalog; each compatibilitySha256 identifies one mechanism contract. They are distinct from package archive/content hashes and must not be substituted."
+  },
+  "negativeInputCases": [
+    { "name": "unknown-field", "field": "damageFormula", "value": 1 },
+    { "name": "fractional-hp", "field": "hp", "value": 1.5 },
+    { "name": "hp-below-minimum", "field": "hp", "value": 0 },
+    { "name": "attack-below-minimum", "field": "attack", "value": -1 },
+    { "name": "armor-above-maximum", "field": "armor", "value": 1000000001 },
+    { "name": "interval-string", "field": "attackIntervalMs", "value": "1000" },
+    { "name": "interval-zero", "field": "attackIntervalMs", "value": 0 }
+  ],
+  "registeredNumericCatalog": {
+    "contract": {
+      "definitions": [
+        { "mechanismId": "a1_drone", "parameters": [
+          { "defaultSource": "registeredDefinition", "defaultValue": 80, "displayName": "生命值", "field": "hp", "maximum": 1000000000, "minimum": 1, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "hp" },
+          { "defaultSource": "registeredDefinition", "defaultValue": 12, "displayName": "攻击值", "field": "attack", "maximum": 1000000000, "minimum": 0, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "attack" },
+          { "defaultSource": "registeredDefinition", "defaultValue": 0, "displayName": "护甲", "field": "armor", "maximum": 1000000000, "minimum": 0, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "armor" },
+          { "defaultSource": "registeredDefinition", "defaultValue": 1000, "displayName": "普攻间隔", "field": "attackIntervalMs", "maximum": 1000000000, "minimum": 1, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "ms" }
+        ] },
+        { "mechanismId": "common_grunt", "parameters": [
+          { "defaultSource": "registeredDefinition", "defaultValue": 100, "displayName": "生命值", "field": "hp", "maximum": 1000000000, "minimum": 1, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "hp" },
+          { "defaultSource": "registeredDefinition", "defaultValue": 10, "displayName": "攻击值", "field": "attack", "maximum": 1000000000, "minimum": 0, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "attack" },
+          { "defaultSource": "registeredDefinition", "defaultValue": 1, "displayName": "护甲", "field": "armor", "maximum": 1000000000, "minimum": 0, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "armor" }
+        ] },
+        { "mechanismId": "elite_controller", "parameters": [
+          { "defaultSource": "registeredDefinition", "defaultValue": 240, "displayName": "生命值", "field": "hp", "maximum": 1000000000, "minimum": 1, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "hp" }
+        ] },
+        { "mechanismId": "phase_boss", "parameters": [
+          { "defaultSource": "registeredDefinition", "defaultValue": 1000, "displayName": "生命值", "field": "hp", "maximum": 1000000000, "minimum": 1, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "hp" }
+        ] },
+        { "mechanismId": "summoner", "parameters": [
+          { "defaultSource": "registeredDefinition", "defaultValue": 180, "displayName": "生命值", "field": "hp", "maximum": 1000000000, "minimum": 1, "overrideLocations": ["package", "wave", "debugRun"], "type": "integer", "unit": "hp" }
+        ] }
+      ],
+      "runtimeEffectiveness": "notCertified",
+      "schemaVersion": 1,
+      "scope": "numericInputValidation"
+    },
+    "sha256": "e7a74f919cb53977a9ff4c7d570c2cb85fcdd52824b31d2ded89b984b6bf1505"
+  }
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "duplicate-sequence-in-one-authoritative-stream",
+    "field": "items.3.sequence",
+    "value": "1"
+  },
+  {
+    "name": "sequence-gap-in-one-authoritative-stream",
+    "field": "items.3.sequence",
+    "value": "4"
+  },
+  {
+    "name": "time-moves-backwards-in-sequence-order",
+    "field": "items.3.atMs",
+    "value": 99
+  },
+  {
+    "name": "impact-parent-is-not-its-action-launch",
+    "field": "items.1.parentSequence",
+    "value": "2"
+  },
+  {
+    "name": "finished-parent-is-not-its-action-launch",
+    "field": "items.2.parentSequence",
+    "value": "1"
+  },
+  {
+    "name": "target-is-not-in-the-frozen-content-source-table",
+    "field": "items.1.payload.targetId",
+    "value": "999"
+  },
+  {
+    "name": "source-is-not-in-the-frozen-content-source-table",
+    "field": "items.3.sourceId",
+    "value": "999"
+  },
+  {
+    "name": "watermark-is-before-the-last-item",
+    "field": "throughSequence",
+    "value": "4"
+  },
+  {
+    "name": "unknown-event-kind-is-not-a-v2-contract-event",
+    "field": "items.0.kind",
+    "value": "projectile.arrived"
+  },
+  {
+    "name": "unknown-top-level-field-is-rejected-by-the-contract",
+    "field": "clientCalculatedDamage",
+    "value": 27
+  }
+]

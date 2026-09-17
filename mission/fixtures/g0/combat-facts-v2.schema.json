@@ -1,0 +1,347 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tui-idle-rpg.local/contracts/combat-facts-v2.schema.json",
+  "title": "Q-03 frozen consumer contract: combatFacts v2",
+  "$comment": "This validates the v2 CombatFactBatch wire projection. It does not make a client consumer, resource cache, Q-05, Q-07, G0, G1, or C-02 complete.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "combatId",
+    "contentReleaseId",
+    "simTimeMs",
+    "throughSequence",
+    "items",
+    "activeEffects",
+    "contentSources"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "combatId": { "$ref": "#/$defs/nonEmpty" },
+    "contentReleaseId": { "type": "string" },
+    "simTimeMs": { "$ref": "#/$defs/nonNegative" },
+    "throughSequence": { "$ref": "#/$defs/sequenceOrNull" },
+    "items": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": { "$ref": "#/$defs/fact" }
+    },
+    "activeEffects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/activeEffect" }
+    },
+    "contentSources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/contentSource" }
+    }
+  },
+  "$defs": {
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "decimalId": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+    "sequenceOrNull": {
+      "oneOf": [
+        { "$ref": "#/$defs/decimalId" },
+        { "type": "null" }
+      ]
+    },
+    "nonNegative": { "type": "integer", "minimum": 0 },
+    "nonNegativeI64": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+    "nullableNonNegativeI64": {
+      "oneOf": [
+        { "$ref": "#/$defs/nonNegativeI64" },
+        { "type": "null" }
+      ]
+    },
+    "nullableString": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetId", "outcome", "resolvedDamage", "hpLoss", "hpAfter", "critical", "killed"],
+      "properties": {
+        "targetId": { "$ref": "#/$defs/decimalId" },
+        "outcome": { "enum": ["hit", "miss", "invalidTarget"] },
+        "resolvedDamage": { "$ref": "#/$defs/nonNegativeI64" },
+        "hpLoss": { "$ref": "#/$defs/nonNegativeI64" },
+        "hpAfter": { "$ref": "#/$defs/nullableNonNegativeI64" },
+        "critical": { "type": "boolean" },
+        "killed": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "outcome": { "enum": ["miss", "invalidTarget"] } } },
+          "then": {
+            "properties": {
+              "resolvedDamage": { "const": 0 },
+              "hpLoss": { "const": 0 },
+              "critical": { "const": false },
+              "killed": { "const": false }
+            }
+          }
+        }
+      ]
+    },
+    "effectState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectId", "effectKey", "targetId", "generation", "baseAmount", "remainingTicks", "nextTickMs", "expiresAtMs"],
+      "properties": {
+        "effectId": { "$ref": "#/$defs/nonEmpty" },
+        "effectKey": { "$ref": "#/$defs/nonEmpty" },
+        "targetId": { "$ref": "#/$defs/decimalId" },
+        "generation": { "$ref": "#/$defs/nonNegative" },
+        "baseAmount": { "type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807 },
+        "remainingTicks": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "nextTickMs": { "$ref": "#/$defs/nonNegative" },
+        "expiresAtMs": { "$ref": "#/$defs/nonNegative" }
+      }
+    },
+    "launchedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetIds", "delivery"],
+      "properties": {
+        "targetIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/decimalId" }
+        },
+        "delivery": { "const": "instant" }
+      }
+    },
+    "reactionDamagePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["triggerEventId", "rootEventId", "parentEventId", "equipmentInstanceId", "equipmentTemplateId", "releaseId", "effectId", "compatibilityRuleId", "result"],
+      "properties": {
+        "triggerEventId": { "$ref": "#/$defs/nonEmpty" },
+        "rootEventId": { "$ref": "#/$defs/nonEmpty" },
+        "parentEventId": { "$ref": "#/$defs/nullableString" },
+        "equipmentInstanceId": { "$ref": "#/$defs/nonEmpty" },
+        "equipmentTemplateId": { "$ref": "#/$defs/nonEmpty" },
+        "releaseId": { "$ref": "#/$defs/nonEmpty" },
+        "effectId": { "$ref": "#/$defs/nonEmpty" },
+        "compatibilityRuleId": { "$ref": "#/$defs/nullableString" },
+        "result": { "$ref": "#/$defs/impact" }
+      }
+    },
+    "summonSpawnedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityId", "ownerEntityId", "rootPlayerCharacterId", "summonDefinitionId", "presence", "rewardEligibility"],
+      "properties": {
+        "entityId": { "$ref": "#/$defs/decimalId" },
+        "ownerEntityId": { "$ref": "#/$defs/decimalId" },
+        "rootPlayerCharacterId": { "$ref": "#/$defs/decimalId" },
+        "summonDefinitionId": { "$ref": "#/$defs/nonEmpty" },
+        "presence": { "enum": ["occupying", "attached"] },
+        "rewardEligibility": { "enum": ["none", "fixed_once", "from_stage_budget"] }
+      }
+    },
+    "summonExitedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityId", "ownerEntityId", "rootPlayerCharacterId", "summonDefinitionId", "reason"],
+      "properties": {
+        "entityId": { "$ref": "#/$defs/decimalId" },
+        "ownerEntityId": { "$ref": "#/$defs/decimalId" },
+        "rootPlayerCharacterId": { "$ref": "#/$defs/decimalId" },
+        "summonDefinitionId": { "$ref": "#/$defs/nonEmpty" },
+        "reason": { "enum": ["explicit", "ownerDefeated"] }
+      }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "actionId", "parentSequence", "atMs", "sourceId", "abilityId", "kind"],
+      "properties": {
+        "sequence": { "$ref": "#/$defs/decimalId" },
+        "actionId": { "$ref": "#/$defs/nonEmpty" },
+        "parentSequence": { "$ref": "#/$defs/sequenceOrNull" },
+        "atMs": { "$ref": "#/$defs/nonNegative" },
+        "sourceId": { "$ref": "#/$defs/decimalId" },
+        "abilityId": { "$ref": "#/$defs/nonEmpty" },
+        "contentRef": { "$ref": "#/$defs/nullableString" },
+        "kind": {
+          "enum": [
+            "action.launched",
+            "action.impact",
+            "action.finished",
+            "effect.started",
+            "effect.refreshed",
+            "effect.tick",
+            "effect.ended",
+            "reaction.damage",
+            "summon.spawned",
+            "summon.exited"
+          ]
+        },
+        "payload": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "action.launched" } } },
+          "then": {
+            "required": ["payload"],
+            "properties": {
+              "parentSequence": { "type": "null" },
+              "payload": { "$ref": "#/$defs/launchedPayload" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "action.impact" } } },
+          "then": {
+            "required": ["payload"],
+            "properties": {
+              "parentSequence": { "$ref": "#/$defs/decimalId" },
+              "payload": { "$ref": "#/$defs/impact" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "action.finished" } } },
+          "then": {
+            "not": { "required": ["payload"] },
+            "properties": { "parentSequence": { "$ref": "#/$defs/decimalId" } }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "effect.started" } } },
+          "then": { "required": ["payload"], "properties": { "payload": { "$ref": "#/$defs/effectState" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "effect.refreshed" } } },
+          "then": {
+            "required": ["payload"],
+            "properties": {
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["state", "previousSequence"],
+                "properties": { "state": { "$ref": "#/$defs/effectState" }, "previousSequence": { "$ref": "#/$defs/decimalId" } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "effect.tick" } } },
+          "then": {
+            "required": ["payload"],
+            "properties": {
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["effectId", "generation", "tickIndex", "result"],
+                "properties": {
+                  "effectId": { "$ref": "#/$defs/nonEmpty" },
+                  "generation": { "$ref": "#/$defs/nonNegative" },
+                  "tickIndex": { "type": "integer", "minimum": 0, "maximum": 255 },
+                  "result": { "$ref": "#/$defs/impact" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "effect.ended" } } },
+          "then": {
+            "required": ["payload"],
+            "properties": {
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["effectId", "generation", "reason"],
+                "properties": {
+                  "effectId": { "$ref": "#/$defs/nonEmpty" },
+                  "generation": { "$ref": "#/$defs/nonNegative" },
+                  "reason": { "enum": ["exhausted", "targetUnavailable", "combatEnded"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "reaction.damage" } } },
+          "then": { "required": ["payload"], "properties": { "payload": { "$ref": "#/$defs/reactionDamagePayload" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "summon.spawned" } } },
+          "then": { "required": ["payload"], "properties": { "payload": { "$ref": "#/$defs/summonSpawnedPayload" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "summon.exited" } } },
+          "then": { "required": ["payload"], "properties": { "payload": { "$ref": "#/$defs/summonExitedPayload" } } }
+        }
+      ]
+    },
+    "activeEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "sourceId", "actionId", "lastSequence", "tickIndex", "appliedAtMs"],
+      "properties": {
+        "state": { "$ref": "#/$defs/effectState" },
+        "sourceId": { "$ref": "#/$defs/decimalId" },
+        "actionId": { "$ref": "#/$defs/nonEmpty" },
+        "lastSequence": { "$ref": "#/$defs/decimalId" },
+        "tickIndex": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "appliedAtMs": { "$ref": "#/$defs/nonNegative" }
+      }
+    },
+    "assetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetKey", "relativePath", "sha256", "assetPackageId", "assetVersionId", "manifestVersion"],
+      "properties": {
+        "assetKey": { "$ref": "#/$defs/nonEmpty" },
+        "relativePath": { "$ref": "#/$defs/nonEmpty" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "assetPackageId": { "$ref": "#/$defs/nonEmpty" },
+        "assetVersionId": { "$ref": "#/$defs/nonEmpty" },
+        "manifestVersion": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "mediaType": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "contentSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contentRef",
+        "sourceKind",
+        "entityId",
+        "templateId",
+        "packageId",
+        "assetVersionId",
+        "packageVersion",
+        "archiveSha256",
+        "contentSha256"
+      ],
+      "properties": {
+        "contentRef": { "$ref": "#/$defs/nonEmpty" },
+        "sourceKind": { "enum": ["player", "monster", "equipment"] },
+        "entityId": { "$ref": "#/$defs/decimalId" },
+        "templateId": { "$ref": "#/$defs/nonEmpty" },
+        "monsterId": { "$ref": "#/$defs/nullableString" },
+        "registeredEntityId": { "$ref": "#/$defs/nullableString" },
+        "definitionVersion": { "$ref": "#/$defs/nullableString" },
+        "spawnedByEntityId": { "$ref": "#/$defs/nullableString" },
+        "rootPlayerCharacterId": { "$ref": "#/$defs/nullableString" },
+        "equipmentInstanceId": { "$ref": "#/$defs/nullableString" },
+        "releaseId": { "$ref": "#/$defs/nullableString" },
+        "contentHash": { "$ref": "#/$defs/nullableString" },
+        "frameManifestVersion": { "$ref": "#/$defs/nullableString" },
+        "packageId": { "$ref": "#/$defs/nullableString" },
+        "assetVersionId": { "$ref": "#/$defs/nullableString" },
+        "packageVersion": { "$ref": "#/$defs/nullableString" },
+        "archiveSha256": { "$ref": "#/$defs/nullableString" },
+        "contentSha256": { "$ref": "#/$defs/nullableString" },
+        "assetRefs": { "type": "array", "items": { "$ref": "#/$defs/assetReference" } }
+      }
+    }
+  }
+}

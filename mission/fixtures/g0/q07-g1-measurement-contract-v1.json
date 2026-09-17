@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "contractId": "liaf-q07-g1-measurement-v1",
+  "status": "frozen-method-and-minimum-thresholds; no measurement result is included",
+  "scope": "G1 terminal presentation measurement for the existing immediate-hit A1 path. This neither changes the authoritative protocol nor proves C-02, C-04, G0, G1, G2, or production acceptance.",
+  "requiredEnvironment": {
+    "sourceIdentity": ["backend commit", "client commit", "FrameBaker commit when source material is used", "client binary SHA-256", "package archive SHA-256", "package content SHA-256", "fixture summary"],
+    "terminal": ["WezTerm executable version", "WezTerm config path and SHA-256", "window columns", "window rows", "window pixel width", "window pixel height", "DPI or scale factor"],
+    "hardware": ["OS version", "CPU model", "GPU model and driver", "physical memory bytes", "display identifier"],
+    "logging": ["pixel_canvas render/scale/upload/total samples", "OSC writer encoded-byte and command-rate counters", "consumer sequence/rebase counters"]
+  },
+  "sampleWindow": {
+    "rule": "Record a continuous run of at least 60 wall-clock seconds OR at least 600 rendered frames; always record both observed values.",
+    "minimumWallClockSeconds": 60,
+    "minimumRenderedFrames": 600,
+    "minimumPassRule": "wallClockSeconds >= 60 OR renderedFrames >= 600"
+  },
+  "fixtures": {
+    "a1Pair": {
+      "requiredEntityCount": 2,
+      "requiredTemplateId": "a1_drone",
+      "requiredDistinctEntityIds": true,
+      "sampleRateHz": 24,
+      "source": "mission/fixtures/g0/combat-facts-v2.canonical.json",
+      "purpose": "Prevents treating two A1 instances as one template-keyed presentation instance."
+    },
+    "requiredScenarios": [
+      {"id": "normal", "injection": "ordered canonical facts for two A1 instances"},
+      {"id": "duplicate", "injection": "replay already-consumed facts; they must not emit a second presentation command"},
+      {"id": "out_of_order", "injection": "deliver an incremental fact after a gap or in reverse order; request/use baseline and do not invent a result"},
+      {"id": "late", "injection": "deliver a fact after its presentation time; fast-forward or omit only decorative work"},
+      {"id": "rebase", "injection": "apply an empty read-only baseline with throughSequence, then later incrementals; do not replay history"}
+    ]
+  },
+  "hardFailThresholds": {
+    "osc": {
+      "maxEncodedCommandBytes": 65536,
+      "maxCommandsPerRollingSecond": 120,
+      "maxUnexpectedStaleOrRejectedCommandSequences": 0,
+      "interpretation": "64 KiB is the existing parser payload bound. The rate is the existing engine limit. Intentional duplicate input facts belong to the duplicate scenario, but may not create a stale or rejected emitted OSC command sequence."
+    },
+    "timeline": {
+      "sampleRateHz": 24,
+      "maxContinuousSegmentAbsoluteDriftMs": 42,
+      "maxObservedPresentationFrameIntervalMs": 250,
+      "stallIntervalMs": 700,
+      "maxStallIntervals": 0,
+      "interpretation": "42 ms is one 24 FPS sample. Rebase discontinuities are recorded separately and are not silently folded into continuous drift. A 250 ms maximum frame interval gives a conservative guard before the explicitly forbidden approximately-700-ms visible stall."
+    },
+    "sceneCaps": {
+      "maxEntities": 20,
+      "maxParticles": 100,
+      "maxEffectPrimitives": 64,
+      "maxCharacters": 8
+    },
+    "lifecycle": {
+      "requiredOperations": ["successful refresh", "failed refresh retaining previous preview", "rerun", "reconnect/rebase", "normal exit"],
+      "maxResidualEntitiesAfterTeardown": 0,
+      "maxResidualParticlesAfterTeardown": 0,
+      "maxResidualEffectPrimitivesAfterTeardown": 0,
+      "maxResidualCharactersAfterTeardown": 0,
+      "requiredCanvasStateAfterTeardown": "absent",
+      "interpretation": "Measure scene/runtime objects separately from intentional on-disk cache retention. A teardown failure is a hard fail; cache size is recorded, not treated as zero."
+    }
+  },
+  "requiredRecordedMeasurements": {
+    "perScenario": ["wallClockSeconds", "renderedFrames", "frameIntervalMs max", "frameIntervalMs over20Count", "timelineDriftMs max per continuous segment", "rebase count and reason", "received/duplicate/outOfOrder/late/discarded fact counts", "emitted OSC command count", "encoded OSC bytes max", "OSC commands per rolling second max", "unexpected stale/rejected emitted-command sequences", "entity/particle/effect/character maxima"],
+    "resources": ["archiveBytes", "archiveUncompressedBytes", "pngBytes", "rgbaDecodedBytes", "cacheDiskBytes", "GUI upload dimensions"],
+    "lifecycle": ["counts before and after each required operation", "canvas presence after teardown", "process/host diagnostic evidence"]
+  },
+  "evaluation": {
+    "hardFail": ["a required environment or sample-window record is absent", "any hardFailThreshold is exceeded", "normal scenario produces stale/rejected sequence handling", "injected scenarios replay an impact or infer an unreceived authority result", "teardown retains scene objects or a canvas"],
+    "recordOnly": ["render/scale/upload/total distributions", "over-20-ms frame count", "late/duplicate/out-of-order/rebase input counters", "archive/decode/RGBA/cache quantities", "hardware and fixture identity"],
+    "pendingRealMeasurement": ["aggregate archive, decode, RGBA, texture, disk-cache, and retained-resource budgets", "p95/p99 frame latency", "network transport latency and G2 real reconnect behavior"],
+    "notPassableFromThisContract": ["unknown aggregate resource budgets", "C-02 implementation or consumer acceptance", "C-04 cache implementation or acceptance", "G0 completion", "G1 completion", "G2 completion"]
+  },
+  "reportRule": "A report must cite this contract, contain actual measured values and evidence paths, and state pass/fail/not-measured per item. Missing, placeholder, or estimated values are not a pass."
+}

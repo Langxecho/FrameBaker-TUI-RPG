@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tui-idle-rpg.local/contracts/framebaker-monster-sprite-extract-v1.schema.json",
   "title": "R1 frozen: FrameBaker monster sprite extract v1",

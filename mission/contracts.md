@@ -1,12 +1,12 @@
-﻿# LIAF 流水线共享契约与待决事项
+# LIAF 流水线共享契约与待决事项
 
-契约编号：LIAF-PIPELINE；修订：R1；状态：仅冻结边界 A 的怪物逐帧素材子合同。
-R1 不代表 G0 整体、正式 wire schema 或后续关口已经验收通过；未冻结事项明确保留在本文件。
+契约编号：LIAF-PIPELINE；修订：R4；状态：冻结边界 A 的怪物逐帧素材、Q-03 即时行动 consumer 子合同、Q-04 参数/机制兼容子合同、Q-05 最小资源分发 consumer 合同，以及 Q-07 G1 测量方法和最低硬阈值。
+R4 不代表 G0 整体、未列明的正式 wire schema 或后续关口已经验收通过；未冻结事项明确保留在本文件。
 
 规范源：后端仓库 `挂机game/mission/contracts.md`。
 客户端和 FrameBaker 的同名文件应同步本规范源的同一修订，便于各组独立阅读。
 总体负责人维护规范源、决策记录并同步镜像；组员通过本仓库 handoff 提出变更，
-不得在镜像中单独发明另一份字段合同。本次 R1 已交付 schema、样例及转换边界；
+不得在镜像中单独发明另一份字段合同。本次 R4 额外冻结当前后端参数/机制兼容边界；
 其余部分不能仅因本文件修订升级而视为冻结。
 
 ## 职责与内容对象
@@ -106,11 +106,28 @@ sequence 负责排序/去重，行动身份负责因果关联，不能互相替�
 同 tick 顺序和真实飞行是否已在正式路径实现，必须先做 B-00 审计，
 不能因为存在 ActionDefinition/projectile_ms 字段就宣称已支持。
 
-### 当前后端候选 combatFacts v2（未冻结为 R1）
+### Q-03 冻结子合同：combatFacts v2 即时行动批次
 
-后端 B-02 已在内部 snapshot 候选结构中生成 `schemaVersion = 2`，但正式
-WebSocket 尚未公开，客户端也尚未声明消费；因此本节仍是联调候选，不会因 Boundary A 的
-R1 子合同而自动冻结。它仍须经三仓样例、负例和迁移说明验收后冻结。
+Q-03 现冻结其最小消费者边界：[`combat-facts-v2.schema.json`](fixtures/g0/combat-facts-v2.schema.json)、
+[`combat-facts-v2.canonical.json`](fixtures/g0/combat-facts-v2.canonical.json) 与
+[`validate-combat-facts-v2.ps1`](fixtures/g0/validate-combat-facts-v2.ps1)。它们严格对应现有
+`CombatFactBatch` 的 serde wire，而非新 WebSocket/API；正式 `combat.snapshot` 与 debug `PreviewFrame`
+继续可选携带该 batch。冻结范围是即时 `action.launched` → `action.impact` → `action.finished`，以及
+既有 v2 其他事实的解析形状，不定义新的弹道玩法、资源下载、缓存或性能阈值。
+
+canonical batch 故意包含两只相同模板怪物（实例 `101`、`102`）在同一 `atMs=100` 各自完成一次
+行动，证明实例身份不能由 monster/template ID 代替。每个 impact 和 finished 的
+`parentSequence` 指向该 action 的 launch（这是当前真实 wire）；序列中的时间顺序仍是
+launch → impact → finished。`sequence` 是字符串十进制、只在同一 `combatId` 内单调；消费者去重键
+必须是 `(combatId, sequence)`，不得以 actionId、sourceId 或 templateId 去重。
+
+`throughSequence` 是该 batch 已知事实水位。重连的只读 snapshot 可以 `items=[]` 且保留当前水位；
+消费者以它建立 baseline，**不得**重播小于等于该水位的历史命中。随后增量必须连续；重复、倒退、
+乱序或缺口不能重演或无限等待，应请求/使用新的状态 baseline 并降级。未知 target、source、
+contentRef、kind 或违反 parent/action 因果的 item 均为 fail-closed 合同错误，不得由客户端补算。
+
+此子合同只解除 C-02 对已有事实 batch 的字段、因果、去重和 rebase 语义猜测；客户端实际消费、
+真实终端观察、Q-05 资源缓存、Q-07 性能阈值、G0/G1 和 C-02 验收仍未完成。
 
 每条事实共有：`sequence`、`actionId`、`parentSequence`、`atMs`、
 `sourceId`、`abilityId`、`contentRef`、`kind`、`payload`。
@@ -134,8 +151,32 @@ R1 子合同而自动冻结。它仍须经三仓样例、负例和迁移说明�
 怪物来源可冻结注册实体、定义版本、包/资源摘要和 asset refs；Gunner 玩家来源冻结
 `.class` package/version/archive/content 摘要与 asset refs；装备来源冻结
 release、instance、template、content hash、frame manifest version，以及 `.equipment`
-package/version/archive/content 摘要与 asset refs。其他职业包接入、召唤物来源、正式资源下载、
-鉴权与缓存合同仍未完成，不能据此宣称资源分发契约已经闭合。
+package/version/archive/content 摘要与 asset refs。资源字节 URL、公共读取边界与客户端缓存
+最小要求见下方 Q-05；其他职业包接入、客户端缓存实现和联合验收仍未完成。
+
+### Q-04 冻结子合同：参数与机制兼容 v1
+
+Q-04 的机器可读规范是
+[`q04-parameter-mechanism-contract-v1.json`](fixtures/g0/q04-parameter-mechanism-contract-v1.json)，
+并由 [`validate-q04-parameter-mechanism-contract.ps1`](fixtures/g0/validate-q04-parameter-mechanism-contract.ps1)
+直接绑定当前 Rust 注册目录序列化。它冻结公共 `hp`、`attack`、`armor`、`attackIntervalMs` 的
+整数类型、单位和范围，以及当前已实现的两条不同数值路径；不新增玩法、wire 或持久模板资源。
+
+- `.monster numericConfig` 的未知字段、非整数及越界值拒绝；`hp`、`attack`、`armor` 必填，
+  `attackIntervalMs` 按现有导入行为可缺省。调试 sandbox 先校验包和临时覆盖，再按键替换，且只允许
+  package sandbox，不接受 baseline wave plan。
+- 附包的 Game Content 模板有两份现有投影：`schemaConfig` 用注册默认值加包中已声明字段构建；
+  `baseHp/baseAttack/baseArmor/attackIntervalMs` 则从包值和当前 Game Content fallback 构建。它们不是
+  一个可编辑的持久模板链，stage 不回写 `schemaConfig`。
+- Game Content wave 只对标量战斗值使用 `*Mult` 乘法并四舍五入，或使用对应 `*Final` 替换；同字段
+  两者同时存在即拒绝。它不等同于 debug 的按键替换，也不应被消费者误述为“倍率覆盖包配置”。
+- `registryVersion`、整体 `mechanismCatalogSha256`、单机制 `compatibilitySha256` 与包的 archive/content
+  SHA-256 是不同身份边界，不能相互替换。未知机制、未知字段、非法范围及试图以覆盖掩盖非法 base
+  均 fail-closed。目录中 `runtimeEffectiveness=notCertified` 仍适用，不把输入合同说成所有字段已完成
+  联合运行验收。
+
+Q-04 只解除 B-01/C-03 对当前参数来源、替换/倍率语义和机制身份的猜测；客户端目录消费、真实素材、
+真实测量与 G0/G1 联合验收仍未完成。A1 当前即时命中保持 Q-03 边界；真实飞行属于 B-06/G4 的单独机制增量。
 
 ## 表现与时钟
 
@@ -152,12 +193,34 @@ LIAF 离线预览、权威调试、正式战斗共用表现编排器，事件来
 不提前展示尚未收到的命中。断线时显示状态，不预测战斗结果。
 调试暂停/单步同时驱动动画和特效；只读记录回看不推进或回滚 Worker。
 重连仅恢复可重建的存续状态，不重放历史命中。
-具体缓冲值、误差和容量预算在 G0 定义测量方法，G1 前给出实测阈值。
+具体缓冲值、误差和容量预算由下方 Q-07 定义测量方法和最低硬阈值；真实测量结果仍须在 G1 验收时提交，不能由合同文本替代。
+
+### Q-07 冻结子合同：G1 性能与同步测量 v1
+
+Q-07 的机器可读规范是 [`q07-g1-measurement-contract-v1.json`](fixtures/g0/q07-g1-measurement-contract-v1.json)，
+并由 [`validate-q07-g1-measurement-contract.ps1`](fixtures/g0/validate-q07-g1-measurement-contract.ps1) 做合同自检。
+它冻结 C-02/C-04 可共同使用的测量条件、注入场景、记录字段和最低 hard-fail 线，**不含一次实测结果**。
+
+- 每次运行必须记录 backend/client/FrameBaker（适用时）commit、client binary SHA-256、包 archive/content SHA-256、
+  fixture 摘要、WezTerm 版本/config SHA-256、窗口/DPI、CPU/GPU/内存/显示器和完整日志位置。样本须连续至少 60 秒或至少 600 帧，且始终记录两项实际值。
+- 测试两只拥有不同 entity ID 的 `a1_drone`、24 FPS 场景；运行 ordered normal，以及 duplicate、out-of-order、late、rebase 注入。
+  注入 duplicate/out-of-order/late 只能触发既有丢弃、快进/装饰省略或 baseline/rebase 行为，不能重播 impact、补算或预测权威结果。
+- hard fail：单个 encoded OSC command 不得超过 65536 bytes；任一滚动秒不得超过 120 commands；正常路径和 emitted OSC command 不得有 stale/rejected sequence。
+  为避免将刻意重复的输入误作失败，duplicate 输入本身必须计数并被消费层丢弃，但不得产生 stale/rejected 的 emitted command。
+- hard fail：连续 24 FPS 段的绝对 timeline drift 不得超过 42 ms；最大 observed presentation-frame interval 不得超过 250 ms，
+  且不得出现任一 `>=700 ms` 停顿。rebase 断点另记原因，不能藏入连续 drift。
+- hard fail：场景峰值不超过 entity 20、particle 100、effect primitive 64、character 8；successful/failed refresh、rerun、
+  reconnect/rebase 和 normal exit 后，scene 对象均为零且 Canvas 已销毁。持久磁盘 cache 不是 scene 泄漏，仍须单独记录其大小。
+- archive bytes、解压 bytes、PNG bytes、RGBA decoded bytes、cache disk bytes 与 GUI upload dimensions 均为必填**记录项**。
+  当前没有已测 aggregate budget；缺失或未知时只能标为 `not-measured`/G2 前待定，绝不能标为达标。
+
+Q-07 冻结只解除 C-02/C-04 对“测什么、如何判”的等待；它不证明实现已完成、不把 Q-07 当作实测通过，
+也不完成 G0、G1、G2 或任何生产验收。
 
 ## 资源与版本
 
 战斗冻结内容及表现依赖，按确切摘要加载；资源字节与战斗消息分开传输。
-复用现有内容/资产分发接口，API 路径和清单形状由 B-04/C-04 确认。
+复用既有 package 归档分发接口；Q-05 不增加 manifest、资源描述符或另一套下载 API。
 开发缓存与正式缓存隔离，均使用同一安全加载能力。
 资源准备不能无限暂停权威战斗，资源迟到从当前表现时间接入。
 可选装饰可省略；核心资源不可用给出明确降级，
@@ -169,7 +232,36 @@ LIAF 离线预览、权威调试、正式战斗共用表现编排器，事件来
 区分机制契约兼容版本、机制实现身份/registryVersion、
 包归档摘要与内容摘要。调试记录全部身份、有效参数与 seed。
 内容修订保持当前会话冻结，新版本重跑后生效。
-不把不可变资源身份等同于恢复复杂运营发布流程。
+不把不可变资源身份设计等同于恢复复杂运营发布流程。
+
+### Q-05 冻结子合同：资源归档分发 v1
+
+Q-05 冻结的可执行规范是
+[`resource-delivery-contract-v1.json`](fixtures/g0/resource-delivery-contract-v1.json)。它只让 C-04
+从 `combatFacts.contentSources` 的既有 package 身份得到 archive bytes；不新增 manifest/API，
+不实现客户端缓存，也不冻结 Q-07、C-04、G0 或 G2。
+
+- `archiveSha256` 是**完整 admitted archive bytes** 的 SHA-256，固定为 64 位小写十六进制；
+  URL、ETag 和客户端缓存 key 都使用它。`contentSha256` 是 canonical `content.json` 身份，不能
+  代替 archive 身份或推导 URL。
+- 对有 package identity 和 `archiveSha256` 的 `contentSources` 条目，消费者按 `sourceKind` 映射：
+  `monster` -> `GET /content/monster-packages/{archiveSha256}.monster`；
+  `player` -> `GET /content/class-packages/{archiveSha256}.class`；
+  `equipment` -> `GET /content/equipment-packages/{archiveSha256}.equipment`。`assetRefs` 是已 admission
+  的闭包元数据，不是另一组下载地址；没有 package identity 的旧来源没有 URL，保留正常表现降级。
+- 成功 `200` 返回原始 archive bytes、对应 package MIME、`Content-Length`、
+  `Cache-Control: public, max-age=31536000, immutable`、`ETag: "sha256:{archiveSha256}"` 和
+  `X-Content-Type-Options: nosniff`。相同 ETag 的 `If-None-Match` 返回 `304`，至少保留 ETag 与
+  immutable cache header。
+- 三条 GET 路由无认证、无 Admin cookie/token、无 debug token；SHA-256 是不可猜的内容地址，
+  不是账号或战斗秘密。服务端仅返回 admitted、当前 runtime-qualified 的归档：路径/数据库/实际 bytes
+  三者摘要一致、大小不超过服务端 archive 上限、没有 authoring evidence 或 `preview/` 成员；monster
+  还必须通过已注册机制运行资格。非法 hash、未知 hash、摘要漂移或不合格包都 fail-closed。
+- 同一时刻可按各自 archive SHA-256 读取多个 admitted runtime-qualified 版本，不依赖当前 active
+  release；新发布不得改写旧 archive identity。这是地址稳定性，不承诺未定义的长期保留或客户端驱逐策略。
+- 客户端负责开发/正式 cache root 隔离、临时下载整包校验后原子入缓存，以及按 archiveSha256 而非
+  object name/version 命中缓存。下载、校验、能力或缓存失败只降级表现并保留权威文本/UI；不得暂停、
+  改变或推导 Worker 的战斗、命中、奖励或结果。
 
 ## 分期边界
 
@@ -189,11 +281,11 @@ G1 如 A1 现有语义为即时命中，使用曳光；不得为展示慢弹道�
 | --- | --- | --- | --- |
 | Q-01 | R1 已冻结 Boundary A 怪物逐帧 source-material schema；C-01 显式转换为既有 `.monster` assets manifest，FB-01 交付 sidecar/frames | FB-00、C-00 | FB-01、C-01 可开工；真实包联合验收仍在 G1 |
 | Q-02 | R1 已冻结怪物像素坐标、毫秒时间、表现 marker、镜像及 `once`/`loop`/`hold`；骨骼 socket 消费不在本子合同 | FB-00、C-00 | 怪物素材导出与挂点采样可开工；骨骼部分仍待 Q-06 |
-| Q-03 | A1 权威行动路径、事件身份/顺序、目标与同 tick 命中 | B-00、C-00 | B-02、C-02 |
-| Q-04 | 参数覆盖范围、合成规则、机制版本兼容 | B-00 | B-01、C-03 |
-| Q-05 | 分发接口、战斗依赖冻结、缓存与重新加载策略 | B-00、C-00 | B-04、C-04 |
+| Q-03 | 已冻结 `combatFacts v2` 即时行动的字段、身份/顺序、目标、同 tick 因果与 rebase consumer 子合同；真实飞行不在此范围 | canonical/负例、B-00、C-00 | C-02 可实现；B-02/C-02/G1 待联合验收 |
+| Q-04 | R4 已冻结当前四参数的类型/范围/单位、package/debug 替换与 Game Content wave multiplier/final 的不同路径、目录身份边界；不伪造持久模板链 | `q04-parameter-mechanism-contract-v1.json`、B-00 | B-01/C-03 可按合同消费；G0/G1 仍待联合验收 |
+| Q-05 | 已冻结最小 archive byte endpoint、身份、公共读取、资格、版本共存和客户端降级边界；缓存实现/预算/联合验收未冻结 | `resource-delivery-contract-v1.json`、B-04、C-00 | C-04 可按合同实现；B-04/C-04/G0/G2 均待联合验收 |
 | Q-06 | 首个正式职业的 rig 身份、装备闭包、武器动作覆盖与不支持能力 | FB-00、C-00、B-00 | G3/G4 |
-| Q-07 | 性能基线、时钟误差、资源及并发预算与测量方案 | C-00、FB-00、B-00 | G1 性能验收 |
+| Q-07 | 已冻结 G1 双 A1/24 FPS 测量方法、记录项与最低 hard-fail 阈值；总资源预算及真实结果仍待测 | `q07-g1-measurement-contract-v1.json`、C-00、FB-00、B-00 | C-02/C-04 可按同一方法实现/记录；G0/G1 仍待真实测量与联合验收 |
 
 总体负责人在后端 mission/program.md 记录决策、原因、受影响任务及契约修订。
 组员可立即进行 00 审计和不依赖未定接口的本地准备；边界实现从对应契约冻结后开始。

@@ -1,13 +1,8 @@
-param(
-    [string]$SidecarPath
-)
-
 $ErrorActionPreference = 'Stop'
 $schemaPath = Join-Path $PSScriptRoot 'framebaker-monster-sprite-extract-v1.schema.json'
 $samplePath = Join-Path $PSScriptRoot 'framebaker-monster-sprite-extract.valid.json'
 $casePath = Join-Path $PSScriptRoot 'framebaker-monster-sprite-extract.schema-cases.json'
-$inputSidecarPath = if ([string]::IsNullOrWhiteSpace($SidecarPath)) { $samplePath } else { $SidecarPath }
-$sample = Get-Content -LiteralPath $inputSidecarPath -Raw | ConvertFrom-Json -AsHashtable
+$sample = Get-Content -LiteralPath $samplePath -Raw | ConvertFrom-Json -AsHashtable
 $cases = Get-Content -LiteralPath $casePath -Raw | ConvertFrom-Json -AsHashtable
 
 function Copy-Value($value) {
@@ -64,13 +59,7 @@ function Test-CrossFields($value) {
 
 $sampleJson = ConvertTo-Json -InputObject $sample -Depth 30
 if (-not (Test-Json -Json $sampleJson -SchemaFile $schemaPath)) {
-    throw 'FrameBaker sprite extract sidecar rejected'
-}
-$isExternalSidecar = -not [string]::IsNullOrWhiteSpace($SidecarPath)
-if ($isExternalSidecar) {
-    if (-not (Test-CrossFields $sample)) { throw 'External sidecar failed cross-field checks' }
-    Write-Output 'FrameBaker sprite extract R1 frozen contract sidecar passed.'
-    exit 0
+    throw 'Positive FrameBaker sprite extract sample rejected'
 }
 $passed = 1
 foreach ($case in $cases) {

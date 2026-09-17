@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "contractId": "liaf-resource-delivery-v1",
+  "archiveIdentity": {
+    "field": "archiveSha256",
+    "algorithm": "sha256",
+    "scope": "the exact admitted archive bytes",
+    "format": "64 lowercase hexadecimal characters",
+    "notEquivalentTo": "contentSha256"
+  },
+  "packageRoutes": [
+    { "sourceKind": "monster", "packageKind": "monster", "urlTemplate": "/content/monster-packages/{archiveSha256}.monster", "contentType": "application/vnd.tui-rpg.monster+zip" },
+    { "sourceKind": "player", "packageKind": "class", "urlTemplate": "/content/class-packages/{archiveSha256}.class", "contentType": "application/vnd.tui-rpg.class+zip" },
+    { "sourceKind": "equipment", "packageKind": "equipment", "urlTemplate": "/content/equipment-packages/{archiveSha256}.equipment", "contentType": "application/vnd.tui-rpg.equipment+zip" }
+  ],
+  "successHeaders": {
+    "cacheControl": "public, max-age=31536000, immutable",
+    "etag": "\"sha256:{archiveSha256}\"",
+    "xContentTypeOptions": "nosniff",
+    "contentLength": "exact archive byte length"
+  },
+  "notModifiedHeaders": ["ETag", "Cache-Control"],
+  "publicRead": {
+    "requiresAuthentication": false,
+    "requiresAdminCookieOrToken": false,
+    "requiresDebugToken": false,
+    "authorizationBoundary": "Only an admitted archive that passes current runtime qualification is readable; the lowercase SHA-256 URL is an unguessable content address, not an account or battle secret."
+  },
+  "runtimeQualification": {
+    "all": ["admitted package", "stored row hash equals path hash", "exact bytes hash equals path hash", "archive bytes at or below the server archive limit", "no authoring evidence or preview members"],
+    "monsterAdditional": "registered runtime mechanism contract passes"
+  },
+  "contentSourcesMapping": "For a contentSources entry with package identity and archiveSha256, select the route by sourceKind and substitute archiveSha256. contentSha256 and assetRefs are identity/closure metadata, not alternate byte URLs. Missing package identity has no URL and must retain the normal presentation fallback.",
+  "versionCoexistence": "All admitted, currently runtime-qualified archives remain addressable by their own archiveSha256 without requiring the current active release. A later release must not rewrite an existing archive identity.",
+  "clientResponsibilities": [
+    "Keep development and production cache roots separate.",
+    "Download to a temporary file, verify the whole archive SHA-256, then atomically publish into the selected cache root.",
+    "Use archiveSha256 rather than object name or package version as the cache key.",
+    "Treat download, transport, archive, digest, capability, or cache failure as presentation-only degradation; never pause, alter, or infer Worker combat, rewards, hits, or results."
+  ],
+  "outOfScope": ["new manifest or descriptor API", "client cache implementation, eviction, quota, timeout, or retry policy", "Q-07 performance budgets", "C-04, G0, or G2 acceptance"]
+}
