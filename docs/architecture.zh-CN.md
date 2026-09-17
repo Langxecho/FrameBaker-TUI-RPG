@@ -170,7 +170,7 @@ AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
   → ZIP 内附 <name>.frames.json（file/x/y/w/h/duration 格数、durationSeconds=duration/fps、原点及 FPS）
 ```
 
-骨骼页「导出骨骼包」写出 **fbanim v2** 制作预览（不含装备），**不是** LIAF 交付入口；LIAF 角色只收第 6 步发布的 **fbanim v3**。怪物流水线拆帧 zip 为 `frames/{actionId}/*.png` + R1-A `sidecar.json`（`framebaker.monster-sprite-extract`），**禁止**把该 zip 改名为 `.monster`（由 C-01 显式转换）。怪物页也可把已有 PNG 文件夹 zip 经 `POST /api/materials/monster-sprite-extract` 打成同一格式（必须显式 `loopMode` / 朝向 / 原点，24 Hz，文件名自然序号，同一画布）。
+骨骼页「导出骨骼包」写出 **fbanim v2** 制作预览（不含装备），**不是** LIAF 交付入口；LIAF 角色只收第 6 步发布的 **fbanim v3**。怪物流水线拆帧 zip 为 `frames/{actionId}/*.png` + R1-A `sidecar.json`（`framebaker.monster-sprite-extract`），**禁止**把该 zip 改名为 `.monster`（由 C-01 显式转换）。怪物页也可把已有 PNG 文件夹 zip 经 `POST /api/materials/monster-sprite-extract` 打成同一格式（必须显式 `loopMode` / 朝向 / 原点，24 Hz，文件名自然序号，同一画布）。该入口可把 `muzzle` / `hit` 表现 anchor 写入逐帧 sidecar，并写入 `weapon.fire` / `effect.trigger` 表现 marker；这些元数据只供下游表现采样，不能决定目标、命中或伤害。
 
 ### 素材库（素材 → 抠图 → 导入项目）
 

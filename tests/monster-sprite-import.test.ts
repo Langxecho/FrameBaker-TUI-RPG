@@ -70,6 +70,66 @@ describe("怪物 PNG/ZIP → R1-A", () => {
     expect(result.sidecar.actions[0]!.frames[0]!.sha256).toBe(sha256Hex(PNG_8X4));
   });
 
+  test("表现锚点和发射标记被验证并写入 R1 sidecar，不含权威命中语义", () => {
+    const result = assembleMonsterSpriteExtract({
+      pngs: [
+        { relativePath: "attack/frame-1.png", bytes: PNG_8X4 },
+        { relativePath: "attack/frame-2.png", bytes: PNG_8X4 },
+      ],
+      spec: {
+        displayName: "A1",
+        projectId: "a1",
+        sampleRateHz: 24,
+        defaultFacing: "left",
+        objectOriginPx: { x: 4, y: 4 },
+        actions: [{
+          folder: "attack",
+          actionId: "monster-02-attack",
+          displayName: "平A",
+          loopMode: "once",
+          anchors: [{ id: "muzzle", x: 2, y: 1, directionDegrees: 180 }, { id: "hit", x: 6, y: 2 }],
+          frameAnchors: [undefined, [{ id: "muzzle", x: 3, y: 1, directionDegrees: 180 }, { id: "hit", x: 6, y: 2 }]],
+          markers: [{ id: "weapon.fire", atMs: 42, presentationOnly: true }],
+        }],
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sidecar.actions[0]!.frames[0]!.anchors).toEqual([
+      { id: "muzzle", x: 2, y: 1, directionDegrees: 180 },
+      { id: "hit", x: 6, y: 2 },
+    ]);
+    expect(result.sidecar.actions[0]!.frames[1]!.anchors[0]).toMatchObject({ id: "muzzle", x: 3 });
+    expect(result.sidecar.actions[0]!.markers).toEqual([{ id: "weapon.fire", atMs: 42, presentationOnly: true }]);
+
+    const authoritative = assembleMonsterSpriteExtract({
+      pngs: [{ relativePath: "attack/frame-1.png", bytes: PNG_8X4 }],
+      spec: {
+        displayName: "A1", projectId: "a1", sampleRateHz: 24, defaultFacing: "left", objectOriginPx: { x: 4, y: 4 },
+        actions: [{ folder: "attack", actionId: "monster-02-attack", displayName: "平A", loopMode: "once", markers: [{ id: "combat.hitbox.start", atMs: 0, presentationOnly: true }] }],
+      },
+    });
+    expect(authoritative.ok).toBe(false);
+    if (!authoritative.ok) expect(authoritative.error).toContain("presentationOnly");
+  });
+
+  test("超出画布的挂点和动作末尾标记均 fail-closed", () => {
+    const base = {
+      displayName: "A1", projectId: "a1", sampleRateHz: 24, defaultFacing: "left" as const, objectOriginPx: { x: 4, y: 4 },
+      actions: [{ folder: "attack", actionId: "monster-02-attack", displayName: "平A", loopMode: "once" as const }],
+    };
+    const outOfCanvas = assembleMonsterSpriteExtract({
+      pngs: [{ relativePath: "attack/frame-1.png", bytes: PNG_8X4 }],
+      spec: { ...base, actions: [{ ...base.actions[0]!, anchors: [{ id: "muzzle", x: 9, y: 1 }] }] },
+    });
+    expect(outOfCanvas.ok).toBe(false);
+    const atEnd = assembleMonsterSpriteExtract({
+      pngs: [{ relativePath: "attack/frame-1.png", bytes: PNG_8X4 }],
+      spec: { ...base, actions: [{ ...base.actions[0]!, markers: [{ id: "weapon.fire", atMs: 42, presentationOnly: true }] }] },
+    });
+    expect(atEnd.ok).toBe(false);
+  });
+
   test("electric_loop 必须显式 loopMode，不能按 special 动作 ID 猜成 once", () => {
     const pngs = [
       { relativePath: "electric_loop/01.png", bytes: PNG_8X4 },

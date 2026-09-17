@@ -467,6 +467,23 @@ export const materialsApi = new Elysia({ prefix: "/api" })
                 actionId: t.String(),
                 displayName: t.Optional(t.String()),
                 loopMode: t.Union([t.Literal("once"), t.Literal("loop"), t.Literal("hold")]),
+                anchors: t.Optional(t.Array(t.Object({
+                  id: t.String(),
+                  x: t.Number(),
+                  y: t.Number(),
+                  directionDegrees: t.Optional(t.Number()),
+                }))),
+                frameAnchors: t.Optional(t.Array(t.Array(t.Object({
+                  id: t.String(),
+                  x: t.Number(),
+                  y: t.Number(),
+                  directionDegrees: t.Optional(t.Number()),
+                })))),
+                markers: t.Optional(t.Array(t.Object({
+                  id: t.String(),
+                  atMs: t.Integer(),
+                  presentationOnly: t.Literal(true),
+                }))),
               }),
             ),
           }),

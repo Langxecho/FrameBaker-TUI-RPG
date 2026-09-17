@@ -179,7 +179,7 @@ Fetch all visible timeline cells → createImageBitmap
   → ZIP images plus <name>.frames.json (file/x/y/w/h/duration in ticks, durationSeconds=duration/fps, origin and FPS)
 ```
 
-The skeletal page “Export skeletal package” writes an **fbanim v2** authoring preview (no equipment). That is **not** the LIAF delivery path; LIAF characters use step 6 publish export (**fbanim v3**) only. Monster extract zips are `frames/{actionId}/*.png` plus R1-A `sidecar.json` (`framebaker.monster-sprite-extract`). Do **not** rename that zip to `.monster` — C-01 performs the explicit conversion. The Monster tab can also pack an existing PNG-folder zip through `POST /api/materials/monster-sprite-extract` (explicit `loopMode` / facing / origin, 24 Hz, natural filename order, same canvas).
+The skeletal page “Export skeletal package” writes an **fbanim v2** authoring preview (no equipment). That is **not** the LIAF delivery path; LIAF characters use step 6 publish export (**fbanim v3**) only. Monster extract zips are `frames/{actionId}/*.png` plus R1-A `sidecar.json` (`framebaker.monster-sprite-extract`). Do **not** rename that zip to `.monster` — C-01 performs the explicit conversion. The Monster tab can also pack an existing PNG-folder zip through `POST /api/materials/monster-sprite-extract` (explicit `loopMode` / facing / origin, 24 Hz, natural filename order, same canvas). This import can write per-frame `muzzle` / `hit` presentation anchors and `weapon.fire` / `effect.trigger` presentation markers; the metadata is visual-only and cannot determine a target, hit, or damage.
 
 ### Material Library (Material → Matting → Import to Project)
 

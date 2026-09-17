@@ -12,6 +12,8 @@ import {
   buildMonsterExtractZipFiles,
   toContractId,
   type MonsterExtractClipInput,
+  type MonsterSpritePresentationAnchor,
+  type MonsterSpritePresentationMarker,
   type MonsterSpriteExtractSidecar,
   type MonsterSpriteLoopMode,
 } from "./monsterExtractZip";
@@ -23,6 +25,12 @@ export type MonsterSpriteActionSpec = {
   actionId: string;
   displayName: string;
   loopMode: MonsterSpriteLoopMode;
+  /** 未提供逐帧覆盖时复制到该动作的每一帧。 */
+  anchors?: MonsterSpritePresentationAnchor[];
+  /** 索引与导入后自然排序的帧一致。 */
+  frameAnchors?: Array<MonsterSpritePresentationAnchor[] | undefined>;
+  /** 仅美术时刻，不能表达命中、目标或伤害。 */
+  markers?: MonsterSpritePresentationMarker[];
 };
 
 export type MonsterSpriteImportSpec = {
@@ -106,6 +114,38 @@ function normalizeFolder(raw: string): string {
   return raw.replace(/\\/g, "/").split("/").filter(Boolean).pop()?.trim() ?? "";
 }
 
+function parsePresentationAnchors(raw: unknown, label: string): MonsterSpritePresentationAnchor[] | null | AssembleFail {
+  if (raw === undefined) return null;
+  if (!Array.isArray(raw)) return fail(`${label} 的 anchors 必须是数组`);
+  return raw.map((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`${label} 的第 ${index + 1} 个挂点无效`);
+    const value = item as Record<string, unknown>;
+    const id = typeof value.id === "string" ? value.id.trim() : "";
+    const x = Number(value.x);
+    const y = Number(value.y);
+    const directionDegrees = value.directionDegrees === undefined ? undefined : Number(value.directionDegrees);
+    if (!id || !Number.isFinite(x) || !Number.isFinite(y) || (directionDegrees !== undefined && !Number.isFinite(directionDegrees))) {
+      throw new Error(`${label} 的第 ${index + 1} 个挂点字段无效`);
+    }
+    return directionDegrees === undefined ? { id, x, y } : { id, x, y, directionDegrees };
+  });
+}
+
+function parsePresentationMarkers(raw: unknown, label: string): MonsterSpritePresentationMarker[] | null | AssembleFail {
+  if (raw === undefined) return null;
+  if (!Array.isArray(raw)) return fail(`${label} 的 markers 必须是数组`);
+  return raw.map((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`${label} 的第 ${index + 1} 个标记无效`);
+    const value = item as Record<string, unknown>;
+    const id = typeof value.id === "string" ? value.id.trim() : "";
+    const atMs = Number(value.atMs);
+    if (!id || !Number.isInteger(atMs) || value.presentationOnly !== true) {
+      throw new Error(`${label} 的第 ${index + 1} 个标记必须含整数 atMs 且 presentationOnly 为 true`);
+    }
+    return { id, atMs, presentationOnly: true };
+  });
+}
+
 export function parseMonsterSpriteImportSpec(raw: unknown): { ok: true; spec: MonsterSpriteImportSpec } | AssembleFail {
   let value: unknown = raw;
   if (typeof raw === "string") {
@@ -156,12 +196,33 @@ export function parseMonsterSpriteImportSpec(raw: unknown): { ok: true; spec: Mo
     }
     folders.add(folder);
     actionIds.add(contractActionId);
-    actions.push({
-      folder,
-      actionId,
-      displayName: display || actionId,
-      loopMode: loopMode as MonsterSpriteLoopMode,
-    });
+    try {
+      const anchors = parsePresentationAnchors(row.anchors, `文件夹 ${folder}`);
+      if (anchors && "error" in anchors) return anchors;
+      const markers = parsePresentationMarkers(row.markers, `文件夹 ${folder}`);
+      if (markers && "error" in markers) return markers;
+      let frameAnchors: Array<MonsterSpritePresentationAnchor[] | undefined> | undefined;
+      if (row.frameAnchors !== undefined) {
+        if (!Array.isArray(row.frameAnchors)) return fail(`文件夹 ${folder} 的 frameAnchors 必须是数组`);
+        frameAnchors = [];
+        for (const [index, item] of row.frameAnchors.entries()) {
+          const parsed = parsePresentationAnchors(item, `文件夹 ${folder} 的第 ${index + 1} 帧`);
+          if (parsed && "error" in parsed) return parsed;
+          frameAnchors.push(parsed ?? undefined);
+        }
+      }
+      actions.push({
+        folder,
+        actionId,
+        displayName: display || actionId,
+        loopMode: loopMode as MonsterSpriteLoopMode,
+        anchors: anchors ?? undefined,
+        frameAnchors,
+        markers: markers ?? undefined,
+      });
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : `文件夹 ${folder} 的表现数据无效`);
+    }
   }
   return {
     ok: true,
@@ -212,6 +273,9 @@ export function assembleMonsterSpriteExtract(opts: {
       fps: 24,
       frames: keyed.map((k) => k.bytes),
       loopMode: action.loopMode,
+      anchors: action.anchors,
+      frameAnchors: action.frameAnchors,
+      markers: action.markers,
     });
   }
 
@@ -234,17 +298,22 @@ export function assembleMonsterSpriteExtract(opts: {
   }
 
   const files = buildMonsterExtractZipFiles(clips);
-  const sidecar = buildMonsterExtractSidecar({
-    displayName: spec.displayName,
-    projectId: spec.projectId,
-    exportId: opts.exportId ?? "import",
-    toolVersion: opts.toolVersion ?? "0.4.0",
-    exportedAt: opts.exportedAt ?? new Date().toISOString(),
-    canvas,
-    clips,
-    objectOriginPx: spec.objectOriginPx,
-    defaultFacing: spec.defaultFacing,
-  });
+  let sidecar: MonsterSpriteExtractSidecar;
+  try {
+    sidecar = buildMonsterExtractSidecar({
+      displayName: spec.displayName,
+      projectId: spec.projectId,
+      exportId: opts.exportId ?? "import",
+      toolVersion: opts.toolVersion ?? "0.4.0",
+      exportedAt: opts.exportedAt ?? new Date().toISOString(),
+      canvas,
+      clips,
+      objectOriginPx: spec.objectOriginPx,
+      defaultFacing: spec.defaultFacing,
+    });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "无法构建表现 sidecar");
+  }
   return { ok: true, files, sidecar, spec };
 }
 

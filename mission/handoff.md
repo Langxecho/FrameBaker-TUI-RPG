@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | FB-00 | 待联合验收 | 总体负责人已正式接收（`d71b735`）。待 C-00 用真实 `.monster` loader、`durationMs`、动作 ID、逐帧 anchor/marker、`.fbanim v3` 复核后对表冻 R1 | `mission/FB-00.md`；`778566f` / `9298add` / `83f1f18` |
 | FB-01 | 进行中 | **可开始 / 实现中。** 输出 R1-A `sidecar.json` + `frames/{actionId}/*.png`；C-01 再转 `.monster` | 规范源 `138c0d2`；本仓 `mission/fixtures/g0/` |
-| FB-02 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
+| FB-02 | 待联合验收 | R1-A 导入可编辑/校验表现 anchors 与 markers；待 C-02/C-03 用真实重导出包验证表现编排 | `mission/FB-02.md`；本次提交 |
 | FB-03 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 | FB-04 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
 
@@ -127,3 +127,17 @@ Fixture/测试代码属于正式可审查交付；大日志和临时运行产物
 - 性能：不适用
 - 已知问题、对下游影响与建议下一步：挂点/标记仍为空数组，FB-02 再补发射素材。同一动作多 fps 只保留最高 fps
 - 需要总体负责人决定的事项：无（Q-03/05/07 不阻塞本项）
+
+- 任务 ID / 状态 / 实际执行人：FB-02 / 待联合验收 / FrameBaker shy 组员
+- 代码 branch、commit；若有影响结果的未提交修改，明确列出：`shy`（本提交）；未跟踪 `.superpowers/`、`skills/` 保留且不纳入交付
+- 使用的契约修订及规范源 commit/hash：LIAF-PIPELINE R1 Boundary A；Q-02 已冻结；Q-03 候选 combatFacts 未冻结为正式 wire
+- 本次解决的问题与最终行为：导入规格、服务端和表单可保存每动作 anchor、逐帧 anchor 覆盖与仅表现 marker。固定 anchor 复制到每帧；越界、重复、非法或越过动作时长的数据 fail-closed。`combat.hitbox.*` 被拒绝，不能借素材数据定义目标/命中/伤害
+- 改动路径、可审查 diff 或 PR：`apps/server/src/monsterExtractZip.ts`、`apps/server/src/monsterSpriteImport.ts`、`apps/server/src/api/materials.ts`、`apps/web/src/components/MonsterPipelinePage.tsx`、`mission/FB-02.md`
+- 生产者输入：现有 A1 Drone 真实 160×160 / 24 FPS 逐帧来源；采样参照和限制见 `mission/FB-02.md`
+- 给消费者的输出：R1-A `sidecar.json` 的既有 `frames[].anchors[]` 与 `actions[].markers[]` 字段；API 附加 `anchors` / `frameAnchors` / `markers`，无新文件后缀或战斗 wire
+- 测试：`bun test tests/monster-sprite-import.test.ts`、`bun run typecheck`、R1 合同 validator；以本提交命令结果为准
+- 联合验收：未执行。待 C-02 消费真实重导出包、C-03 按后端权威阶段播放；不得据此写 G1 通过
+- 人工观察：未跑浏览器。UI 已有具体字段和本地错误通知；实际像素量取与终端表现目视属于后续联合验收
+- 性能：不适用；Q-07 仍待测量
+- 已知问题、对下游影响与建议下一步：当前表单只支持动作级固定 anchor；逐帧移动 anchor 可经 API `frameAnchors` 输入。独立枪口/曳光/火花运行时资源身份待 C-02/C-03 冻结，不能创建猜测性的资源包
+- 需要总体负责人决定的事项：Q-03/C-02 的正式 action/impact 编排与效果资源绑定；本任务不阻塞 R1-A 导出

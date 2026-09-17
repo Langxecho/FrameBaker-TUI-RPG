@@ -50,6 +50,25 @@ export type MonsterExtractClipInput = {
   frames: Uint8Array[];
   /** 导入入口必填；流水线打包未传时回退 loopModeForActionId。 */
   loopMode?: MonsterSpriteLoopMode;
+  /** 未提供逐帧覆盖时复制到本动作的每一帧。 */
+  anchors?: MonsterSpritePresentationAnchor[];
+  /** 索引与输入帧顺序一致，未提供的帧沿用 anchors。 */
+  frameAnchors?: Array<MonsterSpritePresentationAnchor[] | undefined>;
+  /** 仅供表现编排器采样，绝不参与命中或伤害结算。 */
+  markers?: MonsterSpritePresentationMarker[];
+};
+
+export type MonsterSpritePresentationAnchor = {
+  id: string;
+  x: number;
+  y: number;
+  directionDegrees?: number;
+};
+
+export type MonsterSpritePresentationMarker = {
+  id: string;
+  atMs: number;
+  presentationOnly: true;
 };
 
 export type MonsterSpriteExtractSidecar = {
@@ -83,11 +102,51 @@ export type MonsterSpriteExtractSidecar = {
       startTimeMs: number;
       durationMs: number;
       sha256: string;
-      anchors: Array<{ id: string; x: number; y: number; directionDegrees?: number }>;
+      anchors: MonsterSpritePresentationAnchor[];
     }>;
-    markers: Array<{ id: string; atMs: number; presentationOnly: true }>;
+    markers: MonsterSpritePresentationMarker[];
   }>;
 };
+
+const CONTRACT_ID = /^[a-z0-9][a-z0-9_.-]{0,95}$/;
+const PRESENTATION_MARKER_ID = /^(?!combat\.hitbox(?:\.|$))[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
+
+function checkedAnchors(
+  anchors: MonsterSpritePresentationAnchor[] | undefined,
+  canvas: { width: number; height: number },
+  label: string,
+): MonsterSpritePresentationAnchor[] {
+  const list = anchors ?? [];
+  if (list.length > 32) throw new RangeError(`${label} 的挂点不能超过 32 个`);
+  const ids = new Set<string>();
+  return list.map((anchor) => {
+    if (!CONTRACT_ID.test(anchor.id) || ids.has(anchor.id)) throw new RangeError(`${label} 的挂点 ID 无效或重复`);
+    ids.add(anchor.id);
+    if (!Number.isFinite(anchor.x) || !Number.isFinite(anchor.y) || anchor.x < 0 || anchor.y < 0 || anchor.x > canvas.width || anchor.y > canvas.height) {
+      throw new RangeError(`${label} 的挂点坐标超出画布`);
+    }
+    if (anchor.directionDegrees !== undefined && (!Number.isFinite(anchor.directionDegrees) || anchor.directionDegrees < -360 || anchor.directionDegrees > 360)) {
+      throw new RangeError(`${label} 的挂点方向必须在 -360 到 360 度之间`);
+    }
+    return anchor.directionDegrees === undefined
+      ? { id: anchor.id, x: anchor.x, y: anchor.y }
+      : { id: anchor.id, x: anchor.x, y: anchor.y, directionDegrees: anchor.directionDegrees };
+  });
+}
+
+function checkedMarkers(markers: MonsterSpritePresentationMarker[] | undefined, durationMs: number, label: string): MonsterSpritePresentationMarker[] {
+  const list = markers ?? [];
+  if (list.length > 128) throw new RangeError(`${label} 的标记不能超过 128 个`);
+  return list.map((marker) => {
+    if (!PRESENTATION_MARKER_ID.test(marker.id) || marker.presentationOnly !== true) {
+      throw new RangeError(`${label} 的标记必须是合法的 presentationOnly 表现标记`);
+    }
+    if (!Number.isInteger(marker.atMs) || marker.atMs < 0 || marker.atMs >= durationMs) {
+      throw new RangeError(`${label} 的标记时刻必须位于动作时长内`);
+    }
+    return { id: marker.id, atMs: marker.atMs, presentationOnly: true };
+  });
+}
 
 export function buildMonsterExtractZipFiles(clips: MonsterExtractClipInput[]): Record<string, Uint8Array> {
   const files: Record<string, Uint8Array> = {};
@@ -143,15 +202,20 @@ export function buildMonsterExtractSidecar(opts: {
       const actionId = toContractId(clip.actionId);
       const durations = frameDurationsMs(clip.frames.length, clip.fps);
       let startTimeMs = 0;
+      const actionLabel = `动作 ${actionId}`;
+      if (clip.frameAnchors && clip.frameAnchors.length > clip.frames.length) {
+        throw new RangeError(`${actionLabel} 的逐帧挂点数量超过帧数`);
+      }
       const frames = clip.frames.map((bytes, i) => {
         const durationMs = durations[i]!;
         const relativePath = monsterExtractZipEntryPath({ actionId, frameIndex: i + 1 });
+        const anchors = checkedAnchors(clip.frameAnchors?.[i] ?? clip.anchors, { width, height }, `${actionLabel} 第 ${i + 1} 帧`);
         const frame = {
           relativePath,
           startTimeMs,
           durationMs,
           sha256: sha256Hex(bytes),
-          anchors: [] as Array<{ id: string; x: number; y: number }>,
+          anchors,
         };
         startTimeMs += durationMs;
         return frame;
@@ -162,7 +226,7 @@ export function buildMonsterExtractSidecar(opts: {
         loopMode: clip.loopMode ?? loopModeForActionId(clip.actionId),
         sampleRateHz: Math.max(1, Math.min(60, Math.round(clip.fps))),
         frames,
-        markers: [] as Array<{ id: string; atMs: number; presentationOnly: true }>,
+        markers: checkedMarkers(clip.markers, startTimeMs, actionLabel),
       };
     }),
   };

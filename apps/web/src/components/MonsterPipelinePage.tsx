@@ -53,6 +53,24 @@ const A1_FOLDER_PRESET = [
 
 type ImportLoop = "once" | "loop" | "hold";
 
+type ImportPresentation = {
+  muzzleX: string;
+  muzzleY: string;
+  muzzleDirection: string;
+  hitX: string;
+  hitY: string;
+  launchAtMs: string;
+};
+
+const EMPTY_IMPORT_PRESENTATION: ImportPresentation = {
+  muzzleX: "",
+  muzzleY: "",
+  muzzleDirection: "",
+  hitX: "",
+  hitY: "",
+  launchAtMs: "",
+};
+
 function pngParentFolder(relativePath: string): string | null {
   const n = relativePath.replace(/\\/g, "/");
   const slash = n.lastIndexOf("/");
@@ -98,6 +116,7 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
   const [cacheKey, setCacheKey] = useState(() => Date.now());
   const [importFolders, setImportFolders] = useState<string[]>([]);
   const [importMap, setImportMap] = useState<Record<string, { actionId: string; displayName: string; loopMode: ImportLoop | "" }>>({});
+  const [importPresentationMap, setImportPresentationMap] = useState<Record<string, ImportPresentation>>({});
   const [importZip, setImportZip] = useState<File | null>(null);
   const [importDirFiles, setImportDirFiles] = useState<File[]>([]);
   const [importFacing, setImportFacing] = useState<"left" | "right">("left");
@@ -307,6 +326,11 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
       }
       return next;
     });
+    setImportPresentationMap((prev) => {
+      const next: Record<string, ImportPresentation> = {};
+      for (const folder of unique) next[folder] = prev[folder] ?? { ...EMPTY_IMPORT_PRESENTATION };
+      return next;
+    });
   };
 
   const applyA1Preset = () => {
@@ -354,12 +378,55 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
       notify(t("monster.import.needName"));
       return;
     }
+    let invalidPresentation = false;
     const actions = importFolders.flatMap((folder) => {
       const row = importMap[folder];
       if (!row?.actionId || (row.loopMode !== "once" && row.loopMode !== "loop" && row.loopMode !== "hold")) return [];
-      return [{ folder, actionId: row.actionId.trim(), displayName: row.displayName.trim() || row.actionId.trim(), loopMode: row.loopMode }];
+      const presentation = importPresentationMap[folder] ?? EMPTY_IMPORT_PRESENTATION;
+      const numeric = (value: string) => (value.trim() === "" ? null : Number(value));
+      const muzzleX = numeric(presentation.muzzleX);
+      const muzzleY = numeric(presentation.muzzleY);
+      const hitX = numeric(presentation.hitX);
+      const hitY = numeric(presentation.hitY);
+      const launchAtMs = numeric(presentation.launchAtMs);
+      const muzzleDirection = numeric(presentation.muzzleDirection);
+      if ((muzzleX === null) !== (muzzleY === null) || (hitX === null) !== (hitY === null)) {
+        notify(t("monster.import.presentationPair"));
+        invalidPresentation = true;
+        return [];
+      }
+      if (muzzleDirection !== null && muzzleX === null) {
+        notify(t("monster.import.presentationDirection"));
+        invalidPresentation = true;
+        return [];
+      }
+      if ([muzzleX, muzzleY, hitX, hitY, launchAtMs, muzzleDirection].some((value) => value !== null && !Number.isFinite(value))) {
+        notify(t("monster.import.presentationNumber"));
+        invalidPresentation = true;
+        return [];
+      }
+      if (launchAtMs !== null && (!Number.isInteger(launchAtMs) || launchAtMs < 0)) {
+        notify(t("monster.import.presentationTime"));
+        invalidPresentation = true;
+        return [];
+      }
+      const anchors = [
+        ...(muzzleX === null ? [] : [{ id: "muzzle", x: muzzleX, y: muzzleY!, ...(muzzleDirection === null ? {} : { directionDegrees: muzzleDirection }) }]),
+        ...(hitX === null ? [] : [{ id: "hit", x: hitX, y: hitY! }]),
+      ];
+      const markers = launchAtMs === null
+        ? []
+        : [{ id: row.actionId === "monster-03-special" ? "effect.trigger" : "weapon.fire", atMs: launchAtMs, presentationOnly: true as const }];
+      return [{
+        folder,
+        actionId: row.actionId.trim(),
+        displayName: row.displayName.trim() || row.actionId.trim(),
+        loopMode: row.loopMode,
+        ...(anchors.length ? { anchors } : {}),
+        ...(markers.length ? { markers } : {}),
+      }];
     });
-    if (!actions.length) {
+    if (invalidPresentation || !actions.length) {
       notify(t("monster.import.needMap"));
       return;
     }
@@ -462,6 +529,14 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
         ) : (
           importFolders.map((folder) => {
             const row = importMap[folder] ?? { actionId: "", displayName: "", loopMode: "" as const };
+            const presentation = importPresentationMap[folder] ?? EMPTY_IMPORT_PRESENTATION;
+            const isLaunchAction = row.actionId === "monster-02-attack" || row.actionId === "monster-03-special";
+            const updatePresentation = (key: keyof ImportPresentation, value: string) => {
+              setImportPresentationMap((prev) => ({
+                ...prev,
+                [folder]: { ...(prev[folder] ?? EMPTY_IMPORT_PRESENTATION), [key]: value },
+              }));
+            };
             return (
               <div key={folder} className="field">
                 <span>{t("monster.import.folder")} · {folder}</span>
@@ -502,6 +577,25 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
                   <option value="loop">{t("monster.import.loopLoop")}</option>
                   <option value="hold">{t("monster.import.loopHold")}</option>
                 </select>
+                <span>{t("monster.import.hitAnchor")}</span>
+                <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
+                  <input className="px-input" inputMode="decimal" value={presentation.hitX} onChange={(e) => updatePresentation("hitX", e.target.value)} placeholder={t("monster.import.anchorX")} />
+                  <input className="px-input" inputMode="decimal" value={presentation.hitY} onChange={(e) => updatePresentation("hitY", e.target.value)} placeholder={t("monster.import.anchorY")} />
+                </div>
+                {isLaunchAction ? (
+                  <>
+                    <span>{t("monster.import.muzzleAnchor")}</span>
+                    <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
+                      <input className="px-input" inputMode="decimal" value={presentation.muzzleX} onChange={(e) => updatePresentation("muzzleX", e.target.value)} placeholder={t("monster.import.anchorX")} />
+                      <input className="px-input" inputMode="decimal" value={presentation.muzzleY} onChange={(e) => updatePresentation("muzzleY", e.target.value)} placeholder={t("monster.import.anchorY")} />
+                      <input className="px-input" inputMode="decimal" value={presentation.muzzleDirection} onChange={(e) => updatePresentation("muzzleDirection", e.target.value)} placeholder={t("monster.import.anchorDirection")} />
+                    </div>
+                    <label className="field">
+                      <span>{t("monster.import.launchAtMs")}</span>
+                      <input className="px-input" inputMode="numeric" value={presentation.launchAtMs} onChange={(e) => updatePresentation("launchAtMs", e.target.value)} placeholder="0" />
+                    </label>
+                  </>
+                ) : null}
               </div>
             );
           })
