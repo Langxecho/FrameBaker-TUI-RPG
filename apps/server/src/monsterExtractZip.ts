@@ -110,8 +110,11 @@ export function buildMonsterExtractSidecar(opts: {
   objectOriginPx?: { x: number; y: number };
   defaultFacing?: "left" | "right";
 }): MonsterSpriteExtractSidecar {
-  const width = Math.max(1, Math.min(2048, Math.round(opts.canvas.width)));
-  const height = Math.max(1, Math.min(2048, Math.round(opts.canvas.height)));
+  const width = Math.round(opts.canvas.width);
+  const height = Math.round(opts.canvas.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1 || width > 2048 || height > 2048) {
+    throw new RangeError("怪物拆帧画布必须在 1 到 2048 像素之间");
+  }
   const displayName = opts.displayName.trim().slice(0, 120) || "monster";
   const originX = opts.objectOriginPx ? Math.round(opts.objectOriginPx.x) : Math.floor(width / 2);
   const originY = opts.objectOriginPx ? Math.round(opts.objectOriginPx.y) : height;

@@ -10,6 +10,7 @@ import { commitMonsterExtractZipMaterial } from "./monsterExtractArchive";
 import {
   buildMonsterExtractSidecar,
   buildMonsterExtractZipFiles,
+  toContractId,
   type MonsterExtractClipInput,
   type MonsterSpriteExtractSidecar,
   type MonsterSpriteLoopMode,
@@ -55,6 +56,9 @@ export const A1_FOLDER_PRESET: MonsterSpriteActionSpec[] = [
 
 const LOOP_MODES = new Set<MonsterSpriteLoopMode>(["once", "loop", "hold"]);
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47];
+const MAX_ACTIONS = 64;
+const MAX_FRAMES_PER_ACTION = 3600;
+const MAX_CANVAS_DIMENSION = 2048;
 
 function fail(error: string): AssembleFail {
   return { ok: false, error };
@@ -128,6 +132,7 @@ export function parseMonsterSpriteImportSpec(raw: unknown): { ok: true; spec: Mo
   if (!defaultFacing) return fail("请显式指定 defaultFacing（left 或 right）");
   if (!Number.isFinite(ox) || !Number.isFinite(oy)) return fail("请显式指定 objectOriginPx");
   if (!Array.isArray(o.actions) || o.actions.length < 1) return fail("请至少映射一个动作文件夹");
+  if (o.actions.length > MAX_ACTIONS) return fail(`动作数量不能超过 ${MAX_ACTIONS}`);
 
   const actions: MonsterSpriteActionSpec[] = [];
   const folders = new Set<string>();
@@ -145,9 +150,12 @@ export function parseMonsterSpriteImportSpec(raw: unknown): { ok: true; spec: Mo
       return fail(`文件夹 ${folder} 必须显式指定 loopMode（once / loop / hold）`);
     }
     if (folders.has(folder)) return fail(`文件夹 ${folder} 重复映射`);
-    if (actionIds.has(actionId)) return fail(`actionId ${actionId} 重复`);
+    const contractActionId = toContractId(actionId);
+    if (actionIds.has(contractActionId)) {
+      return fail(`actionId ${actionId} 与已有动作规范化后重复（${contractActionId}）`);
+    }
     folders.add(folder);
-    actionIds.add(actionId);
+    actionIds.add(contractActionId);
     actions.push({
       folder,
       actionId,
@@ -195,7 +203,9 @@ export function assembleMonsterSpriteExtract(opts: {
       keyed.push({ index, bytes: item.bytes, name });
     }
     keyed.sort((a, b) => a.index - b.index || a.name.localeCompare(b.name, "en"));
-    if (keyed.length > 4096) return fail(`文件夹 ${action.folder} 帧数过多`);
+    if (keyed.length > MAX_FRAMES_PER_ACTION) {
+      return fail(`文件夹 ${action.folder} 帧数不能超过 ${MAX_FRAMES_PER_ACTION}`);
+    }
     clips.push({
       actionId: action.actionId,
       actionTitle: action.displayName,
@@ -210,6 +220,9 @@ export function assembleMonsterSpriteExtract(opts: {
     for (const frame of clip.frames) {
       const size = readPngSize(frame);
       if (!size) return fail("PNG 无法读取宽高");
+      if (size.width > MAX_CANVAS_DIMENSION || size.height > MAX_CANVAS_DIMENSION) {
+        return fail(`PNG 画布不能超过 ${MAX_CANVAS_DIMENSION}×${MAX_CANVAS_DIMENSION}`);
+      }
       if (!canvas) canvas = size;
       else if (size.width !== canvas.width || size.height !== canvas.height) return fail("所有帧必须同一画布尺寸");
     }

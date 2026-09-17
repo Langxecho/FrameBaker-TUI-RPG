@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createStoreZip } from "../apps/server/src/mediaPlugins/zipArchive";
-import { sha256Hex } from "../apps/server/src/monsterExtractZip";
+import { buildMonsterExtractSidecar, sha256Hex } from "../apps/server/src/monsterExtractZip";
 import {
   A1_FOLDER_PRESET,
   assembleMonsterSpriteExtract,
@@ -18,6 +18,13 @@ const PNG_1X1 = Buffer.from(
   "89504E470D0A1A0A0000000D49484452000000010000000108060000001F15C4890000000A49444154789C63000100000500010D0A2DB40000000049454E44AE426082",
   "hex",
 );
+
+function pngWithSize(width: number, height: number): Buffer {
+  const png = Buffer.from(PNG_8X4);
+  png.writeUInt32BE(width, 16);
+  png.writeUInt32BE(height, 20);
+  return png;
+}
 
 function a1Spec() {
   return {
@@ -133,6 +140,60 @@ describe("怪物 PNG/ZIP → R1-A", () => {
       },
     });
     expect(slip.ok).toBe(false);
+  });
+
+  test("规范化 actionId 碰撞、超出 R1 动作/帧限制和超大画布均拒绝", () => {
+    const collision = parseMonsterSpriteImportSpec({
+      ...a1Spec(),
+      actions: [
+        { folder: "idle", actionId: "a b", displayName: "A", loopMode: "loop" },
+        { folder: "attack", actionId: "a-b", displayName: "B", loopMode: "once" },
+      ],
+    });
+    expect(collision.ok).toBe(false);
+    if (!collision.ok) expect(collision.error).toContain("规范化后重复");
+
+    const tooManyActions = parseMonsterSpriteImportSpec({
+      ...a1Spec(),
+      actions: Array.from({ length: 65 }, (_, i) => ({
+        folder: `action-${i}`,
+        actionId: `action-${i}`,
+        displayName: `动作 ${i}`,
+        loopMode: "once",
+      })),
+    });
+    expect(tooManyActions.ok).toBe(false);
+    if (!tooManyActions.ok) expect(tooManyActions.error).toContain("64");
+
+    const tooManyFrames = assembleMonsterSpriteExtract({
+      pngs: Array.from({ length: 3601 }, (_, i) => ({ relativePath: `idle/frame-${i + 1}.png`, bytes: PNG_8X4 })),
+      spec: {
+        ...a1Spec(),
+        actions: [{ folder: "idle", actionId: "monster-01-idle", displayName: "待机", loopMode: "loop" }],
+      },
+    });
+    expect(tooManyFrames.ok).toBe(false);
+    if (!tooManyFrames.ok) expect(tooManyFrames.error).toContain("3600");
+
+    const oversizedCanvas = assembleMonsterSpriteExtract({
+      pngs: [{ relativePath: "idle/frame-1.png", bytes: pngWithSize(2049, 4) }],
+      spec: {
+        ...a1Spec(),
+        actions: [{ folder: "idle", actionId: "monster-01-idle", displayName: "待机", loopMode: "loop" }],
+      },
+    });
+    expect(oversizedCanvas.ok).toBe(false);
+    if (!oversizedCanvas.ok) expect(oversizedCanvas.error).toContain("2048");
+
+    expect(() => buildMonsterExtractSidecar({
+      displayName: "oversized",
+      projectId: "p1",
+      exportId: "e1",
+      toolVersion: "0.4.0",
+      exportedAt: "2026-09-17T00:00:00Z",
+      canvas: { width: 2049, height: 4 },
+      clips: [],
+    })).toThrow(RangeError);
   });
 
   test("A1 预设五文件夹可打成 sidecar.zip 条目", async () => {
