@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { buildA1DroneFb02Fixture } from "../scripts/generate_a1_drone_fb02_fixture";
+import { join } from "node:path";
+import { buildA1DroneFb02Fixture, resolveA1DroneSourceRoot } from "../scripts/generate_a1_drone_fb02_fixture";
 import { assembleMonsterSpriteExtract, parseMonsterSpriteImportSpec } from "../apps/server/src/monsterSpriteImport";
 
 const SPEC_PATH = "mission/fixtures/fb-02/a1-drone-r1-import-spec.json";
@@ -33,7 +34,7 @@ describe("FB-02 real A1 Drone presentation fixture", () => {
     const result = assembleMonsterSpriteExtract({
       pngs: [{
         relativePath: "attack/54.png",
-        bytes: new Uint8Array(readFileSync("F:/CodeProject/tui-rpg-terminal-engine/liaf-preview/fixtures/packages/A1Drone.monster/assets/attack/54.png")),
+        bytes: new Uint8Array(readFileSync(join(resolveA1DroneSourceRoot(), "assets/attack/54.png"))),
       }],
       spec: parsed.spec,
     });
