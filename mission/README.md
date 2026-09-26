@@ -8,6 +8,9 @@
 先执行 FB-00。无需等待客户端 UI 完成即可审计导出路径和准备样例。
 AI 角色制作的 FrameBaker 独立任务卡见 [LIAF-AIC rev D1](ai-character-pipeline.md)（接口提案，尚未实现）。
 
+正式 Demo 首只小怪的实际逐帧交付见 [废铁爬行者源包](../tests/fixtures/demo-scrapling/README.md)。
+已归档 R1-A ZIP 和重建命令；不是骨骼包，也不表示完整 Demo 或真实终端验收完成。
+
 ## 所有权
 
 负责怪物逐帧、角色骨骼、装备/武器与特效素材制作及目标运行时导出。
