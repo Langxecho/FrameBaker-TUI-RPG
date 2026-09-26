@@ -4,7 +4,7 @@ This directory contains the reproducible delivery for FB-02. It deliberately doe
 
 ## Source and measurement
 
-The source is the existing package-direct fixture at `F:\CodeProject\tui-rpg-terminal-engine\liaf-preview\fixtures\packages\A1Drone.monster`. It has five actions, 107 PNG frames per action, a 160x160 canvas, and a 24 Hz sample rate. The source `content.json` SHA-256 is `1a9dcdb14337a4da3f7fce5dc7281bf65644a01ca0efb3e0f56f799a223e1ac0`.
+The source is the existing package-direct fixture `A1Drone.monster` (535 PNG + 4 JSON). Default lookup tries `D:/code/tui-rpg-terminal-engine/liaf-preview/fixtures/packages/A1Drone.monster` then `F:/CodeProject/tui-rpg-terminal-engine/liaf-preview/fixtures/packages/A1Drone.monster`; override with `A1_DRONE_SOURCE_ROOT`. A sparse Git checkout that only has JSON is not the source of record. It has five actions, 107 PNG frames per action, a 160x160 canvas, and a 24 Hz sample rate. The source `content.json` SHA-256 is `1a9dcdb14337a4da3f7fce5dc7281bf65644a01ca0efb3e0f56f799a223e1ac0`.
 
 Coordinates use the R1-A top-left pixel coordinate system. `attack/54.png` was inspected at native 160x160 pixels: the red flash centroid is about `(11.6, 93.9)`, recorded as integer `muzzle=(12,94)` with `180` degrees (left). `electric_loop/54.png` has the matching nozzle centre at `(29,94)`. `hit_received/54.png` places the stable hull impact reference at `(80,95)`. Source frame 54 is the 55th exported frame; at 24 Hz its start is `2268 ms`, so both presentation markers use that time. These are presentation locations only: there are no targets, hitboxes, damage, or combat fields.
 

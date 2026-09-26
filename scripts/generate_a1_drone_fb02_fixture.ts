@@ -7,8 +7,22 @@ import { assembleMonsterSpriteExtractFromZip, attachMonsterExtractSidecarFiles, 
 const SOURCE_CONTENT_SHA256 = "1a9dcdb14337a4da3f7fce5dc7281bf65644a01ca0efb3e0f56f799a223e1ac0";
 const FIXED_EXPORTED_AT = "2026-09-17T00:00:00.000Z";
 const FIXED_EXPORT_ID = "a1-drone-fb02-r1-a";
-const sourceRoot = process.env.A1_DRONE_SOURCE_ROOT ?? "F:/CodeProject/tui-rpg-terminal-engine/liaf-preview/fixtures/packages/A1Drone.monster";
 const specPath = join(import.meta.dir, "../mission/fixtures/fb-02/a1-drone-r1-import-spec.json");
+
+const A1_SOURCE_CANDIDATES = [
+  "D:/code/tui-rpg-terminal-engine/liaf-preview/fixtures/packages/A1Drone.monster",
+  "F:/CodeProject/tui-rpg-terminal-engine/liaf-preview/fixtures/packages/A1Drone.monster",
+];
+
+export function resolveA1DroneSourceRoot(): string {
+  if (process.env.A1_DRONE_SOURCE_ROOT) return process.env.A1_DRONE_SOURCE_ROOT;
+  for (const candidate of A1_SOURCE_CANDIDATES) {
+    if (existsSync(join(candidate, "content.json"))) return candidate;
+  }
+  return A1_SOURCE_CANDIDATES[0]!;
+}
+
+const sourceRoot = resolveA1DroneSourceRoot();
 
 export type A1DroneFixture = { bytes: Uint8Array; files: Record<string, Uint8Array>; sha256: string };
 

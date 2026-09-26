@@ -12,7 +12,7 @@ equipment.ts、actionComposition.ts、frameGeometry.ts 及实际 UI 入口。
 交付：mission/FB-00 审计报告；“制作可表达 → 当前导出保留 → 客户端可消费”
 逐项矩阵。指出 PNG ZIP 缺失语义、v2/v3 入口差异、warp/mesh/附件偏移限制，
 用真实工程与导出包复现，不仅引用设计文档。
-提出素材最小 schema 增量、时间/坐标/标记方案、标准 Gunner 身份和烘焙代价。
+提出素材最小 schema 增量、时间/坐标/标记方案、正式职业身份提案和烘焙代价（Gunner 仅测试夹具）。
 验收：Q-01/02/06/07 有明确提案，C-00 能复核消费者结果。
 
 ## FB-01 面向 LIAF 的逐帧素材交付
@@ -37,18 +37,19 @@ equipment.ts、actionComposition.ts、frameGeometry.ts 及实际 UI 入口。
 验收：C-03 使用实际交付物完成 G1；挂点、裁剪、透明度与方向正确。
 UI 按仓库 i18n/notice 规则；错误定位到具体动作/挂点，允许保存未完工程。
 
-## FB-03 Gunner 目标运行时导出
+## FB-03 首个正式职业运行时导出（待产品定义）
 
-依赖：G2；Q-01/06 的骨骼/装备合同冻结。
-明确“导出到终端 RPG”入口，贯通标准 Gunner rig、BodyProfile、
-rifle_two_hand、hold/aim/fire/recoil、muzzle 和一个装备关联效果。
+依赖：G2；**Q-06 冻结首个正式职业**的骨骼/装备/动作身份。Gunner 是历史废案，
+只可作为测试夹具，不是本任务的产品对象；Q-07/A1 通过不自动冻结 Q-06。
+Q-06 到位后，明确“导出到终端 RPG”入口，贯通该正式职业的标准 rig、
+BodyProfile、适配装备、武器动作覆盖、muzzle 和一个装备关联效果。
 核对普通 v2 导出、v3 发布、材质加载的真实工程路径；
 仅实现确认可支持的转换，不能静默丢掉装备/事件/约束。
 必需 warp/mesh 能力不支持时明确阻断或采用显式批准的烘焙模式，
 说明动态换装等损失，不把整角色帧图当成完整骨骼兼容。
 交付：可编辑来源工程、确定性 runtime 包、能力声明、
-与客户端同步的 canonical fixtures 及双手持握采样参考。
-验收：不是只让 minimal-region fixture 通过；
+与客户端同步的 canonical fixtures 及持握采样参考。
+验收：不是只让 minimal-region 或 Gunner fixture 通过；
 C-05 读取真实工程导出物，B-05 场景完成 G3。
 
 ## FB-04 一把传说武器专属动画与技能素材

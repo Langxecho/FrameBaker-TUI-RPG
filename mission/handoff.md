@@ -2,8 +2,8 @@
 
 负责人：FrameBaker 组员。
 初始化读取基线：shy / 6a055621a2b4239bb4fc9e4b42902d8bc75b001b。
-当前工作区：shy（FB-01 按规范源 `138c0d2` 实现 R1-A sidecar/frames）。
-契约：LIAF-PIPELINE **R1 仅冻结边界 A 怪物逐帧子合同**。ZIP 不得改名为 `.monster`。loopMode 仅 `once`/`loop`/`hold`。骨骼发布仍只接受 `.fbanim` v3。Q-03/Q-05/Q-07 不阻塞本项。
+当前工作区：shy（R1-A sidecar/frames 已实现；Q-07 attempt-11 已 pass/finalized，不冻结 Q-06）。
+契约：LIAF-PIPELINE **R4**。ZIP 不得改名为 `.monster`。loopMode 仅 `once`/`loop`/`hold`。骨骼发布仍只接受 `.fbanim` v3。Gunner 仅为测试夹具。FB-03 等 Q-06 定义首个正式职业后再启动，不得按 Gunner 继续开发。
 已有功能不自动算新流水线任务完成，接手先核对最新 branch/HEAD/status。
 
 ## 本组任务状态
@@ -11,10 +11,10 @@
 | 任务 | 状态 | 开始条件/下一步 | 证据 |
 | --- | --- | --- | --- |
 | FB-00 | 待联合验收 | 总体负责人已正式接收（`d71b735`）。待 C-00 用真实 `.monster` loader、`durationMs`、动作 ID、逐帧 anchor/marker、`.fbanim v3` 复核后对表冻 R1 | `mission/FB-00.md`；`778566f` / `9298add` / `83f1f18` |
-| FB-01 | 进行中 | **可开始 / 实现中。** 输出 R1-A `sidecar.json` + `frames/{actionId}/*.png`；C-01 再转 `.monster` | 规范源 `138c0d2`；本仓 `mission/fixtures/g0/` |
-| FB-02 | 待联合验收 | R1-A 导入可编辑/校验表现 anchors 与 markers；待 C-02/C-03 用真实重导出包验证表现编排 | `mission/FB-02.md`；本次提交 |
-| FB-03 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
-| FB-04 | 待开始 | 按 tasks.md 的契约及任务依赖推进 | 未执行 |
+| FB-01 | 待联合验收 | R1-A `sidecar.json` + `frames/{actionId}/*.png` 已实现；C-01 再转 `.monster`。A1 源包为 535 PNG + 4 JSON，不因本机稀疏检出写成“只有 JSON” | 规范源 `138c0d2`；`mission/fixtures/g0/` |
+| FB-02 | 待联合验收 | R1-A 导入可编辑/校验表现 anchors 与 markers；待 C-02/C-03 用真实重导出包验证表现编排 | `mission/FB-02.md` |
+| FB-03 | 待开始 | **受阻于 Q-06。** 任务已重定义为“首个正式职业导出”，待产品定义；**不得**按历史 Gunner 工程开工 | 未执行；见 2026-09-21 记录 |
+| FB-04 | 待开始 | 依赖 G3 与已定义的正式职业闭包，不是 Gunner 传说武器增量 | 未执行 |
 
 状态使用：待开始、进行中、受阻、待联合验收、已验收。
 受阻必须写明缺少哪个任务/契约、由谁提供，以及本组仍可开展的工作。
@@ -155,3 +155,17 @@ Fixture/测试代码属于正式可审查交付；大日志和临时运行产物
 - 性能：不适用；没有重新生成或变换 PNG，只进行打包。
 - 已知问题、对下游影响与建议下一步：固定 anchors 复制到每一帧；若消费者需要移动点位，可用既有 `frameAnchors`。不添加 combat hitbox、目标、伤害或机制。
 - 需要总体负责人决定的事项：无新增；维持待联合验收。
+
+- 任务 ID / 状态 / 实际执行人：handoff 纠偏（非产品实现）/ 进行中停于 Q-06 / FrameBaker shy 组员
+- 代码 branch、commit；若有影响结果的未提交修改，明确列出：`shy`（本提交：handoff/FB-03 重定义、拆帧映射缺项拒绝、A1 源路径 `D:\`/`F:\` 候选）；无额外未纳入修改
+- 使用的契约修订及规范源 commit/hash：LIAF-PIPELINE R4；Q-06 仍未冻结
+- 本次解决的问题与最终行为：按总监更正停止“等 Gunner 再开发”。登记 Q-07 attempt-11 `measurement report = pass`、`runner receipt = finalized`；关闭把 A1 源写成“仅 JSON、无 PNG”以及把 Q-07 未测当成拒开 FB-03 的误判。attempt-11 不冻结 Q-06，也不把三仓 G2 标成全部联合验收完成。
+- 改动路径、可审查 diff 或 PR：`mission/handoff.md`、`mission/tasks.md`
+- 生产者输入：总监 2026-09-21 说明；客户端 `A1Drone.monster` 实际 535 PNG + 4 JSON；attempt-11 正式缓存亦含 535 资源文件，共 12,159,593 bytes
+- 给消费者的输出：FB-03/C-05/B-05 对齐为“首个正式职业，待产品定义”；Gunner/rifle 继续只作测试夹具
+- 测试：未因本文档重跑产品测试
+- 联合验收：未把 G1/G2/Q-06 改成已验收
+- 人工观察：未把本机稀疏检出的 JSON-only 树当作源包事实
+- 性能：Q-07 方法合同仍为 R4 冻结文本；attempt-11 实测由客户端 runner 收口，本仓不复述阈值数字、不自标 G1 通过
+- 已知问题、对下游影响与建议下一步：Q-06 仍是首个正式职业的 rig/装备/动作身份合同，与 A1 怪物链路、Q-07 验收不是同一件事。FB-03 在 Q-06 冻结前不发明职业导出契约。可继续的本组工作：R1-A 导入加固与真实拆帧包联合验收，不启动 Gunner 导出。
+- 需要总体负责人决定的事项：冻结 Q-06（首个正式职业，不是 Gunner）；总监控账是否把三仓 G2 标联合验收

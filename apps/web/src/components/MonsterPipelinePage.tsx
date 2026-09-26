@@ -379,9 +379,13 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
       return;
     }
     let invalidPresentation = false;
+    const skippedFolders: string[] = [];
     const actions = importFolders.flatMap((folder) => {
       const row = importMap[folder];
-      if (!row?.actionId || (row.loopMode !== "once" && row.loopMode !== "loop" && row.loopMode !== "hold")) return [];
+      if (!row?.actionId || (row.loopMode !== "once" && row.loopMode !== "loop" && row.loopMode !== "hold")) {
+        skippedFolders.push(folder);
+        return [];
+      }
       const presentation = importPresentationMap[folder] ?? EMPTY_IMPORT_PRESENTATION;
       const numeric = (value: string) => (value.trim() === "" ? null : Number(value));
       const muzzleX = numeric(presentation.muzzleX);
@@ -426,7 +430,12 @@ export default function MonsterPipelinePage({ onOpenMaterials }: Props) {
         ...(markers.length ? { markers } : {}),
       }];
     });
-    if (invalidPresentation || !actions.length) {
+    if (invalidPresentation) return;
+    if (skippedFolders.length) {
+      notify(t("monster.import.needAllFolders", { folders: skippedFolders.join("、") }));
+      return;
+    }
+    if (!actions.length) {
       notify(t("monster.import.needMap"));
       return;
     }
