@@ -1,0 +1,58 @@
+{
+  "plugin_id": "my_vendor_t2v",
+  "name": "My Vendor T2V",
+  "version": "1.0.0",
+  "kind": "video_api",
+  "capabilities": ["t2v", "i2v"],
+  "entry": {
+    "type": "python",
+    "module": "provider",
+    "function": "generate"
+  },
+  "secrets": {
+    "api_key": {
+      "label": "API Key",
+      "required": true,
+      "secret": true,
+      "value": ""
+    },
+    "base_url": {
+      "label": "API Base URL",
+      "required": true,
+      "secret": false,
+      "value": "https://api.example.com/v1/videos/generations"
+    }
+  },
+  "params_schema": {
+    "model": {
+      "type": "string",
+      "default": "video-model",
+      "label": "模型名"
+    },
+    "ratio": {
+      "type": "string",
+      "default": "16:9",
+      "label": "画幅比例",
+      "enum": ["16:9", "9:16", "1:1"]
+    },
+    "resolution": {
+      "type": "string",
+      "default": "720p",
+      "label": "分辨率",
+      "enum": ["480p", "720p", "1080p"]
+    },
+    "extra": {
+      "type": "json",
+      "default": {},
+      "label": "额外请求字段"
+    }
+  },
+  "constraints": {
+    "max_reference_images": 1,
+    "min_duration_seconds": 1,
+    "max_duration_seconds": 10,
+    "output_extensions": [".mp4"],
+    "supports_text2video": true,
+    "supports_image2video": true
+  }
+}

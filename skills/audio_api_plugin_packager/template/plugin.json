@@ -1,0 +1,54 @@
+{
+  "plugin_id": "my_vendor_t2a",
+  "name": "My Vendor T2A",
+  "version": "1.0.0",
+  "kind": "audio_api",
+  "capabilities": ["t2a", "i2a", "a2a"],
+  "entry": {
+    "type": "python",
+    "module": "provider",
+    "function": "generate"
+  },
+  "secrets": {
+    "api_key": {
+      "label": "API Key",
+      "required": true,
+      "secret": true,
+      "value": ""
+    },
+    "base_url": {
+      "label": "API Base URL",
+      "required": true,
+      "secret": false,
+      "value": "https://api.example.com/v1/audio/generations"
+    }
+  },
+  "params_schema": {
+    "model": {
+      "type": "string",
+      "default": "audio-model",
+      "label": "模型名"
+    },
+    "format": {
+      "type": "string",
+      "default": "mp3",
+      "label": "输出格式",
+      "enum": ["mp3", "wav", "flac", "ogg", "m4a"]
+    },
+    "extra": {
+      "type": "json",
+      "default": {},
+      "label": "额外请求字段"
+    }
+  },
+  "constraints": {
+    "max_reference_images": 1,
+    "max_reference_audios": 1,
+    "min_duration_seconds": 1,
+    "max_duration_seconds": 30,
+    "output_extensions": [".mp3", ".wav"],
+    "supports_text2audio": true,
+    "supports_image2audio": true,
+    "supports_audio2audio": true
+  }
+}

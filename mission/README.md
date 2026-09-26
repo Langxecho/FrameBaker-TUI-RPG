@@ -6,6 +6,7 @@
 阅读 [共享契约](contracts.md) → [素材编辑器任务](tasks.md) → [状态与交接](handoff.md)。
 总体路线由后端仓库 挂机game/mission/program.md 维护。
 先执行 FB-00。无需等待客户端 UI 完成即可审计导出路径和准备样例。
+AI 角色制作的 FrameBaker 独立任务卡见 [LIAF-AIC rev D1](ai-character-pipeline.md)（接口提案，尚未实现）。
 
 ## 所有权
 

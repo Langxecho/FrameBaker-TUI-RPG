@@ -1,0 +1,85 @@
+{
+  "plugin_id": "my_vendor_t2i",
+  "name": "My Vendor T2I",
+  "version": "1.0.0",
+  "kind": "image_api",
+  "capabilities": ["t2i", "i2i"],
+  "entry": {
+    "type": "python",
+    "module": "provider",
+    "function": "generate"
+  },
+  "secrets": {
+    "api_key": {
+      "label": "API Key",
+      "required": true,
+      "secret": true,
+      "value": ""
+    },
+    "base_url": {
+      "label": "API Base URL",
+      "required": true,
+      "secret": false,
+      "value": "https://api.example.com/v1/images/generations"
+    }
+  },
+  "params_schema": {
+    "timeout": {
+      "type": "integer",
+      "default": 120,
+      "label": "HTTP 超时(秒)"
+    },
+    "conversation_id": {
+      "type": "string",
+      "default": "",
+      "label": "会话 / Conversation ID"
+    },
+    "mode": {
+      "type": "string",
+      "default": "text_to_image",
+      "label": "生成模式"
+    },
+    "media_type": {
+      "type": "string",
+      "default": "image",
+      "label": "媒体类型"
+    },
+    "model": {
+      "type": "string",
+      "default": "self-t2i",
+      "label": "模型名"
+    },
+    "ratio": {
+      "type": "string",
+      "default": "1:1",
+      "label": "画幅比例",
+      "enum": ["1:1", "3:4", "4:3", "9:16", "16:9"]
+    },
+    "resolution": {
+      "type": "string",
+      "default": "SD",
+      "label": "分辨率",
+      "enum": ["SD", "HD", "2K", "4K"]
+    },
+    "count": {
+      "type": "integer",
+      "default": 1,
+      "label": "张数"
+    },
+    "with_watermark": {
+      "type": "boolean",
+      "default": true,
+      "label": "水印"
+    },
+    "images": {
+      "type": "json",
+      "default": [],
+      "label": "默认参考图 URL 列表（无任务图时使用）"
+    }
+  },
+  "constraints": {
+    "max_reference_images": 4,
+    "supports_text2image": true,
+    "supports_image2image": true
+  }
+}
