@@ -1,7 +1,7 @@
 import * as z from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { db } from "../../db";
-import { cancelJob } from "../../queue";
+import { cancelJob, recoverKnownMediaPluginJob } from "../../queue";
 import { ok, err } from "../helpers";
 
 export function register(server: McpServer) {
@@ -15,7 +15,7 @@ export function register(server: McpServer) {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
     async () => {
-      const jobs = db.query("SELECT * FROM jobs ORDER BY created_at DESC LIMIT 50").all();
+      const jobs = db.query("SELECT id,project_id,type,status,progress,error,created_at,updated_at,run_attempt,execution_phase FROM jobs ORDER BY created_at DESC LIMIT 50").all();
       return ok({ jobs });
     }
   );
@@ -31,7 +31,7 @@ export function register(server: McpServer) {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
     async ({ jobId }) => {
-      const job = db.query("SELECT * FROM jobs WHERE id = ?").get(jobId);
+      const job = db.query("SELECT id,project_id,type,status,progress,error,created_at,updated_at,run_attempt,execution_phase FROM jobs WHERE id = ?").get(jobId);
       if (!job) return err("任务不存在");
       return ok({ job });
     }
@@ -58,6 +58,24 @@ export function register(server: McpServer) {
       }
       if (!cancelJob(jobId)) return err("取消失败");
       return ok({ ok: true });
+    }
+  );
+
+  server.registerTool(
+    "recover_known_media_job",
+    {
+      title: "Recover Known Media Job",
+      description:
+        "Requeue the same failed media-plugin job only when its persisted Comfy journal proves a known submitted or completed prompt. This never creates a new job or submits a new prompt. The installed plugin must support FrameBaker's Comfy journal recovery protocol, and the media Python runtime must be available.",
+      inputSchema: z.object({
+        jobId: z.string().uuid().describe("UUID of the failed media-plugin job to reconcile"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ jobId }) => {
+      const result = recoverKnownMediaPluginJob(jobId);
+      if (!result.ok) return err(JSON.stringify({ code: result.code, message: result.message, status: result.status }));
+      return ok(result);
     }
   );
 }

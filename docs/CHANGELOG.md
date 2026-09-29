@@ -6,13 +6,17 @@ This document records features, changes, and bug fixes by release. Main releases
 
 ### Added
 
+- Added an offline, read-only monster-frame alpha audit for R1-A, `.monster`, and raw action-frame ZIPs, with an opt-in transparency gate; it does not change package admission.
+
+- Persisted job inputs, idempotency keys, run ownership, renewable leases, and restart recovery in SQLite. Unknown external submissions now fail closed; converted Comfy jobs resume only by reconciling a known prompt ID, never by blindly posting the prompt again.
+
 - Monster pipeline packs extracted frames as `frames/{actionId}/*.png` plus R1-A `sidecar.json` (`framebaker.monster-sprite-extract`, not a `.monster` package). `loopMode` is `once` / `loop` / `hold` only.
 - The Monster tab can pack an existing PNG-folder zip into that same R1-A archive. Mapping requires an explicit `loopMode` (no `electric_loop`→special heuristic), facing, origin, 24 Hz, natural filename order, and one shared canvas.
 
 - Motion editing can import a video/GIF/still as a reference skin under or over the character (neither blocks posing); video can follow the clip timeline. Session-only, not saved into the action package.
 - Skeleton editing can drag joints and bones on the character canvas with Move/Rotate/Scale, not only numeric inspector fields.
 - Wrapped the MiniMax H3 T8 ComfyUI `.cfp` image-to-video workflow as a FrameBaker `.vap` (`minimax-h3-t8-i2v`), with I2VA prompt help on `/generate` and a project Cursor skill at `.cursor/skills/h3-prompt-writing`.
-- Added an independent media plugin system for `.iap` / `.vap` / `.aap` packages parallel to `GenProvider`: Zip Slip-safe install under `storage/media-plugins`, trusted-code UI warning, secrets/params settings, `/generate` three-tab center, unified image/video/audio materials, async queue jobs with cancel that kills the Python child and cleans `storage/media-plugin-runs`, `.venv-media` setup scripts (`scripts/setup_media.sh` / `setup_media.ps1`, base dep `requests` only), optional `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`, and MCP query/generate tools only (`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`; material IDs only — no install/delete/secrets/local paths).
+- Added an independent media plugin system for `.iap` / `.vap` / `.aap` packages parallel to `GenProvider`: Zip Slip-safe install under `storage/media-plugins`, trusted-code UI warning, secrets/params settings, `/generate` three-tab center, unified image/video/audio materials, async queue jobs with cancel that kills the Python child and cleans `storage/media-plugin-runs`, `.venv-media` setup scripts (`scripts/setup_media.sh` / `setup_media.ps1`, base deps `requests` and `pillow`; plugin-declared deps are not auto-installed), optional `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`, and MCP query/generate tools only (`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`; material IDs only — no install/delete/secrets/local paths).
 - Equipment try-on and weapon preview now composite assembled loadouts onto the character: attached/replacement gear is visible on socket bones, dual-wield pistols occupy both hands, and two-hand weapons keep a single primary-hand visual. Missing attachment images fall back to a themed placeholder rectangle. New body profiles seed standard head/chest/hand slots and weapon sockets from the current skeleton.
 - Weapon configuration can pick a weapon image from the material library, and save is blocked until a real material is selected so placeholder attachment IDs are not persisted.
 - Weapon appearance now exposes the same layer offset as equipment try-on (0 covers the hand, -1 tucks under it).
@@ -25,7 +29,7 @@ This document records features, changes, and bug fixes by release. Main releases
 - Monster I2VA no longer uploads the 256 transparent PNG to the video plugin; it sends an RGB JPEG of the idle still and retries Comfy upload 502/503/504.
 - Material downloads with non-ASCII names use RFC 5987 `filename*` and fetch-to-blob, so Chrome no longer fails zip downloads with “contact your organization”.
 - Skeleton editing now uses the same left-canvas / right-inspector split as material binding, so the toolbar no longer becomes an empty column and numeric fields stay scrollable instead of clipped.
-- Step 5 now shows a copyable motion clip ID bar, with a copy button on each action in the left list, so it is not confused with the game action name or the weapon stance profile ID.
+- Step 5 now exposes a copyable package action ID for equipment action-override targets; motion clip IDs remain available only for track editing and debugging. Equipment and weapon previews resolve the selected base action through that action-ID override and show a diagnostic if its target action or motion clip is missing.
 - Semantic event markers show the event type (for example `footstep.left`) instead of a leftover default name `fire`, and inserting a non-fire type no longer keeps the name `fire`.
 - Equipment attachments now stay visible on the canvas while editing (no try-on required), can be clicked to show the body-part transform box, and ignore orange bone dots so drag/rotate/scale handles can appear.
 - New weapons now prompt for a material-library image instead of failing on save with a missing attachment material.

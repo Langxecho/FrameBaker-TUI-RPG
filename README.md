@@ -77,7 +77,7 @@ Scene layering reconstructs a flat image as independently editable, hideable, an
 - **Cassette Futurism themes** — dark "Magnetic Night" / light "Beige Terminal"; follows system preference until you pick one (tri-state toggle)
 - **Live sync** — WebSocket broadcasts for job progress and frame/material changes
 - **Adjustable layout** — drag the split dividers to resize the frame list and timeline (persisted)
-- **MCP server** — built-in [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`POST /mcp`, Streamable HTTP) exposing 54 tools for AI assistants (Claude Desktop, Cursor, Windsurf) to manage projects, frames, materials, generation, matting, jobs, and settings programmatically
+- **MCP server** — built-in [Model Context Protocol](https://modelcontextprotocol.io) endpoint (`POST /mcp`, Streamable HTTP) exposing 61 tools (verified via `tools/list`) for AI assistants (Claude Desktop, Cursor, Windsurf) to manage projects, frames, materials, generation, matting, jobs, and settings programmatically
 
 ## System Requirements
 
@@ -134,7 +134,7 @@ bun start        # production
   # Windows (PowerShell):
   powershell -ExecutionPolicy Bypass -File scripts\setup_media.ps1
   ```
-  Creates `.venv-media/` and installs only the base runtime dependency (`requests`). Plugin-declared dependencies are **not** auto-installed in v1 — install them into `.venv-media` yourself if a plugin needs them. Skipping this leaves media plugins unrunnable (`PYTHON_RUNTIME_UNAVAILABLE` in config/doctor/jobs). Plugin archives are trusted executable Python; import only packages you trust (no OS-level sandbox).
+  Creates `.venv-media/` and installs the host-owned base runtime dependencies (`requests` and `pillow`). `pillow` supports the bounded skeletal material splitter. Plugin-declared dependencies are **not** auto-installed in v1 — install them into `.venv-media` yourself if a plugin needs them. Skipping this leaves media plugins unrunnable (`PYTHON_RUNTIME_UNAVAILABLE` in config/doctor/jobs). Plugin archives are trusted executable Python; import only packages you trust (no OS-level sandbox).
 - Type check: `bun run typecheck`
 - Unit tests: `bun run test`
 - Core unit-test coverage report: `bun run test:coverage` (currently covers shared rules, frame geometry, and ZIP export)
@@ -174,7 +174,7 @@ rembg runs as `rembg i -m <MODEL> input output`; the model defaults to `u2net` a
 
 Independent from `GenProvider`. Install once per environment when using `.iap` / `.vap` / `.aap` plugins:
 
-1. Run `scripts/setup_media.sh` or `scripts\setup_media.ps1` to create `<repo>/.venv-media` and install `requests`.
+1. Run `scripts/setup_media.sh` or `scripts\setup_media.ps1` to create `<repo>/.venv-media` and install the host-owned base dependencies `requests` and `pillow`.
 2. Import plugins in Settings → Media Plugins (trusted-code warning). Packages install under `storage/media-plugins/`.
 3. Generate from `/generate` or MCP `generate_with_media_plugin` (async jobs; cancel kills the Python child and cleans `storage/media-plugin-runs/`).
 
@@ -237,7 +237,9 @@ Start the server (`bun dev` or `bun start`), then configure your AI client:
 
 **Windsurf** (`~/.codeium/windsurf/mcp_config.json`): `{ "mcpServers": { "framebaker": { "serverUrl": "http://localhost:3000/mcp" } } }`
 
-The server exposes **48 tools** covering projects, frames, materials, generation, matting, folders, jobs, and system config. See [docs/api.md](docs/api.md) for the full tool list and examples.
+The server exposes **61 tools** (verified via MCP `tools/list`) covering projects, frames, materials, generation, matting, folders, jobs, AIC authoring, and system config. See [docs/api.md](docs/api.md) for the full tool list and examples.
+
+For the LIAF production workflow and AI character authoring, see the [LIAF development handbook (Chinese)](docs/liaf-development-handbook.md). It distinguishes local D1 acceptance from a formal class and production release.
 
 ## License
 

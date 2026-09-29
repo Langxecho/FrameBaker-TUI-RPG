@@ -29,11 +29,12 @@ export function register(server: McpServer) {
           kind: z.enum(["material", "frame"]),
           id: z.string(),
         })).max(10).describe("Ordered reference images; do not combine with legacy single-reference fields").optional(),
+        idempotencyKey: z.string().min(1).max(200).describe("Stable create-retry key").optional(),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
     async (args) => {
-      const { projectId, prompt, count, autoMatting, providerId, model, size, mediaKind, fps, referenceMaterialId, referenceFrameId, references } = args;
+      const { projectId, prompt, count, autoMatting, providerId, model, size, mediaKind, fps, referenceMaterialId, referenceFrameId, references, idempotencyKey } = args;
       const project = db.query("SELECT id FROM projects WHERE id = ?").get(projectId);
       if (!project) return err("项目不存在");
       const body = {
@@ -65,7 +66,7 @@ export function register(server: McpServer) {
         size,
         mediaKind,
         fps,
-      });
+      }, { idempotencyKey });
       return ok({ jobId: jobIds[0], jobIds });
     }
   );
@@ -93,11 +94,12 @@ export function register(server: McpServer) {
           id: z.string(),
         })).max(10).describe("Ordered reference images; do not combine with legacy single-reference fields").optional(),
         folderId: z.string().describe("Target folder UUID for generated materials").optional(),
+        idempotencyKey: z.string().min(1).max(200).describe("Stable create-retry key").optional(),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
     async (args) => {
-      const { prompt, count, autoMatting, name, providerId, model, size, mediaKind, fps, referenceMaterialId, referenceFrameId, references, folderId } = args;
+      const { prompt, count, autoMatting, name, providerId, model, size, mediaKind, fps, referenceMaterialId, referenceFrameId, references, folderId, idempotencyKey } = args;
       const body = {
         prompt,
         count: count ?? 1,
@@ -130,7 +132,7 @@ export function register(server: McpServer) {
         mediaKind,
         fps,
         folderId: body.folderId,
-      });
+      }, { idempotencyKey });
       return ok({ jobId: jobIds[0], jobIds });
     }
   );

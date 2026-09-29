@@ -21,6 +21,12 @@ const originalMattingModel = process.env.FRAMEBAKER_MATTING_MODEL;
 const testSettingKeys = ["genProviders", "matting", "imageLayers", "promptEnhancers"];
 let savedSettings: Array<{ key: string; value: string; updated_at: number }> = [];
 
+// Keep the CLI adapter test executable on both Windows and Unix runners.
+const testCli = process.platform === "win32"
+  ? { cliBin: process.env.ComSpec ?? "cmd.exe", cliPromptArg: "/c", cliOutputArg: "", cliExtraArgs: "" }
+  : { cliBin: "/usr/bin/true", cliPromptArg: "--prompt", cliOutputArg: "--output", cliExtraArgs: "--fast mode" };
+const testCliPrompt = process.platform === "win32" ? "exit 0" : "hero";
+
 function saveSetting(key: string, value: unknown) {
   db.query("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)").run(key, JSON.stringify(value), Date.now());
 }
@@ -320,23 +326,23 @@ describe("Provider 模型探测", () => {
 describe("生成适配器校验", () => {
   test("结构化 CLI 参数可执行，并保留 provider 元信息", async () => {
     saveSetting("genProviders", [{
-      id: "cli", name: "本地命令", type: "cli", cliBin: "/usr/bin/true", cliPromptArg: "--prompt", cliOutputArg: "--output", cliModelArg: "--model", cliExtraArgs: "--fast mode",
+      id: "cli", name: "本地命令", type: "cli", ...testCli, cliModelArg: "--model",
     }]);
 
-    const adapter = createProviderAdapter({ prompt: "hero", providerId: "cli", model: "v1" }, () => {});
+    const adapter = createProviderAdapter({ prompt: testCliPrompt, providerId: "cli", model: "v1" }, () => {});
     expect(adapter).toMatchObject({ source: "cli", providerName: "本地命令", model: "v1" });
     await expect(adapter.produce("/tmp/unused.png", 3)).resolves.toBeUndefined();
   });
 
   test("两阶段角色生成会预检 CLI 引用图能力", () => {
     saveSetting("genProviders", [{
-      id: "cli", name: "无引用命令", type: "cli", cliBin: "/usr/bin/true", cliPromptArg: "--prompt", cliOutputArg: "--output",
+      id: "cli", name: "无引用命令", type: "cli", ...testCli,
     }]);
     expect(checkImageReferenceSupport("cli")).toContain("未配置引用图参数名");
     expect(() => createProviderAdapter({ prompt: "split", providerId: "cli", referencePaths: ["/tmp/reference.png"] }, () => {})).toThrow("无法自动拆分完整角色");
 
     saveSetting("genProviders", [{
-      id: "cli", name: "支持引用命令", type: "cli", cliBin: "/usr/bin/true", cliPromptArg: "--prompt", cliOutputArg: "--output", cliReferenceArg: "--reference",
+      id: "cli", name: "支持引用命令", type: "cli", ...testCli, cliReferenceArg: "--reference",
     }]);
     expect(checkImageReferenceSupport("cli")).toBeNull();
   });

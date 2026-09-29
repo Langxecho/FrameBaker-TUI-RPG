@@ -21,20 +21,19 @@
 - **素材库（Materials）**：素材一级模块——上传（单图/GIF/MP4 拆帧）/ CLI 生成 → 抠图（matting/unmatting）→ 原图/抠图对比滑杆 → 单个或批量导入项目；素材批量选择与批量删除；任务队列 extract/generate/matting 以 JobTarget 泛化同时服务项目帧与素材；项目导入面板「素材库」Tab 多选直导（主流程）
 - 编辑器布局：分隔条拖拽调整帧列表宽度（180–480）与时间轴高度（80–320），双击恢复默认，localStorage 持久化
 - README 双语（英文默认 + 中文 README.zh-CN.md）
-- 任务面板（JobPanel）：右侧常驻任务队列，WS `job_*` 事件驱动 + 轮询兜底；生成提交即关窗不阻塞；素材抠图统一走任务队列（不再同步挂起）；服务重启自动标记遗留任务中断
+- 任务面板（JobPanel）：右侧常驻任务队列，WS `job_*` 事件驱动 + 轮询兜底；生成提交即关窗不阻塞；素材抠图统一走任务队列；payload/幂等键/运行租约持久化到 SQLite，重启恢复绝不盲重提未知外部任务
 - 多宫格精灵图网格切分：素材详情按行×列（1–8）逐格切成独立素材（网格线预览、可选自动抠图），复用 imageops worker，原素材保留
 - 多动作生成：素材详情以当前素材为引用图，**按序追加连续帧**（可重复同一动作，如走路×4），一次生成连续动作拼图表（`buildActionSheetPrompt` 强调帧间连续性），再「网格切分」拆格
 - 素材搜索：项目导入弹窗素材库 Tab 按素材名 / prompt 本地过滤
 - AI 视频生成逐帧切割：生成弹窗「图片 / 视频」切换——CLI 产物按魔数检测自动拆帧（任何模式）、百炼（万相）与 MiniMax 视频 API 异步任务轮询 → mp4 → ffmpeg 按 fps 抽帧入库
 - 帧右键菜单：通用 `ContextMenu` 组件（视口边缘收拢、Esc/外点/滚动关闭）；帧列表/时间轴右键——单帧菜单（关键帧/时长 ±1/剪裁/复制/删除），多选内右键出批量菜单（复用 BatchBar handler）
 - **MCP 服务端**：内置 Model Context Protocol 端点（`POST /mcp`，Streamable HTTP + JSON-RPC 2.0，自动兼容 2025-era 和 2026-07-28 协议），51 个工具覆盖项目/帧/素材/生成/抠图/文件夹/任务/系统配置/媒体插件查询与生成（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`）；工具直接操作 db 与内部模块（零 HTTP 自调用开销）；兼容 Claude Desktop / Cursor / Windsurf 等 AI 客户端
-- **独立媒体插件**（`.iap` / `.vap` / `.aap`）：与 `GenProvider` 并行——Zip Slip 安全安装到 `storage/media-plugins`、可信代码 UI 警告、密钥/参数设置、`/generate` 三标签生成中心、统一图/视/音素材、异步队列任务（取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs`）、`.venv-media` 由 `scripts/setup_media.sh` / `setup_media.ps1` 安装（基础依赖仅 `requests`）、可选 `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`，MCP 仅查询/生成（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`；只接受素材 ID）
+- **独立媒体插件**（`.iap` / `.vap` / `.aap`）：与 `GenProvider` 并行——Zip Slip 安全安装到 `storage/media-plugins`、可信代码 UI 警告、密钥/参数设置、`/generate` 三标签生成中心、统一图/视/音素材、异步队列任务（取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs`）、`.venv-media` 由 `scripts/setup_media.sh` / `setup_media.ps1` 安装（宿主基础依赖为 `requests` 与 `pillow`；`pillow` 用于有界的骨骼素材分件器）、可选 `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`，MCP 仅查询/生成（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`；只接受素材 ID）
 
 ## M2 — 候选（按优先级排序）
 
 | 优先级 | 事项 | 说明 / 来源 |
 | --- | --- | --- |
-| P0 | 任务队列持久化 | 现状：队列与负载在内存，重启后 queued/running 任务丢失。方案：启动时扫描 jobs 表恢复，或将负载序列化进 jobs 表 |
 | P1 | 非 PNG 单图转换 | 现状：单图导入按字节直接落盘为 .png 命名。方案：非 PNG 时过一道 `ffmpeg -i in out.png` |
 | P1 | 导出精灵帧 trim | 裁掉透明边缘，JSON 记录 sourceSize/offset，减小体积 |
 | P1 | 旋转/缩放/透明度编辑 UI | 字段与 PATCH 已就绪，画布工具栏只暴露了 offset 拖拽 |

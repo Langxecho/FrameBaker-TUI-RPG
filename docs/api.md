@@ -312,11 +312,17 @@ Copies material as unassigned project frame(s) into the left-side frame pool. Im
 }
 ```
 
-`status`: `queued` / `running` / `done` / `error` / `cancelled`. Job payloads are in memory; on server restart, orphaned `queued` / `running` jobs are marked as `error` ("server restarted, job interrupted").
+`status`: `queued` / `running` / `done` / `error` / `cancelled`. Job payloads and leases are persisted. Restart recovery requeues safe local/queued work, but external generation is never blindly resubmitted. Media jobs with a supported known Comfy journal can be explicitly reconciled with the recovery endpoint below.
 
 ### POST /api/jobs/:id/cancel
 
 Cancels a queued or running job → `{ "ok": true }`. `queued` immediately dequeued and marked `cancelled`; `running` triggers AbortSignal (kills `runCmd` subprocess / interrupts API polling). Already-finished status returns 409. Broadcasts `job_cancelled`.
+
+### POST /api/jobs/:id/recover
+
+Explicitly reconciles the **same** failed media-plugin job from a persisted known Comfy journal. It never creates a new job or submits a new remote prompt. The endpoint accepts only a journal with either `submitted + promptId` or `completed + promptId + output.filename`, requires the installed plugin to support FrameBaker's Comfy journal recovery protocol, validates the persisted payload/type, and checks that the media Python runtime is available before changing the job row.
+
+Success returns `{ "ok": true, "jobId": "…", "phase": "reconcile_known" | "reconcile_completed", "promptId": "…" }`. Missing jobs return 404. Active/terminal jobs, invalid payloads or journals, and unsupported plugins return 409. Missing Python returns 503 and leaves the job unchanged.
 
 ## Folders /api/folders
 
@@ -424,6 +430,32 @@ Ranges: `layers` 1–4 (the current Gitee Qwen-Image-Layered endpoint rejects va
 
 - `GET /api/animation-assets?kind=...` lists stored Skeleton and MotionClip action assets. CharacterBinding is project-local and is never exposed by this library.
 - `POST /api/animation-assets` creates `{ asset, folderId? }`; `GET`, `PUT`, and `DELETE /api/animation-assets/:id` read, replace, and delete one Skeleton or MotionClip. Posting a CharacterBinding is rejected.
+
+## AI character authoring /api/aic
+
+- `GET /api/aic/capabilities` returns the bounded AIC capability snapshot. The first phase uses right-handed Y-up/Z-forward `T*R*S`, seconds, and Region attachments; `runtimeWarp` and `meshSkinning` are explicitly rejected by v3.
+- `GET /api/projects/:id/aic-summary` returns a structured project summary. Optional `boneId`, `attachmentId`, `actionId`, `targetId`, `startTime`, and `endTime` filters keep large skeletons and tracks local.
+- Summary bone/attachment lists are paged with `boneOffset`/`boneLimit` and `attachmentOffset`/`attachmentLimit` (default 64, maximum 256); the response includes total counts and truncation flags. Each action reports `speed`, `repeat`, action-level `loop`, and the separate `clipLoop` authoring flag. Use `GET /api/projects/:id/aic-pose?actionId=...&timeSeconds=...` for low-token numeric pose checks. `timeSeconds` is a non-negative action-clock value; sampling applies `action.speed`, resolves finite `repeat` or continuous action `loop`, and reports both `scaledActionTimeSeconds` and `clipTimeSeconds`. `actionId` first resolves an exact ID, then a unique action name; ambiguous names and unknown IDs fail closed. The response keeps action playback policy separate from `clip.loop`, and returns selected bone local/world matrices plus optional BodyProfile socket positions using shared MotionClip interpolation and FK. `boneIds`/`socketIds` are comma-separated; `bodyProfileId` is required when socket selection is ambiguous across multiple profiles. This is Region transform sampling, not Mesh skinning.
+- `GET /api/projects/:id/aic-diagnostics` returns bounded structural, reference, material, and runtime-capability diagnostics.
+- `POST /api/projects/:id/aic-operations` applies a batch atomically: `{ baseRevision, idempotencyKey, operations }`. Supported operation types are `create-skeleton`, `create-motion-clip`, `upsert-binding`, `upsert-keyframe`, `upsert-body-profile`, and `upsert-equipment`. A stale revision or conflicting idempotency key is rejected without partial writes.
+- `POST /api/projects/:id/aic-publish-v3` freezes the current project revision, runs the shared `.fbanim v3` builder, writes a deterministic ZIP artifact under `storage/aic-published`, and returns `artifactId`, `digest`, `byteLength`, `revision`, `downloadPath`, manifest, and entry digests. A concurrent revision change aborts publication.
+- `GET /api/aic-artifacts/:name` serves only digest-named `.fbanim` artifacts created by the publisher.
+
+The equivalent MCP tools are `aic_get_capabilities`, `aic_get_project_summary`, `aic_get_diagnostics`, `aic_sample_pose`, `aic_apply_operations`, and `aic_publish_v3`.
+
+### Bounded material part split
+
+`POST /api/materials/:id/skeletal-split` uses the URL `:id` as the source material ID. It is a deterministic grid cropper for a caller-supplied part list, not semantic body-part detection and not mesh/skin generation. The body is `{ rows, cols, keyColor?: [r,g,b], tolerance?: number, magentaDespill?: number, parts: [{ name, cell }] }`; `cell` is zero-based row-major, parts are limited to 1–64, and duplicate/out-of-range cells, non-image sources, empty keyed cells, unsafe paths, and size-budget violations fail closed. The default key color is magenta `[255,0,255]` and default tolerance is `24`. Optional `magentaDespill` is an integer strength from `0` (default, unchanged output) to `100`. It requires the default magenta key and reduces only the shared red/blue excess above green on retained pixels touching a newly keyed pixel (8-neighbor); alpha and crop bounds do not change. It cannot repair wider color contamination or missing silhouette pixels.
+
+The response is `{ sourceSha256, parts: [{ name, cell, materialId, width, height, bounds: { x, y, w, h }, opaquePixels }] }`. Each child material is stored as transparent `raw.png` with metadata retaining the source material ID/digest, grid, keying parameters, cell, bounds, opaque-pixel count, and nonzero `magentaDespill` strength when used. Use an `Idempotency-Key` header to make retries return the same child IDs; different despill strengths cannot reuse a key. The MCP equivalent is `split_material_parts` with the same fields plus optional `idempotencyKey`.
+
+The implementation recipe is [`scripts/aic_humanoid_recipe.ts`](../scripts/aic_humanoid_recipe.ts). The currently exercised source material is `ecfeb992-399e-46a1-bd73-88799c8f1b45`; it is an input reference, not a finished class or a claim of final art quality.
+2026-09-26 update: local D1 acceptance is complete; see the [LIAF development handbook (Chinese)](liaf-development-handbook.md) for the workflow and limits. Final FB artifacts are under `storage/aic-runs/humanoid-d1-despill-100/`; the overall acceptance record is the backend's `mission/aic-d1-completion.md`. The following `humanoid-d1/` and 469-frame entry is an earlier snapshot: its pending acceptance statement describes that time only. Preserve that evidence without overriding the final record. D1 does not qualify video quality, a formal class, or production deployment.
+
+- Historical D1 receipt status is recorded under `storage/aic-runs/humanoid-d1/`: B-side local authority has passed base, variant, and death receipts; the same v3 package has passed the C-side offscreen check. A visible WezTerm base sample recorded 30 applied, 0 rejected, 0 stale, 1 destroy, with 469 GUI frames reporting `characters=1` on a 110x32, DPI-144, OpenGL host; this is a protocol/visibility receipt, not a visual-quality sign-off. At that snapshot, real terminal-client acceptance was still in progress. The successful video plugin smoke is recorded by `storage/aic-runs/video-smoke-runner-fixed/job.json` (about 81 seconds wall time); two earlier failed attempts are retained as receipts, and video visual quality remains unassessed.
+- Re-run/recovery is bounded by the recipe checkpoint and public API idempotency: `bun scripts/aic_humanoid_recipe.ts --material <existing-material-id> --url http://127.0.0.1:3025 --out storage/aic-runs/humanoid-d1` (add `--variant` for the appearance variant). For optional keyed-edge cleanup, add `--magenta-despill 100` (integer `0..100`, default `0`) and use a new `--out` directory; the checkpoint records the strength and rejects a changed setting. Do not change the source material or overwrite different evidence. Known Comfy `promptId` recovery reconciles history/view only; unknown submission/output state is blocked rather than resubmitted.
+- Region attachments are rectangular textures with bone-local transforms; they are not Mesh, vertex-weight skinning, or a claim of runtime skin deformation. The 16-part split and binding are a technical pipeline sample, not a finished class/profession asset.
+- Shared Comfy residency is switched fail-closed: serialize the old lease, observe an empty queue, then confirm `unload_models/free_memory` and two consecutive memory observations before loading the next plugin. Missing observability, a busy queue, or an unconfirmed cleanup blocks the next submission. `storage/aic-runs/humanoid-d1/comfy-cleanup-observation.json` records real H3 residual cleanup (853540864 → 27262976 reserved bytes in 3061 ms); subsequent video recovery and guarded image return completed. These receipts prove plugin switch/recovery integration only; they do not prove character video-to-image content, numeric/visual/performance acceptance, or post-reset runtime identity.
 - `GET /api/projects/:id/skeletal-document` reads a skeletal project's document; `PUT` replaces it. The persisted document is schema v2 and owns its character's CharacterBinding plus optional `bodyProfiles`, `equipment`, `loadouts`, `actionTemplates`, `stanceProfiles`, and `runtimePackageSettings`. Legacy v1 documents are migrated on read/write with empty defaults; unknown and transient runtime fields are stripped. Project actions may reference only MotionClips with the exact same `skeletonId`. Body profiles, equipment, loadouts, action/profile references, and material IDs are validated against their referenced assets before persistence. A weapon `stanceProfile` that is not in the document yet is registered as an empty stance stub.
 - MotionClip `schemaVersion: 1` keeps track-level `step | linear`. MotionClip `schemaVersion: 2` removes track-level interpolation and requires every key to carry `outInterpolation`: non-terminal keys use `{ type: "step" | "linear" }` or `{ type: "cubic-bezier", x1, y1, x2, y2 }`, while the terminal key uses `null`. Bézier controls must be finite values in `[0, 1]`.
 - Reading or saving v1 does not upgrade it. The editor upgrades to v2 only when the user explicitly selects a cubic curve. `.fbanim` package versions remain independent from embedded MotionClip schema versions.
@@ -487,11 +519,12 @@ Creates async queue jobs only (does not execute the plugin inline):
   "durationSeconds": 6,
   "folderId": null,
   "projectId": null,
-  "name": "slime"
+  "name": "slime",
+  "idempotencyKey": "character-slime-v1"
 }
 ```
 
-`count` optional integer **1–16** (default 1). `durationSeconds` optional number **0.1–600** (video/audio duration hint). Optional `folderId` targets a materials folder (`null` = ungrouped). Success → `{ "jobId": "…", "jobIds": ["…"] }` (image/audio may create one job per count; video is one job). Validation failures (empty prompt, unknown params, invalid reference types/paths, unrunnable plugin, unsupported mode, reference-count overflow, non-frame `projectId`, out-of-range count/duration) → 400. Missing plugin, missing `projectId`, or missing reference material IDs → 404. Optional `projectId` is image-only and must target an existing `frame` project. Job types: `media_plugin_image` / `media_plugin_video` / `media_plugin_audio`. On success the job `progress` becomes `完成 materialIds=["…"]` and `job_done` WS payload includes `materialIds` / `results` so clients bind previews to the exact job without guessing latest materials. References must be material IDs (no local paths). Manifest constraints (`max_reference_images` / `max_reference_audios` / `supports_*`) are enforced before enqueue. Secrets are never echoed.
+`count` optional integer **1–16** (default 1). `durationSeconds` optional number **0.1–600** (video/audio duration hint). Optional `folderId` targets a materials folder (`null` = ungrouped). Optional `idempotencyKey` (1–200 chars) makes create retries return the same jobs; reusing the key with different normalized input is rejected. Success → `{ "jobId": "…", "jobIds": ["…"] }` (image/audio may create one job per count; video is one job). Validation failures (empty prompt, unknown params, invalid reference types/paths, unrunnable plugin, unsupported mode, reference-count overflow, non-frame `projectId`, out-of-range count/duration, or idempotency conflict) → 400. Missing plugin, missing `projectId`, or missing reference material IDs → 404. Optional `projectId` is image-only and must target an existing `frame` project. Job types: `media_plugin_image` / `media_plugin_video` / `media_plugin_audio`. Job inputs are persisted in SQLite. Queued, not-yet-submitted work can resume after restart; an expired running external generation is never blindly resubmitted. Converted Comfy jobs reconcile a known `promptId` through `/history`; unknown submission/output state is blocked for operator review. On success the job `progress` becomes `完成 materialIds=["…"]`, its stale error is cleared, and `job_done` WS payload includes `materialIds` / `results` so clients bind previews to the exact job without guessing latest materials. References must be material IDs (no local paths). Manifest constraints (`max_reference_images` / `max_reference_audios` / `supports_*`) are enforced before enqueue. Secrets are never echoed.
 
 ## Other
 
@@ -605,7 +638,7 @@ Copy and paste the following to your AI agent to get started:
 ```
 FrameBaker is running at http://localhost:3000 with an MCP server at /mcp (Streamable HTTP).
 Connect to it and use `list_projects` to get started.
-Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, list_media_plugins, get_media_plugin, generate_with_media_plugin, generate_monster_reference, generate_monster_pipeline, import_monster_sprite_extract, matting_material, list_jobs, get_config, and 41 more (54 total).
+Available tools: list_projects, create_project, list_frames, generate_frames, list_materials, list_media_plugins, get_media_plugin, generate_with_media_plugin, generate_monster_reference, generate_monster_pipeline, import_monster_sprite_extract, matting_material, list_jobs, recover_known_media_job, get_config, and 46 more (61 total; verified with `tools/list`).
 All tools manage pixel-art animation projects — frames, materials, generation, media plugins, matting, folders, jobs, and settings.
 ```
 
@@ -654,7 +687,7 @@ After handshake, send `notifications/initialized` notification (no response need
 | `import_monster_sprite_extract` | Pack an existing PNG-folder zip material into R1-A (explicit loopMode; no local paths) |
 | `list_media_plugins` | List installed `.iap`/`.vap`/`.aap` media plugins (optional `kind`: image\|video\|audio\|all); returns summaries/configured/runnable — never secret values |
 | `get_media_plugin` | Get one installed media plugin detail (params schema, constraints, secret configuration status only — no plaintext secrets) |
-| `generate_with_media_plugin` | Create async media-plugin generation jobs; `references` must be material IDs only (no local paths); returns `jobId`/`jobIds` |
+| `generate_with_media_plugin` | Create async media-plugin generation jobs; `references` must be material IDs only (no local paths); optional `idempotencyKey` makes identical retries return the same `jobId`/`jobIds` |
 | `list_materials` | List all materials |
 | `rename_material` | Rename one image, video, or audio material |
 | `matting_material` | Single material background removal |
@@ -673,6 +706,7 @@ After handshake, send `notifications/initialized` notification (no response need
 | `list_jobs` | List recent jobs |
 | `get_job` | Query single job status |
 | `cancel_job` | Cancel job |
+| `recover_known_media_job` | Reconcile the same failed media job from a supported known Comfy journal; never submits a new prompt |
 | `get_config` | Get server config (providers/matting engine) |
 | `run_doctor` | Health check |
 | `get_settings` | Get all settings |

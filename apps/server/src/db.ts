@@ -1,13 +1,16 @@
 import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { ensureBuiltinAnimationAssets, normalizeGeneratedAnimationAssetNames } from "./builtinAnimationAssets";
 import type { AttackEffectCell, AttackEffectCellRow, Frame, FrameRow, Material, MaterialRow, MediaKind } from "@framebaker/shared";
 import { MEDIA_KINDS } from "@framebaker/shared";
 
 // 仓库根目录（apps/server/src → 根）：storage 固定放在根级，与启动时的 cwd 无关
 export const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
-export const STORAGE_ROOT = join(REPO_ROOT, "storage");
+// 测试/隔离实例可显式覆盖存储根；生产默认仍固定在仓库 storage，不受 cwd 影响。
+export const STORAGE_ROOT = process.env.FRAMEBAKER_STORAGE_ROOT?.trim()
+  ? resolve(process.env.FRAMEBAKER_STORAGE_ROOT.trim())
+  : join(REPO_ROOT, "storage");
 
 // 确保运行时目录存在
 mkdirSync(join(STORAGE_ROOT, "projects"), { recursive: true });
@@ -15,6 +18,11 @@ mkdirSync(join(STORAGE_ROOT, "staging"), { recursive: true });
 mkdirSync(join(STORAGE_ROOT, "materials"), { recursive: true });
 
 export const db = new Database(join(STORAGE_ROOT, "framebaker.db"), { create: true });
+const configuredBusyTimeout = Number(process.env.FRAMEBAKER_SQLITE_BUSY_TIMEOUT_MS);
+const sqliteBusyTimeoutMs = Number.isFinite(configuredBusyTimeout) && configuredBusyTimeout >= 0
+  ? Math.min(60_000, Math.floor(configuredBusyTimeout))
+  : 10_000;
+db.exec(`PRAGMA busy_timeout = ${sqliteBusyTimeoutMs};`);
 db.exec("PRAGMA journal_mode = WAL;");
 db.exec(`
 CREATE TABLE IF NOT EXISTS projects (
@@ -193,6 +201,24 @@ ensureColumn("frames", "track_id", "TEXT");
 ensureColumn("frames", "step_id", "TEXT");
 ensureColumn("frames", "is_asset", "INTEGER NOT NULL DEFAULT 1");
 ensureColumn("frames", "attack_effect", "TEXT");
+// 持久队列：payload 是恢复执行的唯一输入；owner/lease 防止多个服务实例互相夺取运行中任务。
+ensureColumn("jobs", "payload", "TEXT");
+ensureColumn("jobs", "payload_hash", "TEXT");
+ensureColumn("jobs", "idempotency_key", "TEXT");
+ensureColumn("jobs", "run_owner", "TEXT");
+ensureColumn("jobs", "run_attempt", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("jobs", "execution_phase", "TEXT");
+ensureColumn("jobs", "lease_expires_at", "INTEGER");
+ensureColumn("jobs", "updated_at", "INTEGER");
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS uq_jobs_idempotency
+  ON jobs(project_id, type, idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_jobs_recovery
+  ON jobs(status, lease_expires_at);
+`);
+// 旧实现用 COALESCE 写 error，可能让最终成功任务残留先前错误。完成态必须无错误。
+db.query("UPDATE jobs SET error = NULL WHERE status = 'done' AND error IS NOT NULL").run();
 
 // v1：把旧项目无损投影到“默认轴 / 主轨 / 共享步骤”。确定性顺序为 idx,id。
 db.transaction(() => {

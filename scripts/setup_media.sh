@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# FrameBaker media-plugin Python runtime: create .venv-media/ and install base dep `requests` only.
+# FrameBaker media-plugin Python runtime: create .venv-media/ and install the base deps `requests` and `pillow`.
 # Does not read or execute plugin-declared dependency install commands.
 # Prefers `uv` when available (same policy as setup_media.ps1 / setup_matting.ps1); otherwise python3 venv + pip.
 # Usage:
@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 
 VENV=".venv-media"
 PYTHON="${PYTHON:-python3}"
-RUNTIME_DEPS=(requests)
+RUNTIME_DEPS=(requests pillow)
 
 resolve_venv_python() {
   if [ -x "$VENV/bin/python" ]; then

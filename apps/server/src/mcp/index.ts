@@ -17,6 +17,7 @@ import { register as registerJobTools } from "./tools/jobs";
 import { register as registerSystemTools } from "./tools/system";
 import { register as registerTimelineTools } from "./tools/timeline";
 import { register as registerMediaPluginTools } from "./tools/mediaPlugins";
+import { register as registerAicCharacterTools } from "./tools/aicCharacter";
 
 export const mcpHandler = createMcpHandler(() => {
   const server = new McpServer({ name: "framebaker", version: serverPackage.version });
@@ -29,5 +30,6 @@ export const mcpHandler = createMcpHandler(() => {
   registerJobTools(server);
   registerSystemTools(server);
   registerMediaPluginTools(server);
+  registerAicCharacterTools(server);
   return server;
 });

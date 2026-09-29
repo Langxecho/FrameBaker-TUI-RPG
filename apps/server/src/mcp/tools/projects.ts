@@ -60,11 +60,12 @@ export function register(server: McpServer) {
       description: "Create a new FrameBaker project. Returns the new project id and name.",
       inputSchema: z.object({
         name: z.string().describe("Project name (defaults to 未命名项目 if empty)").optional(),
+        kind: z.enum(["frame", "skeletal"]).describe("Project kind").optional(),
         folderId: z.string().describe("Optional parent folder UUID (must be kind=project)").optional(),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ name, folderId }) => {
+    async ({ name, kind, folderId }) => {
       const id = uid();
       const finalName = name?.trim() || "未命名项目";
       const finalFolderId = folderId ?? null;
@@ -74,16 +75,17 @@ export function register(server: McpServer) {
           | null;
         if (!f || f.kind !== "project") return err("文件夹不存在");
       }
-      db.query("INSERT INTO projects (id, name, folder_id, created_at) VALUES (?, ?, ?, ?)").run(
+      db.query("INSERT INTO projects (id, name, kind, folder_id, created_at) VALUES (?, ?, ?, ?, ?)").run(
         id,
         finalName,
+        kind ?? "frame",
         finalFolderId,
         Date.now()
       );
       ensureDefaultTimeline(id);
       mkdirSync(join(STORAGE_ROOT, "projects", id, "raw"), { recursive: true });
       mkdirSync(join(STORAGE_ROOT, "projects", id, "processed"), { recursive: true });
-      return ok({ id, name: finalName, folder_id: finalFolderId });
+      return ok({ id, name: finalName, kind: kind ?? "frame", folder_id: finalFolderId });
     }
   );
 

@@ -1,5 +1,6 @@
 import { serve } from "bun";
 import index from "../../web/index.html";
+import "./mediaPlugins/comfyBootstrap";
 import { app } from "./app";
 import { wsHandlers } from "./ws";
 

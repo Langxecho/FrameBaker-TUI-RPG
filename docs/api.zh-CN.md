@@ -312,11 +312,17 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 }
 ```
 
-`status`：`queued` / `running` / `done` / `error` / `cancelled`。任务负载在内存中，服务重启时会把遗留的 `queued` / `running` 任务标记为 `error`（「服务重启，任务中断」）。
+`status`：`queued` / `running` / `done` / `error` / `cancelled`。任务负载与租约持久化到数据库。重启时只恢复安全的本地/排队任务，外部生成绝不盲目重提；具备受支持的已知 Comfy journal 的媒体任务可通过下述显式恢复接口对账。
 
 ### POST /api/jobs/:id/cancel
 
 取消排队中或运行中的任务 → `{ "ok": true }`。`queued` 直接出队标 `cancelled`；`running` 触发 AbortSignal（杀掉 `runCmd` 子进程 / 打断 API 轮询）。已结束状态返回 409。广播 `job_cancelled`。
+
+### POST /api/jobs/:id/recover
+
+使用持久化的已知 Comfy journal 显式恢复**同一个**失败媒体插件任务。不会创建新任务，也不会提交新的远端 prompt。接口只接受 `submitted + promptId` 或 `completed + promptId + output.filename`，要求已安装插件支持 FrameBaker 的 Comfy journal 恢复协议，并在修改任务行之前校验持久 payload/type 以及媒体 Python runtime。
+
+成功返回 `{ "ok": true, "jobId": "…", "phase": "reconcile_known" | "reconcile_completed", "promptId": "…" }`。任务不存在返回 404；任务仍 active/已完成、payload 或 journal 非法、插件不支持恢复时返回 409；Python 不可用时返回 503，且任务行保持不变。
 
 ## 文件夹 /api/folders
 
@@ -424,6 +430,33 @@ multipart/form-data：`file`（PNG）+ `slot`（`"raw"` | `"processed"`）。剪
 
 - `GET /api/animation-assets?kind=...` 列出 Skeleton 与 MotionClip 动作资产。CharacterBinding 只属于项目，不会由该资产库暴露。
 - `POST /api/animation-assets` 以 `{ asset, folderId? }` 创建资产；`GET`、`PUT`、`DELETE /api/animation-assets/:id` 分别读取、整体替换和删除单项 Skeleton 或 MotionClip。提交 CharacterBinding 会被拒绝。
+
+## AI 角色制作 /api/aic
+
+- `GET /api/aic/capabilities` 返回有界的 AIC 能力快照。第一阶段固定右手 Y 上/Z 前、`T*R*S`、秒和 Region 附件；v3 明确拒绝 `runtimeWarp` 与 `meshSkinning`。
+- `GET /api/projects/:id/aic-summary` 返回结构化项目摘要，可用 `boneId`、`attachmentId`、`actionId`、`targetId`、`startTime`、`endTime` 查询局部实体和轨道。
+- 摘要中的骨骼/附件列表支持 `boneOffset`/`boneLimit`、`attachmentOffset`/`attachmentLimit` 分页（默认 64，最大 256），返回总数与截断标志；每个动作同时报告 `speed`、`repeat`、动作级 `loop` 和独立的剪辑创作标志 `clipLoop`。低 token 数值姿势对照使用 `GET /api/projects/:id/aic-pose?actionId=...&timeSeconds=...`：`timeSeconds` 是非负动作时钟秒数，先应用 `action.speed`，再按有限 `repeat` 或持续动作 `loop` 解析，并显式返回 `scaledActionTimeSeconds` 与 `clipTimeSeconds`。`actionId` 先按精确 ID 解析，再回退到唯一动作名；重名和未知 ID 都 fail-closed。响应将动作播放策略与 `clip.loop` 分开报告，复用共享 MotionClip 插值与 FK，返回选定骨骼的 local/world 矩阵及可选 BodyProfile socket 位置；`boneIds`/`socketIds` 为逗号分隔。多个 BodyProfile 存在且查询 socket 时必须传 `bodyProfileId`。这只是 Region 变换采样，不是 Mesh 蒙皮。
+- `GET /api/projects/:id/aic-diagnostics` 返回有界的结构、引用、素材和运行时能力诊断。
+- `POST /api/projects/:id/aic-operations` 以 `{ baseRevision, idempotencyKey, operations }` 原子应用批量操作。支持 `create-skeleton`、`create-motion-clip`、`upsert-binding`、`upsert-keyframe`、`upsert-body-profile`、`upsert-equipment`；过期 revision 或幂等键输入冲突会拒绝且不产生部分写入。
+- `POST /api/projects/:id/aic-publish-v3` 冻结当前项目 revision，调用共享 `.fbanim v3` 构建器，将确定性 ZIP 写入 `storage/aic-published`，并返回 `artifactId`、`digest`、`byteLength`、`revision`、`downloadPath`、manifest 与条目摘要。发布期间 revision 变化会中止发布。
+- `GET /api/aic-artifacts/:name` 只读取发布器创建的摘要命名 `.fbanim` 产物。
+
+对应 MCP 工具为 `aic_get_capabilities`、`aic_get_project_summary`、`aic_get_diagnostics`、`aic_sample_pose`、`aic_apply_operations`、`aic_publish_v3`。
+
+### 受约束的素材分件
+
+`POST /api/materials/:id/skeletal-split` 使用路径中的 `:id` 作为源素材 ID。它是调用方指定部件列表的确定性网格裁切器，不是通用人体语义识别，也不生成 Mesh、蒙皮或成品美术。请求体为 `{ rows, cols, keyColor?: [r,g,b], tolerance?: number, magentaDespill?: number, parts: [{ name, cell }] }`；`cell` 为零基行优先索引，parts 限制 1–64 项，重复/越界 cell、非图片、色键后空白、路径不安全和大小预算超限都会 fail-closed。默认色键为品红 `[255,0,255]`，默认阈值为 `24`。可选的 `magentaDespill` 为 `0`（默认，输出不变）到 `100` 的整数强度，要求默认品红色键；仅对紧邻新色键透明像素（八邻域）的保留像素，减去红蓝通道共同高于绿色的部分，不改变 alpha 或裁切边界。它不能修复更宽的颜色污染或已缺失的轮廓像素。
+
+返回 `{ sourceSha256, parts: [{ name, cell, materialId, width, height, bounds: { x, y, w, h }, opaquePixels }] }`。子素材以透明 `raw.png` 保存，并在 metadata 中保留源素材 ID/摘要、网格、色键参数、cell、bounds、不透明像素数，以及使用时非零的 `magentaDespill` 强度。请求带 `Idempotency-Key` 可使重试返回同一批子素材；不同去品红强度不能复用同一键。MCP 等价工具为 `split_material_parts`，字段相同并增加可选 `idempotencyKey`。
+
+实现配方见 [`scripts/aic_humanoid_recipe.ts`](../scripts/aic_humanoid_recipe.ts)。当前实际演练使用的源素材 ID 为 `ecfeb992-399e-46a1-bd73-88799c8f1b45`；它只是输入参考，不是成品职业包，也不代表最终美术质量。
+
+2026-09-26 更新：本地 D1 已完成签收，当前教程与边界见 [LIAF 制作开发手册](liaf-development-handbook.md)。最终 FB 产物在 `storage/aic-runs/humanoid-d1-despill-100/`，总签收见后端 `mission/aic-d1-completion.md`。下条 `humanoid-d1/` 与 469 帧记录是早期快照，其中“仍在人工验收中”仅表示该快照当时的状态；保留历史证据，不用它覆盖最终结论。视频质量、正式职业和生产资格仍未由 D1 签收。
+
+- D1 真实收据位于 `storage/aic-runs/humanoid-d1/`：B 侧本地 authority 的 base、variant、death 均已通过；同一份 v3 产物的 C 侧离屏检查已通过。真实可见 WezTerm 基础样例记录 30 applied、0 reject、0 stale、1 destroy，GUI 收到 469 帧且每帧 `characters=1`，host 为 `110x32 / DPI 144 / OpenGL`；这只是协议/可见性收据，不是人工视觉质量签收。真实 terminal 客户端仍在人工验收中，当前不得写成“已通过”。视频插件 smoke 的成功 job 收据为 `storage/aic-runs/video-smoke-runner-fixed/job.json`（实测约 81 秒）；此前两次失败尝试也保留为收据，视频视觉质量尚未评估。
+- 复跑/恢复受 recipe 检查点与公开 API 幂等约束：`bun scripts/aic_humanoid_recipe.ts --material <existing-material-id> --url http://127.0.0.1:3025 --out storage/aic-runs/humanoid-d1`（外观 variant 另加 `--variant`）。可选色键边缘去品红使用 `--magenta-despill 100`（整数 `0..100`，默认 `0`），改变强度时必须使用新的 `--out` 目录；检查点会记录强度并拒绝不同设置。不得更换源素材或覆盖内容不同的证据文件。已知 Comfy `promptId` 只对账 history/view；提交或输出状态未知时阻断，不得盲目重提。
+- Region 附件只是矩形纹理加骨骼局部变换，不是 Mesh、顶点权重蒙皮或运行时皮肤变形承诺。16 部件分件与绑定是技术管线样例，不是正式职业、成品角色或美术质量承诺。
+- 共享 Comfy 常驻切换必须 fail-closed：串行等待旧租约，观测队列为空，再确认 `unload_models/free_memory` 与连续两次显存观测；缺少可观测性、队列忙或清理未确认时阻断下一次提交。`storage/aic-runs/humanoid-d1/comfy-cleanup-observation.json` 记录真实 H3 残留清理（保留显存 `853540864 → 27262976` bytes，3061ms）；随后视频恢复与既有 guard 后的图片回切均完成。这些收据只证明插件切换/恢复链路，不证明角色 video→image 内容、numeric/visual/performance 联验或 reset 后 runtime 身份。
 - `GET /api/projects/:id/skeletal-document` 读取骨骼项目文档，`PUT` 整体替换。持久化文档为 schema v2，拥有角色 CharacterBinding，以及可选的 `bodyProfiles`、`equipment`、`loadouts`、`actionTemplates`、`stanceProfiles` 和 `runtimePackageSettings`。读取或写入旧 v1 文档时会迁移为空默认值；未知字段与瞬时运行时字段会被清除。项目动作只能引用 `skeletonId` 完全相同的 MotionClip；保存前会校验 BodyProfile、装备、Loadout、动作/姿态引用及素材 ID。武器引用了尚不存在的 `stanceProfile` 时会自动登记一条空姿态配置。
 - MotionClip `schemaVersion: 1` 保持轨道级 `step | linear`。MotionClip `schemaVersion: 2` 不再含轨道级 interpolation，每个 key 必须携带 `outInterpolation`：非末尾 key 使用 `{ type: "step" | "linear" }` 或 `{ type: "cubic-bezier", x1, y1, x2, y2 }`，末尾 key 固定为 `null`。贝塞尔控制量必须是 `[0, 1]` 内的有限数值。
 - 读取或保存 v1 不会自动升级；只有用户明确选择曲线时编辑器才升级到 v2。`.fbanim` 包版本与包内 MotionClip schema 版本独立演进。
@@ -487,11 +520,12 @@ multipart/form-data：`plugin`（必需，`.iap`/`.vap`/`.aap`）+ 可选 `confi
   "durationSeconds": 6,
   "folderId": null,
   "projectId": null,
-  "name": "slime"
+  "name": "slime",
+  "idempotencyKey": "character-slime-v1"
 }
 ```
 
-`count` 可选整数 **1–16**（默认 1）。`durationSeconds` 可选数字 **0.1–600**（视频/音频时长提示）。可选 `folderId` 指定素材文件夹（`null` = 未分组）。成功 → `{ "jobId": "…", "jobIds": ["…"] }`（图片/音频可按 count 拆任务；视频固定 1 个任务）。校验失败（空 prompt、未知参数、非法参考类型/路径、插件不可运行、不支持的模式、参考数量超限、非逐帧 `projectId`、count/duration 越界）→ 400。插件缺失、`projectId` 不存在或参考素材 ID 不存在 → 404。可选 `projectId` 仅图片可用，且必须指向已存在的 `frame` 项目。任务类型：`media_plugin_image` / `media_plugin_video` / `media_plugin_audio`。成功后 `job.progress` 形如 `完成 materialIds=["…"]`，且 `job_done` WS 载荷含 `materialIds` / `results`，客户端据此绑定结果，禁止猜测最新素材。参考项必须是素材 ID（禁止本地路径）。入队前强制校验 manifest 约束（`max_reference_images` / `max_reference_audios` / `supports_*`）。密钥不会回显。
+`count` 可选整数 **1–16**（默认 1）。`durationSeconds` 可选数字 **0.1–600**（视频/音频时长提示）。可选 `folderId` 指定素材文件夹（`null` = 未分组）。可选 `idempotencyKey`（1–200 字符）让创建请求重试返回同一批任务；同键但标准化输入不同会被拒绝。成功 → `{ "jobId": "…", "jobIds": ["…"] }`（图片/音频可按 count 拆任务；视频固定 1 个任务）。校验失败（空 prompt、未知参数、非法参考类型/路径、插件不可运行、不支持的模式、参考数量超限、非逐帧 `projectId`、count/duration 越界或幂等冲突）→ 400。插件缺失、`projectId` 不存在或参考素材 ID 不存在 → 404。可选 `projectId` 仅图片可用，且必须指向已存在的 `frame` 项目。任务类型：`media_plugin_image` / `media_plugin_video` / `media_plugin_audio`。任务输入持久化到 SQLite；尚未外部提交的 queued 任务可在重启后恢复，过期的 running 外部生成绝不盲目重提。已转换的 Comfy 任务若有明确 `promptId`，只通过 `/history` 对账；提交或输出未知时阻断等待人工处理。成功后 `job.progress` 形如 `完成 materialIds=["…"]`，历史错误会清空，且 `job_done` WS 载荷含 `materialIds` / `results`，客户端据此绑定结果，禁止猜测最新素材。参考项必须是素材 ID（禁止本地路径）。入队前强制校验 manifest 约束（`max_reference_images` / `max_reference_audios` / `supports_*`）。密钥不会回显。
 
 ## 其他
 
@@ -605,7 +639,7 @@ claude mcp add framebaker --transport http http://localhost:3000/mcp
 ```
 FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable HTTP）。
 请连接并调用 list_projects 开始。
-可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、list_media_plugins、get_media_plugin、generate_with_media_plugin、generate_monster_reference、generate_monster_pipeline、import_monster_sprite_extract、matting_material、list_jobs、get_config 等共 54 个。
+可用工具：list_projects、create_project、list_frames、generate_frames、list_materials、list_media_plugins、get_media_plugin、generate_with_media_plugin、generate_monster_reference、generate_monster_pipeline、import_monster_sprite_extract、matting_material、list_jobs、recover_known_media_job、get_config 等共 61 个（以 `tools/list` 实测）。
 覆盖功能：像素动画项目、帧、素材、AI 生成、媒体插件查询/生成、抠图、文件夹、任务与系统设置。
 ```
 
@@ -654,7 +688,7 @@ FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable
 | `import_monster_sprite_extract` | 把素材库里已有的 PNG 文件夹 zip 打成 R1-A（显式 loopMode，不要本地路径） |
 | `list_media_plugins` | 列出已安装的 `.iap`/`.vap`/`.aap` 媒体插件（可选 `kind`：image\|video\|audio\|all）；返回摘要/configured/runnable——永不返回密钥明文 |
 | `get_media_plugin` | 获取单个已安装媒体插件详情（参数 schema、约束、密钥配置状态；不返回密钥明文） |
-| `generate_with_media_plugin` | 创建异步媒体插件生成任务；`references` 仅允许素材 ID（禁止本地路径）；返回 `jobId`/`jobIds` |
+| `generate_with_media_plugin` | 创建异步媒体插件生成任务；`references` 仅允许素材 ID（禁止本地路径）；可选 `idempotencyKey` 令相同重试返回同一 `jobId`/`jobIds` |
 | `list_materials` | 列出全部素材 |
 | `rename_material` | 重命名单个图片、视频或音频素材 |
 | `matting_material` | 单素材抠图 |
@@ -673,6 +707,7 @@ FrameBaker 正在 http://localhost:3000 运行，MCP 端点为 /mcp（Streamable
 | `list_jobs` | 列出最近任务 |
 | `get_job` | 查询单个任务状态 |
 | `cancel_job` | 取消任务 |
+| `recover_known_media_job` | 从受支持的已知 Comfy journal 对账恢复同一失败媒体任务；绝不提交新 prompt |
 | `get_config` | 获取服务端配置（provider/抠图引擎） |
 | `run_doctor` | 体检 |
 | `get_settings` | 获取全部设置 |

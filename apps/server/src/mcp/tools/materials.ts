@@ -12,6 +12,7 @@ import { getImageLayerSettings, imageLayerConfigured } from "../../provider";
 import { ok, err, sortMaterialsByFrameNumber, importMaterialToProject } from "../helpers";
 import { invalidateProjectUndo } from "../../undo";
 import { importMonsterSpriteExtractFromMaterial } from "../../monsterSpriteImport";
+import { splitSkeletalMaterial } from "../../jobs/skeletalSplit";
 
 export function register(server: McpServer) {
   server.registerTool(
@@ -100,6 +101,28 @@ export function register(server: McpServer) {
       } });
       return ok({ jobId });
     }
+  );
+
+  server.registerTool(
+    "split_material_parts",
+    {
+      title: "Split Material Parts",
+      description: "Deterministically crop a material by a bounded row-major grid, apply RGB color-key transparency, trim transparent borders, and create independent part materials. Optional magentaDespill (0..100) removes keyed-edge magenta excess without changing alpha. This is not semantic AI body-part detection.",
+      inputSchema: z.object({
+        materialId: z.string(), rows: z.number().int().min(1).max(8), cols: z.number().int().min(1).max(8),
+        keyColor: z.tuple([z.number().int().min(0).max(255), z.number().int().min(0).max(255), z.number().int().min(0).max(255)]).optional(),
+        tolerance: z.number().int().min(0).max(255).optional(),
+        magentaDespill: z.number().int().min(0).max(100).optional(),
+        parts: z.array(z.object({ name: z.string().trim().min(1).max(200), cell: z.number().int().min(0).max(63) })).min(1).max(64),
+        idempotencyKey: z.string().trim().min(1).max(200).optional(),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ materialId, rows, cols, keyColor, tolerance, magentaDespill, parts, idempotencyKey }) => {
+      try {
+        return ok(await splitSkeletalMaterial({ materialId, rows, cols, keyColor, tolerance, magentaDespill, parts, idempotencyKey }));
+      } catch (error) { return err((error as Error).message); }
+    },
   );
 
   server.registerTool(

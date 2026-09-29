@@ -17,6 +17,7 @@ import { settingsApi } from "./api/settings";
 import { foldersApi } from "./api/folders";
 import { animationAssetsApi } from "./api/animationAssets";
 import { skeletalProjectsApi } from "./api/skeletalProjects";
+import { aicCharacterApi } from "./api/aicCharacter";
 import { characterPartSetsApi } from "./api/characterPartSets";
 import { mediaPluginsApi } from "./api/mediaPlugins";
 import { mediaGenerationApi } from "./api/mediaGeneration";
@@ -24,7 +25,7 @@ import { beginProjectUndo, finishProjectUndo, undoProject } from "./undo";
 import { timelineApi } from "./api/timeline";
 import { attackEffectsApi } from "./api/attackEffects";
 import { mcpHandler } from "./mcp";
-import { cancelJob, getQueueConcurrency } from "./queue";
+import { cancelJob, getQueueConcurrency, recoverKnownMediaPluginJob } from "./queue";
 import { broadcast } from "./ws";
 import { getMediaPluginRuntimeInfo } from "./mediaPlugins/diagnostics";
 
@@ -197,12 +198,12 @@ export const app = new Elysia()
   )
   // 任务列表（右侧任务面板初始加载；之后以 WS 事件为主，单任务查询用 /api/jobs/:id）
   .get("/api/jobs", () => {
-    const jobs = db.query("SELECT * FROM jobs ORDER BY created_at DESC LIMIT 50").all();
+    const jobs = db.query("SELECT id,project_id,type,status,progress,error,created_at,updated_at,run_attempt,execution_phase FROM jobs ORDER BY created_at DESC LIMIT 50").all();
     return { jobs };
   })
   // 任务状态查询（前端轮询兜底，WS 为主）
   .get("/api/jobs/:id", ({ params, status }) => {
-    const job = db.query("SELECT * FROM jobs WHERE id = ?").get(params.id);
+    const job = db.query("SELECT id,project_id,type,status,progress,error,created_at,updated_at,run_attempt,execution_phase FROM jobs WHERE id = ?").get(params.id);
     if (!job) return status(404, "任务不存在");
     return { job };
   })
@@ -216,6 +217,11 @@ export const app = new Elysia()
     }
     if (!cancelJob(params.id)) return status(409, "取消失败");
     return { ok: true };
+  })
+  .post("/api/jobs/:id/recover", ({ params, status }) => {
+    const result = recoverKnownMediaPluginJob(params.id);
+    if (!result.ok) return status(result.status, { error: result.code, message: result.message });
+    return result;
   })
   // 字体等静态文件（位于 apps/web/public/fonts）
   .get("/fonts/:name", ({ params, status }) => {
@@ -242,6 +248,7 @@ export const app = new Elysia()
   })
   .use(projectsApi)
   .use(skeletalProjectsApi)
+  .use(aicCharacterApi)
   .use(framesApi)
   .use(timelineApi)
   .use(attackEffectsApi)

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from aigc_bench_plugin_runtime.safe_download import require_path_inside
+from aigc_bench_plugin_runtime.safe_download import download_reference_bytes, require_path_inside
 
 from .registry import scan_video_api_plugins
 from .schemas import VideoApiPluginSpec
@@ -95,9 +95,7 @@ class PluginHelpers:
         return str((root / filename).resolve())
 
     def download(self, url: str, *, timeout: int = 120) -> bytes:
-        from aigc_bench_plugin_runtime.safe_download import download_bytes
-
-        return download_bytes(url, timeout=timeout)
+        return download_reference_bytes(url, output_dir=self.output_dir, timeout=timeout)
 
     def log(self, msg: str) -> None:
         logging.getLogger("aigc_bench.video_api_plugin").info("[%s] %s", self.plugin_id, msg)

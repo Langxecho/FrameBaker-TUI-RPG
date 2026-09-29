@@ -9,6 +9,8 @@ import {
   type EquipmentDefinition,
   type Mat4,
   type RegionAttachment,
+  type MotionClip,
+  type SkeletalProjectAnimation,
   type Transform,
 } from "@framebaker/shared";
 
@@ -19,6 +21,40 @@ export interface LoadoutPreviewOptions {
   showHiddenBase?: boolean;
   /** 只显示这些装备附件，用于隔离检查。 */
   isolateAttachmentIds?: readonly string[];
+}
+
+export interface EquipmentPreviewMotionInput {
+  baseAction?: SkeletalProjectAnimation;
+  baseClip?: MotionClip;
+  animations: readonly SkeletalProjectAnimation[];
+  clips: Record<string, MotionClip>;
+  actionOverrides?: Record<string, string>;
+}
+
+export interface EquipmentPreviewMotionResolution {
+  clip?: MotionClip;
+  diagnostic?: string;
+}
+
+/**
+ * Equipment overrides name an action ID in the package. Resolve that action to
+ * its MotionClip at preview time; unresolved overrides remain visible as a
+ * diagnostic while the base pose stays available for inspection.
+ */
+export function resolveEquipmentPreviewMotion(input: EquipmentPreviewMotionInput): EquipmentPreviewMotionResolution {
+  const { baseAction, baseClip, animations, clips, actionOverrides = {} } = input;
+  if (!baseAction) return { clip: baseClip };
+  const override = actionOverrides[baseAction.id];
+  if (!override) return { clip: baseClip };
+  const targetAction = animations.find((action) => action.id === override);
+  if (!targetAction) {
+    return { clip: baseClip, diagnostic: `ACTION_OVERRIDE_TARGET_MISSING: ${baseAction.id} -> ${override}` };
+  }
+  const clip = clips[targetAction.motionClipId];
+  if (!clip) {
+    return { clip: baseClip, diagnostic: `ACTION_OVERRIDE_MOTION_CLIP_MISSING: ${override} -> ${targetAction.motionClipId}` };
+  }
+  return { clip };
 }
 
 export function composeSocketRest(socketRest: Transform, attachmentRest: Transform): Transform {
@@ -161,5 +197,6 @@ export function overlayDraftEquipment(
     attachments,
     hiddenParts,
     occupiedSlots: [...new Set([...base.occupiedSlots, ...draft.occupiedSlots])],
+    actionOverrides: { ...base.actionOverrides, ...(draft.actionOverrides ?? {}) },
   };
 }

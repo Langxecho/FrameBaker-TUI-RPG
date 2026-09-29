@@ -23,7 +23,7 @@ function crc32(data: Uint8Array): number {
 async function deflateRaw(data: Uint8Array): Promise<Uint8Array> {
   const cs = new CompressionStream("deflate-raw");
   const writer = cs.writable.getWriter();
-  writer.write(data as BufferSource);
+  writer.write(data as any);
   writer.close();
   const chunks: Uint8Array[] = [];
   const reader = cs.readable.getReader();

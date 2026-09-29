@@ -9,6 +9,7 @@ import {
   type EquipmentDefinition,
   type Material,
   type MotionClip,
+  type SkeletalProjectAnimation,
   type Skeleton,
   type Transform,
 } from "@framebaker/shared";
@@ -29,7 +30,7 @@ import {
   type WeaponPrimaryHand,
 } from "../weaponUiState";
 import { createWeaponSampleFixtures } from "../weaponFixtures";
-import { attachmentRestFromComposed, bindingWithAssembledLoadout } from "../loadoutPreview";
+import { attachmentRestFromComposed, bindingWithAssembledLoadout, resolveEquipmentPreviewMotion } from "../loadoutPreview";
 import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
 import { CharacterPreview } from "./AnimationAssetsWorkspace";
@@ -48,6 +49,9 @@ export interface WeaponWorkspaceProps {
   skeleton: Skeleton;
   binding?: CharacterBinding;
   clip?: MotionClip;
+  previewAction?: SkeletalProjectAnimation;
+  animations?: SkeletalProjectAnimation[];
+  actionClips?: Record<string, MotionClip>;
   materials?: Material[];
   busy?: boolean;
   onSaveWeapons: (equipment: EquipmentDefinition[], loadouts: CharacterLoadout[]) => Promise<void> | void;
@@ -61,6 +65,9 @@ export default function WeaponWorkspace({
   skeleton,
   binding,
   clip,
+  previewAction,
+  animations = [],
+  actionClips = {},
   materials = [],
   busy = false,
   onSaveWeapons,
@@ -94,6 +101,7 @@ export default function WeaponWorkspace({
     [materials],
   );
   const [holdModeDraft, setHoldModeDraft] = useState<WeaponHoldMode>("one_hand");
+  const [showSocketMarkers, setShowSocketMarkers] = useState(false);
   const canvasEditBeforeRef = useRef<EquipmentDefinition | null>(null);
   const fitRequestRef = useRef(0);
   const defaultWeaponSize = useMemo((): [number, number] => {
@@ -267,6 +275,17 @@ export default function WeaponWorkspace({
     const assembled = assembledForWeaponPane(state.pane, state.legalPreview, draft, activeBody.id);
     return bindingWithAssembledLoadout(binding, activeBody, assembled);
   }, [activeBody, binding, draft, state.legalPreview, state.pane]);
+  const previewMotion = useMemo(() => {
+    const assembled = assembledForWeaponPane(state.pane, state.legalPreview, draft, activeBody?.id ?? "");
+    return resolveEquipmentPreviewMotion({
+      baseAction: previewAction,
+      baseClip: clip,
+      animations,
+      clips: actionClips,
+      actionOverrides: assembled.actionOverrides,
+    });
+  }, [actionClips, activeBody?.id, animations, clip, draft, previewAction, state.legalPreview, state.pane]);
+  const previewClip = previewMotion.clip;
 
   return (
     <section className="weapon-workspace">
@@ -291,11 +310,11 @@ export default function WeaponWorkspace({
               ? <CharacterPreview
                   binding={previewBinding}
                   skeleton={skeleton}
-                  clip={clip}
+                  clip={previewClip}
                   time={state.previewTime}
                   selectedAttachmentId={state.pane === "preview" ? undefined : (selectedAttachment?.id ?? undefined)}
                   showSkeleton
-                  socketMarkers={socketMarkers}
+                  socketMarkers={showSocketMarkers ? socketMarkers : undefined}
                   onSelectAttachment={state.pane === "preview" ? undefined : onSelectCanvasAttachment}
                   onTransformAttachment={state.pane === "preview" ? undefined : onTransformCanvasAttachment}
                   onBeginTransform={state.pane === "preview" ? undefined : onBeginCanvasTransform}
@@ -306,16 +325,17 @@ export default function WeaponWorkspace({
               : <div className="weapon-empty-canvas">{t("skeletal.weapon.needBinding")}</div>}
           </div>
           <div className="weapon-preview-controls">
-            {clip && clip.duration > 0 && (
+            {previewClip && previewClip.duration > 0 && (
               <label className="weapon-follow-time">
                 {t("skeletal.weapon.actionPlayback")}
-                <input type="range" min={0} max={clip.duration} step={0.001} value={Math.min(state.previewTime, clip.duration)} onChange={(event) => dispatch({ type: "setPreviewTime", time: +event.target.value })} />
+                <input type="range" min={0} max={previewClip.duration} step={0.001} value={Math.min(state.previewTime, previewClip.duration)} onChange={(event) => dispatch({ type: "setPreviewTime", time: +event.target.value })} />
                 <span>{state.previewTime.toFixed(2)}s</span>
               </label>
             )}
             <div className="weapon-inline">
               <button type="button" className={`px-btn ${state.facing === "right" ? "accent" : ""}`} onClick={() => dispatch({ type: "setFacing", facing: "right" })}>{t("skeletal.weapon.facing.right")}</button>
               <button type="button" className={`px-btn ${state.facing === "left" ? "accent" : ""}`} onClick={() => dispatch({ type: "setFacing", facing: "left" })}>{t("skeletal.weapon.facing.left")}</button>
+              <button type="button" className={`px-btn ${showSocketMarkers ? "accent" : ""}`} onClick={() => setShowSocketMarkers((show) => !show)}>{t("skeletal.preview.showSockets")}</button>
             </div>
             {weapon && (
               <div className="weapon-grip-summary">
@@ -346,6 +366,7 @@ export default function WeaponWorkspace({
                 ))}
               </ul>
             )}
+            {previewMotion.diagnostic && <p className="weapon-hint"><code>{previewMotion.diagnostic}</code></p>}
           </div>
         </div>
 

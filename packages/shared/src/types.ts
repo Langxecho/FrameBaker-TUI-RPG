@@ -960,6 +960,8 @@ export interface MediaPluginGenerationRequest {
   folderId?: string | null;
   projectId?: string | null;
   name?: string;
+  /** 客户端重试创建任务时复用；同键不同输入会被拒绝。 */
+  idempotencyKey?: string;
 }
 
 export interface MediaPluginResult {

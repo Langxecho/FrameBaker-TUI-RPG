@@ -6,6 +6,9 @@
 
 ## 总览
 
+媒体运行时由安装脚本提供宿主依赖 `requests` 与 `pillow`；其中 `pillow`
+用于有界的骨骼素材分件器。插件压缩包声明的依赖仍不会被自动执行安装。
+
 ```
                         ┌──────────────────────────────────────────────┐
                         │                浏览器（React 19）             │
@@ -39,7 +42,7 @@
 │   └─ /api/jobs(/:id)   任务列表（面板初始加载）/ 单任务查询          │
 │                                                                     │
 │  mcp/（MCP 服务端：POST /mcp JSON-RPC 2.0 Streamable HTTP）        │
-│       54 个工具直接操作 db/内部模块，供 AI 助手调用                 │
+│       61 个工具直接操作 db/内部模块，供 AI 助手调用                 │
 │                                                                     │
 │  provider.ts（多生成 provider / 抠图配置解析：settings 优先 env 兜底）│
 │  providerAdapter.ts（生成校验/执行 adapter + provider 模型探测）      │
@@ -97,7 +100,7 @@
 
 - **HTML import 全栈**：`apps/server/src/index.ts` 里 `import index from "../../web/index.html"`，`Bun.serve` 的 `routes` 把它挂在 `/`、`/project/:id`、`/materials`、`/motions`、`/generate`、`/settings`；前端读 `location.pathname` 恢复页面/项目上下文（无路由库）。development 模式（`NODE_ENV !== "production"`）下每次请求重新打包并支持 HMR（Windows 使用稳定前端 bundle；bun --watch 仍会重启服务端）。
 - **storage 与 cwd 无关**：`db.ts` 用 `import.meta.dir` 上溯三级得到仓库根，`STORAGE_ROOT = <root>/storage`；DB 中 `raw_path`/`processed_path` 存绝对路径。从根 `bun dev` 或从 `apps/server` 内启动都指向同一位置。
-- **任务队列**：`queue.ts` 内存 FIFO，并发上限 2；job 状态落 SQLite（queued/running/done/error/cancelled + progress/error），负载（staging 路径、prompt 等）只存内存——重启后未完成任务不恢复，启动时统一把遗留的 queued/running 标记为 error（「服务重启，任务中断」）。`POST /api/jobs/:id/cancel` 可取消排队/运行中任务（AbortSignal → `runCmd` 杀进程 / API 轮询中断 / 媒体插件 Python 子进程被杀并清理运行目录）。所有状态变化经 `ws.ts` 广播；前端由 `JobPanel`（右侧常驻面板，挂在 App 根部）经 WS `job_*` 事件 + `GET /api/jobs(/:id)` 兜底轮询展示进度，排队/运行中可点取消。调度依赖保持单向：`queue.ts` 调用 `jobs/*` worker；拆帧/生成后的抠图任务通过调度层注入的窄回调入队，worker 不反向依赖队列。
+- **任务队列**：`queue.ts` 采用 SQLite 持久负载日志 + 进程内 FIFO；状态、标准化 payload/hash、可选幂等键、运行 owner、phase、attempt 与续租 lease 均落库。原子 claim 防止多个服务进程抢占仍存活的任务。重启只恢复 queued 和可证明安全的本地任务；外部生成若处于未知 running 状态会阻断而不盲重提。已转换的 Comfy 任务使用稳定的 `media-plugin-runs/job_<jobId>` journal：明确 `promptId` 时只对账 `/history`，`submitting` / 提交未知 / 输出未知一律 fail closed。`POST /api/jobs/:id/cancel` 可取消排队/运行中任务（AbortSignal → `runCmd` 杀进程 / API 轮询中断 / 媒体插件 Python 子进程被杀）。所有状态变化经 `ws.ts` 广播；前端由 `JobPanel`（右侧常驻面板，挂在 App 根部）经 WS `job_*` 事件 + `GET /api/jobs(/:id)` 兜底轮询展示进度，排队/运行中可点取消。调度依赖保持单向：`queue.ts` 调用 `jobs/*` worker；拆帧/生成后的抠图任务通过调度层注入的窄回调入队，worker 不反向依赖队列。
 - **WS 广播**：`ws.ts` 维护客户端 Set，`broadcast(type, payload)` 发 JSON；事件名在 shared 的 `WS_EVENTS` 统一定义。前端收到 `frame_updated/frames_reordered/frames_changed/job_done` 后重拉帧列表，收到 `material_updated/materials_changed` 后重拉素材列表。
 - **素材来源语义**：图片分层产物使用共享 `layers` 来源并显示「分层」，不再伪装成普通 `api` 来源；启动迁移按 `metadata.provider=imageLayers` 识别并修正历史产物。
 - **拆帧编号**：ffmpeg 先拆到 `staging/extract_<uuid>/frame_%04d.png`，再按 raw 目录现存最大编号续编搬入 `raw/frame_XXXX.png`，多次导入互不覆盖；`duplicate` 生成的 `dup_<uuid>.png` 不匹配该扫描规则，不会被误收。
@@ -117,7 +120,7 @@
 - **帧变换几何**（`apps/web/src/frameGeometry.ts`）：集中中心锚点、offset、rotation、scale 的轴对齐包围盒、fit-to-view 与 rotation 归一化；Pixi `FrameEditor` 与 Canvas `export.ts` 是两个渲染 adapter，共用同一几何语义。
 - **导入工作流**（`apps/web/src/hooks/useImportWorkflow.ts`）：项目导入与素材导入共用文件状态转换、顺序上传、任务轮询、部分失败、计时器清理与完成汇总；两个 modal 仅提供各自的 FormData/API adapter，剪裁阶段继续由 `useCropQueue` 负责。
 - **前端客户端边界**：`apps/web/src/api.ts` 保留为类型化 HTTP API 方法与共享响应类型的兼容门面；素材/帧图片 URL 构造位于 `api/mediaUrls.ts`，带重连的应用级 WebSocket 客户端位于 `api/ws.ts`。新增传输职责应放回所属模块，不再继续膨胀门面文件。
-- **独立媒体插件体系**（`.iap` / `.vap` / `.aap`，与 `GenProvider` 并行——不得合并执行路径）：Bun 负责发现、Zip Slip 安全安装到 `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`、设置（密钥/参数默认值；密钥永不回显）、API、队列任务（`media_plugin_image|video|audio`）、素材归档（`source=media-plugin:<plugin-id>`，`metadata.mediaKind`）、`/generate` 前端与 MCP 查询/生成工具。Python 仅作受控 JSON 文件子进程：`apps/server/src/python/media_plugin_runner.py` + 拷贝的 `aigc_bench_plugin_runtime/` 在 `.venv-media` 中加载可信 `provider.py`（`scripts/setup_media.sh` / `setup_media.ps1`；基础依赖仅 `requests`——首期**不**自动安装插件自带依赖）。通信为 `storage/media-plugin-runs/<run-id>/` 下的 `request.json` / `result.json`（prompt/参数不经 argv 转义）。取消/超时会尽力终止 Python 进程树（`Bun.spawn().kill()`；Windows 在可得 PID 时另发 `taskkill /PID <pid> /T /F`——Bun 无跨平台进程组 API），并由 `cleanupMediaPluginRunDir` 删除运行目录；失败/取消不得残留插件产出或密钥明文。结果处理拒绝 `file:` / 非 http(s) 下载，要求本地 `image_path`/`video_path`/`audio_path` 已位于当前 run `outputDir`（禁止任意绝对路径复制），限制下载与 ZIP 压缩/解压体积，保留小数 `durationSeconds`，Python stderr/traceback 仅服务端日志（任务/MCP 返回稳定安全错误码）。插件包是**可信可执行代码**（UI 必须警告）；提供路径隔离、包校验、超时与密钥脱敏——**不承诺操作系统级沙箱**。缺少 `.venv-media` → `PYTHON_RUNTIME_UNAVAILABLE` / `GET /api/config.mediaPlugins.pythonAvailable=false` 并给出安装提示；生成/测试拒绝执行。可选覆盖：`FRAMEBAKER_MEDIA_PYTHON`、`FRAMEBAKER_MEDIA_PLUGIN_ROOT`。MCP 仅暴露 `list_media_plugins`、`get_media_plugin`、`generate_with_media_plugin`（只接受素材 ID——禁止安装/删除/改密钥/本地路径/任意 Python）。HTTP 细节见 `docs/api.zh-CN.md`「媒体插件 / 媒体生成」。
+- **独立媒体插件体系**（`.iap` / `.vap` / `.aap`，与 `GenProvider` 并行——不得合并执行路径）：Bun 负责发现、Zip Slip 安全安装到 `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`、设置（密钥/参数默认值；密钥永不回显）、API、队列任务（`media_plugin_image|video|audio`）、素材归档（`source=media-plugin:<plugin-id>`，`metadata.mediaKind`）、`/generate` 前端与 MCP 查询/生成工具。Python 仅作受控 JSON 文件子进程：`apps/server/src/python/media_plugin_runner.py` + 拷贝的 `aigc_bench_plugin_runtime/` 在 `.venv-media` 中加载可信 `provider.py`（`scripts/setup_media.sh` / `setup_media.ps1`；宿主基础依赖为 `requests` 与 `pillow`，其中 `pillow` 用于有界的骨骼素材分件器——首期**不**自动安装插件自带依赖）。通信为 `storage/media-plugin-runs/<run-id>/` 下的 `request.json` / `result.json`（prompt/参数不经 argv 转义）。取消/超时会尽力终止 Python 进程树（`Bun.spawn().kill()`；Windows 在可得 PID 时另发 `taskkill /PID <pid> /T /F`——Bun 无跨平台进程组 API），并由 `cleanupMediaPluginRunDir` 删除运行目录；失败/取消不得残留插件产出或密钥明文。结果处理拒绝 `file:` / 非 http(s) 下载，要求本地 `image_path`/`video_path`/`audio_path` 已位于当前 run `outputDir`（禁止任意绝对路径复制），限制下载与 ZIP 压缩/解压体积，保留小数 `durationSeconds`，Python stderr/traceback 仅服务端日志（任务/MCP 返回稳定安全错误码）。插件包是**可信可执行代码**（UI 必须警告）；提供路径隔离、包校验、超时与密钥脱敏——**不承诺操作系统级沙箱**。缺少 `.venv-media` → `PYTHON_RUNTIME_UNAVAILABLE` / `GET /api/config.mediaPlugins.pythonAvailable=false` 并给出安装提示；生成/测试拒绝执行。可选覆盖：`FRAMEBAKER_MEDIA_PYTHON`、`FRAMEBAKER_MEDIA_PLUGIN_ROOT`。MCP 仅暴露 `list_media_plugins`、`get_media_plugin`、`generate_with_media_plugin`（只接受素材 ID——禁止安装/删除/改密钥/本地路径/任意 Python）。HTTP 细节见 `docs/api.zh-CN.md`「媒体插件 / 媒体生成」。
 - **生成 provider adapter 与产物提交**：`providerAdapter.ts` 每次任务实时解析 provider，封装配置/模型/能力校验、CLI argv、API/CLI 产出分发及 doctor 的模型探测；`jobs/generatedArtifacts.ts` 拥有产物 allocation、媒体分类、帧/素材/视频入库、暂存清理、广播与自动抠图收尾。`jobs/extract.ts` 只协调“产出 → 提交”，API 厂商协议仍位于 `jobs/generateApi.ts`。怪物制作由调度层把这些已有任务串起来（`monsterPipeline.ts`），不合并 GenProvider 与插件 worker。
 
 ## 数据流
@@ -128,7 +131,7 @@
 AI 客户端 → POST /mcp { jsonrpc, method: "initialize" }
   → 服务端返回 protocolVersion/capabilities/serverInfo + Mcp-Session-Id
   → 客户端发 notifications/initialized
-  → tools/list 获取 54 个工具
+  → tools/list 获取 61 个工具
   → tools/call { name, arguments } → 直接 db 操作 → 返回 { content: [{ type:"text", text:JSON }] }
 ```
 
@@ -251,3 +254,8 @@ storage/
 - `i18n.ts` + `i18n/zh.ts` / `i18n/en.ts`：界面语言（zh 默认 / en）；文案用稳定 key（如 `common.close`），`t(key)` / `useT()` 查表；localStorage `framebaker-lang` + settings `lang`
 - `notice.ts` + `AppModals`（挂在 App 根部）：全局通知条与确认弹窗，替代浏览器默认 `alert`/`confirm`——任何组件调 `notify(text)` / `await askConfirm(text)`，禁止再用浏览器默认弹窗
 - `api.ts`：类型化 fetch 封装与兼容门面；`api/mediaUrls.ts` 负责帧/素材 URL 构造，`api/ws.ts` 负责 WebSocket 客户端（断线 3s 重连）
+### AIC 素材到骨架的边界
+
+AIC 制作链路明确分成两道边界：`split_material_parts` 只做 material-ID 约束的有界网格裁切与色键透明；随后由 AIC operations/publish 使用调用方提供的素材 ID 组装 Region 附件并发布 `.fbanim v3`。分件器不是人体语义识别，不推断骨骼，不生成 Mesh，也不等于成品美术。源素材/摘要闭包和幂等子素材 ID 见 `mission/ai-character-pipeline.md` 与 `docs/api.zh-CN.md`。
+
+当前演练参考素材为 `ecfeb992-399e-46a1-bd73-88799c8f1b45`，配方脚本为 `scripts/aic_humanoid_recipe.ts`。B 侧导入、正式客户端消费、terminal 联调和美术质量仍是独立验收门。

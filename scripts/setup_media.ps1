@@ -10,7 +10,7 @@ Set-Location (Join-Path $PSScriptRoot "..")
 $Venv = ".venv-media"
 $VenvPython = Join-Path $Venv "Scripts\python.exe"
 # Base runtime only; plugin-provided dependency commands are never read or executed.
-$RuntimeDeps = @("requests")
+$RuntimeDeps = @("requests", "pillow")
 
 if (Test-Path $VenvPython) {
   Write-Host "media Python is already installed: $VenvPython"

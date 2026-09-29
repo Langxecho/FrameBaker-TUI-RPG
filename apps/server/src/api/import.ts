@@ -73,7 +73,7 @@ export const importApi = new Elysia({ prefix: "/api" })
         size: body.size,
         mediaKind: body.mediaKind,
         fps: body.fps,
-      });
+      }, { idempotencyKey: body.idempotencyKey });
       return { jobId: jobIds[0], jobIds };
     },
     {
@@ -95,6 +95,7 @@ export const importApi = new Elysia({ prefix: "/api" })
         size: t.Optional(t.String()),
         mediaKind: t.Optional(t.Union([t.Literal("image"), t.Literal("video")])),
         fps: t.Optional(t.Integer({ minimum: 1, maximum: 60 })),
+        idempotencyKey: t.Optional(t.String({ minLength: 1, maxLength: 200 })),
       }),
     }
   );

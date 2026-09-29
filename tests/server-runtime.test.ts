@@ -8,6 +8,17 @@ import { parseThumbnailSize, serveMediaFile } from "../apps/server/src/media";
 import { clearFramePlacement } from "../apps/server/src/timeline";
 import { invalidateProjectUndo, undoProject } from "../apps/server/src/undo";
 
+const shell = process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "/bin/sh";
+const successfulCommand = process.platform === "win32"
+  ? [shell, "/d", "/c", "exit", "0"]
+  : ["/usr/bin/true"];
+const failingCommand = process.platform === "win32"
+  ? [shell, "/d", "/c", "echo command-failed 1>&2 & exit /b 7"]
+  : ["/bin/sh", "-c", "echo command-failed >&2; exit 7"];
+const falseCommand = process.platform === "win32"
+  ? [shell, "/d", "/c", "exit", "1"]
+  : ["/usr/bin/false"];
+
 function createUndoFixture() {
   const projectId = `undo-project-${crypto.randomUUID()}`;
   const axisId = crypto.randomUUID();
@@ -58,17 +69,17 @@ function undoCount(projectId: string): number {
 
 describe("外部命令执行器", () => {
   test("成功命令正常结束", async () => {
-    await expect(runCmd(["/usr/bin/true"])).resolves.toBeUndefined();
+    await expect(runCmd(successfulCommand)).resolves.toBeUndefined();
   });
 
   test("非零退出携带 stderr 上下文", async () => {
-    await expect(runCmd(["/bin/sh", "-c", "echo command-failed >&2; exit 7"])).rejects.toThrow("命令执行失败 (/bin/sh): command-failed");
+    await expect(runCmd(failingCommand)).rejects.toThrow(`命令执行失败 (${failingCommand[0]}): command-failed`);
   });
 
   test("已取消的任务不会启动进程", async () => {
     const controller = new AbortController();
     controller.abort();
-    await expect(runCmd(["/usr/bin/false"], undefined, controller.signal)).rejects.toBeInstanceOf(JobCancelledError);
+    await expect(runCmd(falseCommand, undefined, controller.signal)).rejects.toBeInstanceOf(JobCancelledError);
   });
 });
 

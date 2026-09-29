@@ -43,6 +43,7 @@ export const mediaGenerationApi = new Elysia({ prefix: "/api" }).post(
       folderId: t.Optional(t.Union([t.String(), t.Null()])),
       projectId: t.Optional(t.Union([t.String(), t.Null()])),
       name: t.Optional(t.String({ maxLength: 200 })),
+      idempotencyKey: t.Optional(t.String({ minLength: 1, maxLength: 200 })),
     }),
   },
 );

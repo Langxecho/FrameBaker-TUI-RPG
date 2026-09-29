@@ -9,6 +9,7 @@ import {
   type EquipmentDefinition,
   type Material,
   type MotionClip,
+  type SkeletalProjectAnimation,
   type Skeleton,
   type Transform,
 } from "@framebaker/shared";
@@ -30,7 +31,7 @@ import {
   type SavedTestLoadout,
 } from "../equipmentUiState";
 import { createEquipmentSampleFixtures } from "../equipmentFixtures";
-import { attachmentRestFromComposed, bindingWithAssembledLoadout, overlayDraftEquipment } from "../loadoutPreview";
+import { attachmentRestFromComposed, bindingWithAssembledLoadout, overlayDraftEquipment, resolveEquipmentPreviewMotion } from "../loadoutPreview";
 import { useT } from "../i18n";
 import { askConfirm, notify } from "../notice";
 import { CharacterPreview } from "./AnimationAssetsWorkspace";
@@ -77,6 +78,9 @@ export interface EquipmentWorkspaceProps {
   skeleton: Skeleton;
   binding?: CharacterBinding;
   clip?: MotionClip;
+  previewAction?: SkeletalProjectAnimation;
+  animations?: SkeletalProjectAnimation[];
+  actionClips?: Record<string, MotionClip>;
   materials?: Material[];
   busy?: boolean;
   onSaveEquipment: (equipment: EquipmentDefinition[], loadouts: CharacterLoadout[]) => Promise<void> | void;
@@ -90,6 +94,9 @@ export default function EquipmentWorkspace({
   skeleton,
   binding,
   clip,
+  previewAction,
+  animations = [],
+  actionClips = {},
   materials = [],
   busy = false,
   onSaveEquipment,
@@ -133,6 +140,7 @@ export default function EquipmentWorkspace({
   const canvasEditBeforeRef = useRef<EquipmentDefinition | null>(null);
   const canvasStageRef = useRef<HTMLDivElement | null>(null);
   const [canvasZoom, setCanvasZoom] = useState(1);
+  const [showSocketMarkers, setShowSocketMarkers] = useState(false);
   const fitRequestRef = useRef(0);
   const defaultGearSize = useMemo((): [number, number] => {
     const span = Math.max(48, measureSkeletonHeight(skeleton) * 0.28);
@@ -260,6 +268,18 @@ export default function EquipmentWorkspace({
     });
   }, [activeBody, binding, draft, state.isolateSelected, state.legalPreview, state.showHiddenBase]);
 
+  const previewMotion = useMemo(
+    () => resolveEquipmentPreviewMotion({
+      baseAction: previewAction,
+      baseClip: clip,
+      animations,
+      clips: actionClips,
+      actionOverrides: overlayDraftEquipment(state.legalPreview, draft, activeBody?.id ?? "").actionOverrides,
+    }),
+    [actionClips, activeBody?.id, animations, clip, draft, previewAction, state.legalPreview],
+  );
+  const previewClip = previewMotion.clip;
+
   const onSelectAttachmentSocket = (socketId: string) => {
     if (!selectedAttachment || !activeBody) return;
     dispatch({ type: "patchAttachment", attachmentId: selectedAttachment.id, patch: { socket: socketId } });
@@ -352,11 +372,11 @@ export default function EquipmentWorkspace({
               ? <CharacterPreview
                   binding={previewBinding}
                   skeleton={skeleton}
-                  clip={clip}
+                  clip={previewClip}
                   time={state.previewTime}
                   selectedAttachmentId={selectedAttachment?.id ?? undefined}
                   showSkeleton
-                  socketMarkers={socketMarkers}
+                  socketMarkers={showSocketMarkers ? socketMarkers : undefined}
                   onSelectAttachment={onSelectCanvasAttachment}
                   onTransformAttachment={onTransformCanvasAttachment}
                   onBeginTransform={onBeginCanvasTransform}
@@ -367,10 +387,10 @@ export default function EquipmentWorkspace({
               : <div className="equipment-empty-canvas">{t("skeletal.equipment.needBinding")}</div>}
           </div>
           <div className="equipment-preview-controls">
-            {clip && clip.duration > 0 && (
+            {previewClip && previewClip.duration > 0 && (
               <label className="equipment-follow-time">
                 {t("skeletal.equipment.actionPlayback")}
-                <input type="range" min={0} max={clip.duration} step={0.001} value={Math.min(state.previewTime, clip.duration)} onChange={(event) => dispatch({ type: "setPreviewTime", time: +event.target.value })} />
+                <input type="range" min={0} max={previewClip.duration} step={0.001} value={Math.min(state.previewTime, previewClip.duration)} onChange={(event) => dispatch({ type: "setPreviewTime", time: +event.target.value })} />
                 <span>{state.previewTime.toFixed(2)}s</span>
               </label>
             )}
@@ -379,6 +399,7 @@ export default function EquipmentWorkspace({
               <button type="button" className={`px-btn ${state.facing === "left" ? "accent" : ""}`} onClick={() => dispatch({ type: "setFacing", facing: "left" })}>{t("skeletal.equipment.facing.left")}</button>
               <button type="button" className={`px-btn ${state.showHiddenBase ? "accent" : ""}`} onClick={() => dispatch({ type: "setShowHiddenBase", show: !state.showHiddenBase })}>{t("skeletal.equipment.showHiddenBase")}</button>
               <button type="button" className={`px-btn ${state.isolateSelected ? "accent" : ""}`} onClick={() => dispatch({ type: "setIsolateSelected", isolate: !state.isolateSelected })}>{t("skeletal.equipment.isolate")}</button>
+              <button type="button" className={`px-btn ${showSocketMarkers ? "accent" : ""}`} onClick={() => setShowSocketMarkers((show) => !show)}>{t("skeletal.preview.showSockets")}</button>
             </div>
             <div className="equipment-inline">
               <span>{t("skeletal.equipment.canvasZoom")}</span>
@@ -408,6 +429,7 @@ export default function EquipmentWorkspace({
                 ))}
               </ul>
             )}
+            {previewMotion.diagnostic && <p className="equipment-hint"><code>{previewMotion.diagnostic}</code></p>}
           </div>
         </div>
 

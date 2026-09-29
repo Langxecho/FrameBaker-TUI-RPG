@@ -10,10 +10,14 @@
 ## 所有权
 
 负责怪物逐帧、角色骨骼、装备/武器与特效素材制作及目标运行时导出。
+
+当前 AIC 角色实施状态见 [`ai-character-pipeline.md`](ai-character-pipeline.md)。该页镜像并约束本实施树的 API/MCP/splitter 边界；原始任务卡仍在上游仓库，仅作只读参考。
 LIAF 游戏定义、机制绑定与交互编排由客户端组负责。
 后端决定所有真实命中/伤害/时序；制作端动作标记不能驱动权威结算。
 
 ## 当前入口
+
+从 [LIAF 制作开发手册](../docs/liaf-development-handbook.md) 开始了解三端分工、MCP 数值编辑、D1 配方、插件显存切换和交付验收。
 
 参考 [架构](../docs/architecture.zh-CN.md)、
 [怪物制作练习](../docs/monster-blade-guard-test.zh-CN.md)、

@@ -101,6 +101,7 @@ export function register(server: McpServer) {
         folderId: z.string().describe("Target materials folder UUID").optional(),
         projectId: z.string().describe("Optional frame project UUID for image import after archive").optional(),
         name: z.string().max(200).describe("Material name base").optional(),
+        idempotencyKey: z.string().min(1).max(200).describe("Stable key for safe create retries; reused with identical input only").optional(),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
@@ -117,6 +118,7 @@ export function register(server: McpServer) {
           folderId: args.folderId ?? null,
           projectId: args.projectId ?? null,
           name: args.name,
+          idempotencyKey: args.idempotencyKey,
         });
         if (!jobIds.length) return err("未能创建生成任务");
         return ok({ jobId: jobIds[0], jobIds });

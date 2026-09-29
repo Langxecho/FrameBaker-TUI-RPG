@@ -715,6 +715,23 @@ def test_safe_download_rejects_file_and_loopback() -> None:
     assert raised
 
 
+def test_materialized_file_reference_is_limited_to_output_dir(tmp_path: Path) -> None:
+    if str(PYTHON_DIR) not in sys.path:
+        sys.path.insert(0, str(PYTHON_DIR))
+    from aigc_bench_plugin_runtime.safe_download import download_reference_bytes
+
+    run_dir = tmp_path / "run"
+    reference = run_dir / "references" / "reference_1.png"
+    reference.parent.mkdir(parents=True)
+    reference.write_bytes(b"reference-bytes")
+
+    assert download_reference_bytes(reference.as_uri(), output_dir=run_dir) == b"reference-bytes"
+    with pytest.raises(RuntimeError, match="PLUGIN_DOWNLOAD_REJECTED|escapes outputDir"):
+        download_reference_bytes((tmp_path / "outside.png").as_uri(), output_dir=run_dir)
+    with pytest.raises(RuntimeError, match="PLUGIN_DOWNLOAD_REJECTED"):
+        download_reference_bytes(reference.as_uri(), output_dir=None)
+
+
 def test_safe_download_rejects_trailing_dot_special_hosts() -> None:
     if str(PYTHON_DIR) not in sys.path:
         sys.path.insert(0, str(PYTHON_DIR))

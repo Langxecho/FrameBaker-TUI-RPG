@@ -9,6 +9,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
 from requests.adapters import HTTPAdapter
+from urllib.request import url2pathname
 
 DEFAULT_MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024
 MAX_REDIRECTS = 5
@@ -233,6 +234,36 @@ def download_bytes(url: str, *, timeout: int = 120, max_bytes: int = DEFAULT_MAX
 
     _reject("too many redirects")
     raise AssertionError("unreachable")
+
+
+def download_reference_bytes(
+    url: str,
+    *,
+    output_dir: str | Path | None,
+    timeout: int = 120,
+    max_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
+) -> bytes:
+    """Read a server-materialized file reference or download a public URL.
+
+    Local file references are accepted only when they resolve inside the current
+    plugin run directory. The regular download_bytes contract remains HTTP(S)
+    only, so result downloads and arbitrary file URLs stay rejected.
+    """
+    text = str(url or "").strip()
+    if urlparse(text).scheme.lower() == "file":
+        if output_dir is None:
+            _reject("local reference requires a plugin output directory")
+        parsed = urlparse(text)
+        if parsed.query or parsed.fragment or (parsed.netloc and parsed.netloc.lower() != "localhost"):
+            _reject("local reference URI is invalid")
+        path = require_path_inside(Path(url2pathname(parsed.path)), Path(output_dir))
+        if not path.is_file():
+            _reject("local reference file is missing")
+        size = path.stat().st_size
+        if size <= 0 or size > max_bytes:
+            _reject("local reference file exceeds size budget")
+        return path.read_bytes()
+    return download_bytes(text, timeout=timeout, max_bytes=max_bytes)
 
 
 def download_to_file(

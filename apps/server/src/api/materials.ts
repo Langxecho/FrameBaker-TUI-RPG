@@ -21,6 +21,7 @@ import {
   serveMediaFile,
 } from "../media";
 import { beginProjectUndo } from "../undo";
+import { splitSkeletalMaterial } from "../jobs/skeletalSplit";
 
 function baseName(filename: string): string {
   const n = filename.split("/").pop() ?? filename;
@@ -36,11 +37,20 @@ function isPng(bytes: Uint8Array): boolean {
   return bytes.length >= signature.length && signature.every((byte, i) => bytes[i] === byte);
 }
 
-export function createAutomaticCharacterPartSet(name: string | undefined, source: "generated" | "decomposed", referenceMaterialId?: string): string {
-  const id = uid();
+export function createAutomaticCharacterPartSet(name: string | undefined, source: "generated" | "decomposed", referenceMaterialId?: string, fixedId?: string): string {
+  const id = fixedId ?? uid();
   const now = Date.now();
+  const expectedName = name?.trim() || "人物分件";
+  const expectedReference = referenceMaterialId ?? null;
+  const existing = db.query("SELECT name,source,reference_material_id FROM character_part_sets WHERE id=?").get(id) as { name: string; source: string; reference_material_id: string | null } | null;
+  if (existing) {
+    if (existing.name !== expectedName || existing.source !== source || existing.reference_material_id !== expectedReference) {
+      throw new Error("IDEMPOTENCY_KEY_CONFLICT: 幂等角色部件集输入不一致");
+    }
+    return id;
+  }
   db.query("INSERT INTO character_part_sets (id,name,source,reference_material_id,created_at,updated_at) VALUES (?,?,?,?,?,?)")
-    .run(id, name?.trim() || "人物分件", source, referenceMaterialId ?? null, now, now);
+    .run(id, expectedName, source, expectedReference, now, now);
   return id;
 }
 
@@ -294,8 +304,11 @@ export const materialsApi = new Elysia({ prefix: "/api" })
       if (videoErr) return status(400, videoErr);
       const skeletalIntent = body.intent === "skeletal-character" || body.intent === "skeletal-parts" || body.intent === "skeletal-decompose";
       const referenceMaterialId = body.referenceMaterialId ?? body.references?.find((item) => item.kind === "material")?.id;
+      const stablePartSetId = skeletalIntent && body.idempotencyKey
+        ? `generated-${new Bun.CryptoHasher("sha256").update(body.idempotencyKey).digest("hex")}`
+        : undefined;
       const characterPartSetId = body.characterPartSetId ?? (skeletalIntent
-        ? createAutomaticCharacterPartSet(body.name, body.intent === "skeletal-decompose" ? "decomposed" : "generated", referenceMaterialId)
+        ? createAutomaticCharacterPartSet(body.name, body.intent === "skeletal-decompose" ? "decomposed" : "generated", referenceMaterialId, stablePartSetId)
         : undefined);
       const jobId = createJob("", "generate_frames", {
         generate: {
@@ -318,7 +331,7 @@ export const materialsApi = new Elysia({ prefix: "/api" })
           gridCols: body.gridCols,
           followUp: body.followUp,
         },
-      });
+      }, { idempotencyKey: body.idempotencyKey });
       return { jobId, characterPartSetId };
     },
     {
@@ -346,6 +359,7 @@ export const materialsApi = new Elysia({ prefix: "/api" })
         gridRows: t.Optional(t.Integer({ minimum: 1, maximum: 8 })),
         gridCols: t.Optional(t.Integer({ minimum: 1, maximum: 8 })),
         followUp: t.Optional(t.Object({ prompt: t.String({ minLength: 1 }), name: t.Optional(t.String()), autoMatting: t.Optional(t.Boolean()), gridRows: t.Optional(t.Integer({ minimum: 1, maximum: 8 })), gridCols: t.Optional(t.Integer({ minimum: 1, maximum: 8 })) })),
+        idempotencyKey: t.Optional(t.String({ minLength: 1, maxLength: 200 })),
       }),
       beforeHandle({ body, status }) {
         if (body.followUp && body.intent !== "skeletal-character") return status(400, "后续生成任务仅用于完整角色两阶段分件");
@@ -518,6 +532,33 @@ export const materialsApi = new Elysia({ prefix: "/api" })
       trueCfgScale: t.Number({ minimum: 0, maximum: 20 }),
       negativePrompt: t.Optional(t.String()), seed: t.Integer({ minimum: 0 }),
       autoMatting: t.Optional(t.Boolean()),
+    }) }
+  )
+  .post(
+    "/materials/:id/skeletal-split",
+    async ({ params, body, request, status }) => {
+      try {
+        return await splitSkeletalMaterial({
+          materialId: params.id,
+          rows: body.rows,
+          cols: body.cols,
+          keyColor: body.keyColor as [number, number, number] | undefined,
+          tolerance: body.tolerance,
+          magentaDespill: body.magentaDespill,
+          parts: body.parts,
+          idempotencyKey: request.headers.get("idempotency-key") ?? undefined,
+        });
+      } catch (error) {
+        return status(400, (error as Error).message);
+      }
+    },
+    { body: t.Object({
+      rows: t.Integer({ minimum: 1, maximum: 8 }),
+      cols: t.Integer({ minimum: 1, maximum: 8 }),
+      keyColor: t.Optional(t.Tuple([t.Integer({ minimum: 0, maximum: 255 }), t.Integer({ minimum: 0, maximum: 255 }), t.Integer({ minimum: 0, maximum: 255 })])),
+      tolerance: t.Optional(t.Integer({ minimum: 0, maximum: 255 })),
+      magentaDespill: t.Optional(t.Integer({ minimum: 0, maximum: 100 })),
+      parts: t.Array(t.Object({ name: t.String({ minLength: 1, maxLength: 200 }), cell: t.Integer({ minimum: 0, maximum: 63 }) }), { minItems: 1, maxItems: 64 }),
     }) }
   )
   // 执行抠图：入队异步执行（模型首次下载可能耗时数分钟，同步会挂死请求；与批量抠图同路径）

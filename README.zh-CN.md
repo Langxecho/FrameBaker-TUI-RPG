@@ -77,7 +77,7 @@
 - **Cassette Futurism 双主题** —— 深色 Magnetic Night / 浅色 Beige Terminal；默认跟随系统，三态切换（跟随系统/浅色/深色）
 - **实时同步** —— WebSocket 广播任务进度与帧/素材变更
 - **可调布局** —— 拖拽分隔条调整帧列表宽度与时间轴高度（自动持久化）
-- **MCP 服务端** —— 内置 [Model Context Protocol](https://modelcontextprotocol.io) 端点（`POST /mcp`，Streamable HTTP），暴露 54 个工具，让 AI 助手（Claude Desktop、Cursor、Windsurf）程序化管理项目、帧、素材、生成、抠图、任务与设置
+- **MCP 服务端** —— 内置 [Model Context Protocol](https://modelcontextprotocol.io) 端点（`POST /mcp`，Streamable HTTP），暴露 61 个工具（以 `tools/list` 实测），让 AI 助手（Claude Desktop、Cursor、Windsurf）程序化管理项目、帧、素材、生成、抠图、任务与设置
 
 ## 系统要求
 
@@ -134,7 +134,7 @@ bun start        # 生产
   # Windows（PowerShell）：
   powershell -ExecutionPolicy Bypass -File scripts\setup_media.ps1
   ```
-  创建 `.venv-media/` 并仅安装基础运行时依赖（`requests`）。插件自带的依赖安装命令首期**不会**自动执行——若插件需要额外包，请自行装进 `.venv-media`。跳过安装则媒体插件不可运行（config/doctor/任务返回 `PYTHON_RUNTIME_UNAVAILABLE`）。插件包是可信可执行 Python；只导入你信任的来源（无操作系统级沙箱）。
+  创建 `.venv-media/` 并安装宿主负责的基础运行时依赖（`requests` 与 `pillow`）。`pillow` 用于有界的骨骼素材分件器。插件自带的依赖安装命令首期**不会**自动执行——若插件需要额外包，请自行装进 `.venv-media`。跳过安装则媒体插件不可运行（config/doctor/任务返回 `PYTHON_RUNTIME_UNAVAILABLE`）。插件包是可信可执行 Python；只导入你信任的来源（无操作系统级沙箱）。
 - 类型检查：`bun run typecheck`
 - 单元测试：`bun run test`
 - 核心单测覆盖率报告：`bun run test:coverage`（当前覆盖共享规则、帧几何与 ZIP 导出）
@@ -174,7 +174,7 @@ rembg 调用形式为 `rembg i -m <MODEL> input output`；模型默认 `u2net`�
 
 独立于 `GenProvider`。使用 `.iap` / `.vap` / `.aap` 插件前，每个环境安装一次：
 
-1. 运行 `scripts/setup_media.sh` 或 `scripts\setup_media.ps1`，创建 `<repo>/.venv-media` 并安装 `requests`。
+1. 运行 `scripts/setup_media.sh` 或 `scripts\setup_media.ps1`，创建 `<repo>/.venv-media` 并安装宿主负责的基础依赖 `requests` 与 `pillow`。
 2. 在「设置 → 媒体插件」导入插件（可信代码警告）。包安装到 `storage/media-plugins/`。
 3. 在 `/generate` 或 MCP `generate_with_media_plugin` 生成（异步任务；取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs/`）。
 
@@ -237,7 +237,9 @@ FrameBaker 内置 MCP 服务端，让 AI 助手通过 [Model Context Protocol](h
 
 **Windsurf**（`~/.codeium/windsurf/mcp_config.json`）：`{ "mcpServers": { "framebaker": { "serverUrl": "http://localhost:3000/mcp" } } }`
 
-服务端暴露 **48 个工具**，覆盖项目、帧、素材、生成、抠图、文件夹、任务与系统配置。完整工具列表与调用示例见 [docs/api.zh-CN.md](docs/api.zh-CN.md)。
+服务端暴露 **61 个工具**（以 MCP `tools/list` 实测），覆盖项目、帧、素材、生成、抠图、文件夹、任务、AIC 制作与系统配置。完整工具列表与调用示例见 [docs/api.zh-CN.md](docs/api.zh-CN.md)。
+
+LIAF 三端制作与 AI 角色流程见 [LIAF 制作开发手册](docs/liaf-development-handbook.md)，其中区分本地 D1 验收、正式职业和生产发布。
 
 ## 许可
 

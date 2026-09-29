@@ -14,14 +14,16 @@ import {
   resolveMediaPluginReferences,
 } from "../mediaPlugins/service";
 import { MediaPluginServiceError, type MediaPluginJobPayload } from "../mediaPlugins/types";
+import { withMediaPluginRuntime } from "../mediaPlugins/runtime";
 
 export type { MediaPluginJobPayload };
 
 /** 执行媒体插件任务：校验 → Python runner → 产出校验 → 归档。 */
-export async function runMediaPluginJob(
+async function runMediaPluginJobUnlocked(
   payload: MediaPluginJobPayload,
   report: (progress: string) => void,
   signal?: AbortSignal,
+  options?: { jobId?: string; outputDir?: string; reconcileOnly?: boolean },
 ): Promise<MediaPluginResult[]> {
   if (signal?.aborted) throw new JobCancelledError();
 
@@ -31,13 +33,12 @@ export async function runMediaPluginJob(
   }
 
   report(`正在准备插件 ${payload.pluginId}`);
-  const refs = resolveMediaPluginReferences(payload.kind, payload.references, payload.referencePathOverrides);
   // Python runtime 扫描的是 kind 根目录（其下每个 plugin_id 子目录），不是单个插件目录
   const pluginRoot = mediaPluginKindRoot(payload.kind);
-  const outputDir = join(mediaPluginRunsRoot(), `${payload.pluginId}_${Date.now()}_${payload.batchIndex}`);
+  const outputDir = options?.outputDir ?? join(mediaPluginRunsRoot(), `${payload.pluginId}_${Date.now()}_${payload.batchIndex}`);
   mkdirSync(outputDir, { recursive: true });
-
   try {
+    const refs = resolveMediaPluginReferences(payload.kind, payload.references, payload.referencePathOverrides, outputDir);
     if (signal?.aborted) throw new JobCancelledError();
     report("正在调用插件");
 
@@ -112,6 +113,7 @@ export async function runMediaPluginJob(
       providerMetadata: materialized.providerMetadata,
       batchCount: payload.batchCount,
       batchIndex: payload.batchIndex,
+      mediaPluginJobId: options?.jobId,
     });
     return archived.map((item) => ({
       materialId: item.materialId,
@@ -119,8 +121,28 @@ export async function runMediaPluginJob(
       metadata: { batchIndex: payload.batchIndex, batchCount: payload.batchCount },
     }));
   } finally {
-    cleanupMediaPluginRunDir(outputDir);
+    // 持久任务失败时保留 request/result/Comfy journal，供重启后只做 reconcile；
+    // 持久任务由队列在终态落库前压缩为有界 receipt，避免归档完成到 status=done 之间丢 journal。
+    // 临时直调仍保持原先的总是清理行为。
+    if (!options?.jobId) cleanupMediaPluginRunDir(outputDir);
   }
+}
+
+/** All media plugin jobs share one runtime lease so a backend switch cannot overlap GPU residency. */
+export function runMediaPluginJob(
+  payload: MediaPluginJobPayload,
+  report: (progress: string) => void,
+  signal?: AbortSignal,
+  options?: { jobId?: string; outputDir?: string; reconcileOnly?: boolean },
+): Promise<MediaPluginResult[]> {
+  // 已知 promptId / completed journal 的恢复只会读取 Comfy history/view 并归档，
+  // 不提交新任务、不切换 GPU 驻留，因此不能也不需要夺取未知 active runtime lease。
+  if (options?.reconcileOnly) return runMediaPluginJobUnlocked(payload, report, signal, options);
+  return withMediaPluginRuntime(
+    { kind: payload.kind, pluginId: payload.pluginId },
+    () => runMediaPluginJobUnlocked(payload, report, signal, options),
+    options?.jobId ? `job:${options.jobId}` : `job:${payload.pluginId}:${payload.batchIndex}:${Date.now()}`,
+  );
 }
 
 export function isRetryableMediaPluginUploadError(message: string): boolean {

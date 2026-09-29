@@ -705,7 +705,11 @@ export function CharacterPreview({ binding, skeleton, clip, time, selectedAttach
       const deformed = effectiveDeformBend(attachment, pose.attachmentOffsets[slot.attachmentId]) !== undefined;
       const canPick = canTransform && (pickAttachments || selectedAttachmentId === attachment.id);
       // 合成顺序：先 warp 位图（warpedUrls 替换 href），后 bend 的 feDisplacementMap filter
-      return <g key={slot.id}>
+      // 装备切换时不能复用旧附件的 SVG/image 节点：同一槽位可能挂载不同
+      // attachment，且浏览器的 SVG image 加载是异步的。把素材身份纳入 key，
+      // 确保旧武器节点在新 loadout 到达时先卸载，再创建新的 image。
+      const mediaKey = attachmentMediaKey(attachment);
+      return <g key={`${slot.id}:${mediaKey}`} data-media-key={mediaKey}>
         {shouldShowAttachmentFallback(missingMaterials, attachment)
           ? <rect className={`attachment-fallback${selectedAttachmentId === attachment.id ? " selected" : ""}`} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onPointerDown={canPick ? (event) => beginTransform(event, attachment, matrix, world) : undefined} onClick={onSelectAttachment ? () => onSelectAttachment(attachment.id) : undefined} />
           : <image className={`${selectedAttachmentId === attachment.id ? "selected" : ""}${deformed ? " deformed" : ""}`} href={warpedUrls[attachment.id] ?? materialImageUrl(attachment.materialId, materialV[attachment.materialId], attachment.imageSlot)} x={-px * w} y={attachmentSvgImageY(attachment.size, attachment.pivot)} width={w} height={h} preserveAspectRatio="none" filter={deformed ? `url(#${filterPrefix}-warp-${attachment.id})` : undefined} transform={`matrix(${world[0]} ${world[1]} ${world[4]} ${world[5]} ${world[12]} ${world[13]}) scale(1 -1)`} onError={() => {

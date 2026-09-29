@@ -45,7 +45,8 @@ export type MediaPluginErrorCode =
   | "PLUGIN_DOWNLOAD_REJECTED"
   | "PLUGIN_OUTPUT_INVALID"
   | "PLUGIN_RUNTIME_ERROR"
-  | "PLUGIN_RUNTIME_TIMEOUT";
+  | "PLUGIN_RUNTIME_TIMEOUT"
+  | "PLUGIN_RUNTIME_CLEANUP_FAILED";
 
 export class MediaPluginServiceError extends Error {
   readonly code: MediaPluginErrorCode;

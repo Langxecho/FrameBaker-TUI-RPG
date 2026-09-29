@@ -22,6 +22,7 @@ import { cleanupMediaPluginRunDir, runMediaPluginPython } from "./runner";
 import { readManifestFile, validateParamDefaults } from "./manifest";
 import { downloadHttpUrlToFile } from "./safeDownload";
 import { MediaPluginServiceError } from "./types";
+import { withMediaPluginRuntime } from "./runtime";
 import type { MediaPluginJobPayload } from "./types";
 
 export type ArchiveMediaArtifactInput = {
@@ -38,6 +39,8 @@ export type ArchiveMediaArtifactInput = {
   providerMetadata: Record<string, unknown>;
   batchCount?: number;
   batchIndex?: number;
+  mediaPluginJobId?: string;
+  mediaPluginOutputIndex?: number;
 };
 
 function mediaKindForPlugin(kind: MediaPluginKind): MediaKind {
@@ -74,6 +77,7 @@ export function resolveMediaPluginReferences(
   kind: MediaPluginKind,
   references: string[] | undefined,
   pathOverrides?: string[] | undefined,
+  outputDir?: string,
 ): { ids: string[]; imageUrls: string[]; audioUrls: string[] } {
   const ids = (references ?? []).map((id) => String(id ?? "").trim()).filter(Boolean);
   const imageUrls: string[] = [];
@@ -101,19 +105,19 @@ export function resolveMediaPluginReferences(
       if (!imagePath || !existsSync(imagePath)) {
         throw new MediaPluginServiceError("PLUGIN_PARAMETER_INVALID", `参考素材文件缺失: ${id}`);
       }
-      imageUrls.push(pathToFileURL(resolve(imagePath)).href);
+      imageUrls.push(pathToFileURL(materializeReferenceFile(imagePath, outputDir, i)).href);
     } else {
       // audio_api：图片参考走 imageUrls，音频参考走 audioUrls
       if (mediaKind === "image") {
         if (!row.raw_path || !existsSync(row.raw_path)) {
           throw new MediaPluginServiceError("PLUGIN_PARAMETER_INVALID", `参考素材文件缺失: ${id}`);
         }
-        imageUrls.push(pathToFileURL(resolve(row.raw_path)).href);
+        imageUrls.push(pathToFileURL(materializeReferenceFile(row.raw_path, outputDir, i)).href);
       } else if (mediaKind === "audio") {
         if (!row.raw_path || !existsSync(row.raw_path)) {
           throw new MediaPluginServiceError("PLUGIN_PARAMETER_INVALID", `参考素材文件缺失: ${id}`);
         }
-        audioUrls.push(pathToFileURL(resolve(row.raw_path)).href);
+        audioUrls.push(pathToFileURL(materializeReferenceFile(row.raw_path, outputDir, i)).href);
       } else {
         throw new MediaPluginServiceError(
           "PLUGIN_PARAMETER_INVALID",
@@ -152,6 +156,30 @@ function importImageMaterialToProject(m: MaterialRow, projectId: string): void {
 export function archiveMediaArtifact(input: ArchiveMediaArtifactInput): { materialId: string; mediaKind: MediaKind } {
   assertNonEmptyFile(input.sourcePath);
 
+  const mediaPluginOutputIndex = typeof input.mediaPluginOutputIndex === "number" && Number.isInteger(input.mediaPluginOutputIndex)
+    ? input.mediaPluginOutputIndex
+    : undefined;
+  if (input.mediaPluginJobId && mediaPluginOutputIndex !== undefined) {
+    const existing = db.query(`SELECT id FROM materials
+      WHERE json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END, '$.mediaPluginJobId') = ?
+        AND json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END, '$.mediaPluginOutputIndex') = ?
+      ORDER BY created_at, id LIMIT 1`)
+      .get(input.mediaPluginJobId, mediaPluginOutputIndex) as { id: string } | null;
+    if (existing) {
+      const material = getMaterial(existing.id);
+      if (!material?.raw_path || !existsSync(material.raw_path) || statSync(material.raw_path).size <= 0) {
+        throw new Error(`已归档媒体任务产物缺失，拒绝重复归档: ${input.mediaPluginJobId}/${mediaPluginOutputIndex}`);
+      }
+      if (material.source !== `media-plugin:${input.pluginId}`) {
+        throw new Error(`已归档媒体任务产物插件冲突: ${input.mediaPluginJobId}/${mediaPluginOutputIndex}`);
+      }
+      if (serializeMaterial(material).mediaKind !== input.mediaKind) {
+        throw new Error(`已归档媒体任务产物类型冲突: ${input.mediaPluginJobId}/${mediaPluginOutputIndex}`);
+      }
+      return { materialId: existing.id, mediaKind: input.mediaKind };
+    }
+  }
+
   const materialId = uid();
   const dir = join(STORAGE_ROOT, "materials", materialId);
   mkdirSync(dir, { recursive: true });
@@ -168,6 +196,10 @@ export function archiveMediaArtifact(input: ArchiveMediaArtifactInput): { materi
     batchCount: input.batchCount,
     batchIndex: input.batchIndex,
     ...providerMeta,
+    ...(input.mediaPluginJobId ? { mediaPluginJobId: input.mediaPluginJobId } : {}),
+    ...(mediaPluginOutputIndex !== undefined
+      ? { mediaPluginOutputIndex }
+      : {}),
   };
 
   if (input.mediaKind === "image") {
@@ -399,7 +431,7 @@ export type MediaPluginTestResult = {
 };
 
 /** 同步连通测试：临时目录执行插件，校验产出后清理；永不创建 materials / jobs。 */
-export async function testMediaPlugin(
+async function testMediaPluginUnlocked(
   kind: MediaPluginKind,
   pluginIdRaw: string,
   options?: {
@@ -492,6 +524,39 @@ export async function testMediaPlugin(
   }
 }
 
+/** 将已校验的素材复制到本次插件 run 目录，避免把存储目录路径直接交给插件。 */
+function materializeReferenceFile(sourcePath: string, outputDir: string | undefined, index: number): string {
+  const source = resolve(sourcePath);
+  if (!outputDir) return source;
+  const root = resolve(outputDir);
+  const extension = extname(source).toLowerCase() || ".bin";
+  const destination = resolve(root, "references", `reference_${index + 1}${extension}`);
+  if (!isPathInside(destination, root)) {
+    throw new MediaPluginServiceError("PLUGIN_PATH_INVALID", "参考素材副本路径逃逸 outputDir");
+  }
+  mkdirSync(resolve(root, "references"), { recursive: true });
+  copyFileSync(source, destination);
+  return destination;
+}
+
+export function testMediaPlugin(
+  kind: MediaPluginKind,
+  pluginIdRaw: string,
+  options?: {
+    prompt?: string;
+    params?: Record<string, unknown>;
+    durationSeconds?: number | null;
+    bridgeTimeoutMs?: number;
+  },
+): Promise<MediaPluginTestResult> {
+  const pluginId = assertSafeMediaPluginId(pluginIdRaw);
+  return withMediaPluginRuntime(
+    { kind, pluginId },
+    () => testMediaPluginUnlocked(kind, pluginId, options),
+    `test:${pluginId}:${Date.now()}`,
+  );
+}
+
 export function createMediaGenerationJobs(request: MediaPluginGenerationRequest): string[] {
   const kind = request.kind;
   const pluginId = assertSafeMediaPluginId(request.pluginId);
@@ -533,7 +598,9 @@ export function createMediaGenerationJobs(request: MediaPluginGenerationRequest)
       batchCount: jobCount,
       batchIndex,
     };
-    ids.push(createJob(projectId ?? "", jobTypeForPlugin(kind), { mediaPlugin: payload }));
+    const requestKey = request.idempotencyKey?.trim();
+    const jobKey = requestKey ? `${requestKey}:${batchIndex}/${jobCount}` : undefined;
+    ids.push(createJob(projectId ?? "", jobTypeForPlugin(kind), { mediaPlugin: payload }, { idempotencyKey: jobKey }));
   }
   return ids;
 }
@@ -644,6 +711,7 @@ export function archiveMaterializedOutputs(input: {
   providerMetadata: Record<string, unknown>;
   batchCount?: number;
   batchIndex?: number;
+  mediaPluginJobId?: string;
 }): Array<{ materialId: string; mediaKind: MediaKind }> {
   if (!input.paths.length) throw new Error("插件未产出任何文件");
   const results: Array<{ materialId: string; mediaKind: MediaKind }> = [];
@@ -662,6 +730,8 @@ export function archiveMaterializedOutputs(input: {
       providerMetadata: input.providerMetadata,
       batchCount: input.batchCount,
       batchIndex: input.batchIndex,
+      mediaPluginJobId: input.mediaPluginJobId,
+      mediaPluginOutputIndex: i,
     });
     results.push(archived);
   }

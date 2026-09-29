@@ -526,6 +526,15 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
     }
   };
 
+  const copyActionId = async (actionId: string) => {
+    try {
+      await navigator.clipboard.writeText(actionId);
+      notify(t("skeletal.animations.actionIdCopied"), "info");
+    } catch {
+      notify(actionId, "info");
+    }
+  };
+
   if (!document) return <div className="project-route-state">{t("project.loading")}</div>;
 
   return (
@@ -623,6 +632,9 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               skeleton={skeleton}
               binding={binding}
               clip={clip}
+               previewAction={activeAnimation}
+               animations={document.animations}
+               actionClips={actionClips}
               materials={materials}
               busy={busy}
               onSaveEquipment={saveEquipment}
@@ -639,6 +651,9 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               skeleton={skeleton}
               binding={binding}
               clip={clip}
+              previewAction={activeAnimation}
+              animations={document.animations}
+              actionClips={actionClips}
               materials={materials}
               busy={busy}
               onSaveWeapons={saveEquipment}
@@ -702,6 +717,12 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
               <input type="range" min="0" max={clip.duration} step="0.001" value={previewTime} onChange={(e) => { setPlaying(false); setElapsed(+e.target.value); }} />
               <span>{previewTime.toFixed(2)}s / {clip.duration.toFixed(2)}s</span>
               <button type="button" className="px-btn" disabled={busy} onClick={() => void captureThumbnail()}><Camera size={14} /> {t("skeletal.thumbnail.set")}</button>
+            </div>
+            <div className="skeletal-clip-id-bar">
+              <span>{t("skeletal.animations.actionId")}</span>
+              <code>{activeAnimation.id}</code>
+              <button type="button" className="px-btn" onClick={() => void copyActionId(activeAnimation.id)}><Copy size={14} /> {t("skeletal.animations.copyActionId")}</button>
+              <p>{t("skeletal.animations.actionIdHint")}</p>
             </div>
             <div className="skeletal-clip-id-bar">
               <span>{t("skeletal.animations.clipId")}</span>

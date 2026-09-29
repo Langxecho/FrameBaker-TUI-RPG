@@ -5,12 +5,14 @@ import {
   type BodyProfile,
   type CharacterBinding,
   type EquipmentDefinition,
+  type MotionClip,
+  type SkeletalProjectAnimation,
   type Skeleton,
 } from "../packages/shared/src";
 import { createEmptyAttachment } from "../apps/web/src/equipmentUiState";
 import { createEquipmentFixtureBody } from "../apps/web/src/equipmentFixtures";
 import { createWeaponFixtureBody, createWeaponSampleFixtures } from "../apps/web/src/weaponFixtures";
-import { attachmentRestFromComposed, bindingWithAssembledLoadout, composeSocketRest, overlayDraftEquipment } from "../apps/web/src/loadoutPreview";
+import { attachmentRestFromComposed, bindingWithAssembledLoadout, composeSocketRest, overlayDraftEquipment, resolveEquipmentPreviewMotion } from "../apps/web/src/loadoutPreview";
 import { createEmptyWeapon } from "../apps/web/src/weaponUiState";
 
 const transform = {
@@ -280,5 +282,37 @@ describe("overlayDraftEquipment", () => {
     const overlay = overlayDraftEquipment(assembled.value!, edited, equipmentBody.id);
     expect(overlay.attachments).toHaveLength(1);
     expect(overlay.attachments[0]?.rest.translation[1]).toBe(12);
+  });
+
+  test("includes a live draft action override in the preview loadout", () => {
+    const item = helmet();
+    item.actionOverrides = { idle: "weapon.idle" };
+    expect(overlayDraftEquipment(null, item, equipmentBody.id).actionOverrides).toEqual({ idle: "weapon.idle" });
+  });
+});
+
+describe("resolveEquipmentPreviewMotion", () => {
+  const baseClip = { id: "clip-idle", name: "Idle", kind: "motion-clip", schemaVersion: 2, skeletonId: skeleton.id, duration: 1, loop: true, tracks: [] } as MotionClip;
+  const weaponClip = { ...baseClip, id: "clip-fission-idle", name: "Fission idle" };
+  const baseAction = { id: "idle", name: "idle", motionClipId: baseClip.id, speed: 1, repeat: 1, loop: true } satisfies SkeletalProjectAnimation;
+  const fissionAction = { id: "fission.idle", name: "Fission idle", motionClipId: weaponClip.id, speed: 1, repeat: 1, loop: true } satisfies SkeletalProjectAnimation;
+
+  test("resolves a package action override through document animations", () => {
+    expect(resolveEquipmentPreviewMotion({
+      baseAction,
+      baseClip,
+      animations: [baseAction, fissionAction],
+      clips: { [baseClip.id]: baseClip, [weaponClip.id]: weaponClip },
+      actionOverrides: { idle: "fission.idle" },
+    })).toEqual({ clip: weaponClip });
+  });
+
+  test("reports an unresolved action ID instead of treating a clip or action name as an override", () => {
+    const clips = { [baseClip.id]: baseClip, [weaponClip.id]: weaponClip };
+    expect(resolveEquipmentPreviewMotion({ baseAction, baseClip, animations: [baseAction], clips, actionOverrides: { idle: weaponClip.id } })).toEqual({
+      clip: baseClip,
+      diagnostic: `ACTION_OVERRIDE_TARGET_MISSING: idle -> ${weaponClip.id}`,
+    });
+    expect(resolveEquipmentPreviewMotion({ baseAction: { ...baseAction, name: "standing" }, baseClip, animations: [baseAction, fissionAction], clips, actionOverrides: { standing: "fission.idle" } })).toEqual({ clip: baseClip });
   });
 });
