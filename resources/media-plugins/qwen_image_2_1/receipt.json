@@ -1,0 +1,31 @@
+{
+  "pluginId": "qwen_image_2_1",
+  "version": "1.0.1",
+  "archive": "qwen_image_2_1.iap",
+  "sha256": "31129b11feacea71be0feed3ca8af791b654abaef0419a1d66cb42309a9faf76",
+  "credentialsIncluded": false,
+  "files": [
+    {
+      "name": "plugin.json",
+      "bytes": 5541,
+      "sha256": "cff778c7452eeec34c0634db05fda81e6207e764d6f11d1c330f729696331364"
+    },
+    {
+      "name": "provider.py",
+      "bytes": 33332,
+      "sha256": "353fd023bb268af1fba306b54bf023534855298ee45d57c3ea063da256a97483"
+    },
+    {
+      "name": "README.md",
+      "bytes": 1179,
+      "sha256": "077251319c8854b7ca6b95324fcc2970ee99c9a130acb956a181aaa9fe018a3f"
+    },
+    {
+      "name": "requirements.txt",
+      "bytes": 15,
+      "sha256": "209e1da5d2db63b9cfab55375c11fa874941bcf6ab06fb035f9d72d89f14be4f"
+    }
+  ],
+  "validation": "manifest-and-archive-roundtrip-only",
+  "generationTested": false
+}

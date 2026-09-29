@@ -1,0 +1,81 @@
+{
+  "plugin_id": "euzhi_gpt_image2",
+  "name": "Euzhi GPT Image 2",
+  "version": "1.0.0",
+  "kind": "image_api",
+  "capabilities": [
+    "t2i"
+  ],
+  "entry": {
+    "type": "python",
+    "module": "provider",
+    "function": "generate"
+  },
+  "secrets": {
+    "api_key": {
+      "label": "API Key",
+      "required": true,
+      "secret": true,
+      "value": ""
+    },
+    "base_url": {
+      "label": "API Base URL",
+      "required": true,
+      "secret": false,
+      "value": ""
+    }
+  },
+  "params_schema": {
+    "timeout": {
+      "type": "integer",
+      "default": 180,
+      "label": "HTTP 超时(秒)"
+    },
+    "model": {
+      "type": "string",
+      "default": "gpt-image-2",
+      "label": "模型名"
+    },
+    "size": {
+      "type": "string",
+      "default": "1024x1024",
+      "label": "尺寸",
+      "enum": [
+        "1024x1024",
+        "1536x1024",
+        "1024x1536",
+        "auto"
+      ]
+    },
+    "quality": {
+      "type": "string",
+      "default": "medium",
+      "label": "质量",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "auto"
+      ]
+    },
+    "n": {
+      "type": "integer",
+      "default": 1,
+      "label": "张数"
+    },
+    "response_format": {
+      "type": "string",
+      "default": "url",
+      "label": "返回格式",
+      "enum": [
+        "url",
+        "b64_json"
+      ]
+    }
+  },
+  "constraints": {
+    "max_reference_images": 0,
+    "supports_text2image": true,
+    "supports_image2image": false
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "plugin_id": "minimax-h3-t8-i2v",
+  "name": "MiniMax H3 T8 I2V (converted CFP)",
+  "version": "1.0.0",
+  "kind": "video_api",
+  "capabilities": [
+    "i2v"
+  ],
+  "entry": {
+    "type": "python",
+    "module": "provider",
+    "function": "generate"
+  },
+  "secrets": {
+    "comfyui_base_url": {
+      "label": "ComfyUI base URL",
+      "required": true,
+      "value": ""
+    }
+  },
+  "params_schema": {
+    "durationSeconds": {
+      "type": "number",
+      "default": 4,
+      "min": 0.1,
+      "max": 15
+    },
+    "seed": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "steps": {
+      "type": "integer",
+      "default": 4,
+      "min": 1,
+      "max": 64
+    },
+    "refImage": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "constraints": {
+    "min_duration_seconds": 0.1,
+    "max_duration_seconds": 15,
+    "max_reference_images": 5,
+    "converted_from": "cfp",
+    "comfyuiEndpoint": "http://ddns.langxecho.top:8188"
+  },
+  "metadata": {
+    "source_cfp_sha256": "0e821940cfead8d706a0be939c9bf9ae82b9e129c7e5c50440d7654acb680c67",
+    "source_cfp_name": "minimax-h3-t8-i2vMiniMAX-H3-T8双时钟采样4步无损加速+图生视频.cfp",
+    "endpoint": "http://ddns.langxecho.top:8188"
+  }
+}

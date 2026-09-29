@@ -1,0 +1,249 @@
+{
+  "plugin_id": "qwen_image_2_1",
+  "name": "qwen image2.1",
+  "version": "1.0.1",
+  "kind": "image_api",
+  "capabilities": [
+    "t2i",
+    "i2i",
+    "multi_ref"
+  ],
+  "entry": {
+    "type": "python",
+    "module": "provider",
+    "function": "generate"
+  },
+  "secrets": {
+    "comfyui_base_url": {
+      "label": "ComfyUI Base URL",
+      "required": true,
+      "secret": false,
+      "value": ""
+    },
+    "enhancer_base_url": {
+      "label": "Prompt Enhancer OpenAI Base URL",
+      "required": true,
+      "secret": false,
+      "value": ""
+    },
+    "enhancer_api_key": {
+      "label": "Prompt Enhancer API Key",
+      "required": true,
+      "secret": true,
+      "value": ""
+    }
+  },
+  "params_schema": {
+    "enhancer_model": {
+      "type": "string",
+      "default": "Qwen3.8-Flash-Next",
+      "label": "反推模型"
+    },
+    "enhancer_max_tokens": {
+      "type": "integer",
+      "default": 8192,
+      "label": "反推最大输出 Token"
+    },
+    "enhancer_timeout": {
+      "type": "integer",
+      "default": 300,
+      "label": "反推超时（秒）"
+    },
+    "enhancer_retry_count": {
+      "type": "integer",
+      "default": 3,
+      "label": "反推请求重试次数"
+    },
+    "enhancer_max_images_per_call": {
+      "type": "integer",
+      "default": 8,
+      "label": "反推接口单次最大参考图数"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "default": "auto",
+      "label": "画幅比例",
+      "enum": [
+        "auto",
+        "1:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "9:16",
+        "16:9",
+        "1:2",
+        "2:1"
+      ]
+    },
+    "transparent_alpha": {
+      "type": "boolean",
+      "default": false,
+      "label": "透明背景"
+    },
+    "max_output_chars": {
+      "type": "integer",
+      "default": 0,
+      "label": "增强提示词最大字符数（0 为自动）"
+    },
+    "negative_prompt": {
+      "type": "string",
+      "default": "",
+      "label": "负面提示词"
+    },
+    "megapixels": {
+      "type": "number",
+      "default": 2.2,
+      "label": "目标像素（百万像素）"
+    },
+    "dimension_multiple": {
+      "type": "integer",
+      "default": 32,
+      "label": "宽高对齐倍数"
+    },
+    "batch_size": {
+      "type": "integer",
+      "default": 1,
+      "label": "批量张数"
+    },
+    "reference_resolution": {
+      "type": "integer",
+      "default": 1024,
+      "label": "参考图编码分辨率"
+    },
+    "preserve_reference_size": {
+      "type": "boolean",
+      "default": true,
+      "label": "编辑时沿用首张参考图尺寸"
+    },
+    "seed": {
+      "type": "integer",
+      "default": 0,
+      "label": "随机种子"
+    },
+    "steps": {
+      "type": "integer",
+      "default": 40,
+      "label": "采样步数"
+    },
+    "cfg": {
+      "type": "number",
+      "default": 1,
+      "label": "CFG"
+    },
+    "sampler_name": {
+      "type": "string",
+      "default": "euler",
+      "label": "采样器",
+      "enum": [
+        "euler",
+        "euler_ancestral",
+        "heun",
+        "dpm_2",
+        "dpm_2_ancestral",
+        "lms",
+        "dpmpp_2m",
+        "dpmpp_sde",
+        "ddim"
+      ]
+    },
+    "scheduler": {
+      "type": "string",
+      "default": "simple",
+      "label": "调度器",
+      "enum": [
+        "simple",
+        "normal",
+        "karras",
+        "exponential",
+        "sgm_uniform",
+        "beta",
+        "ddim_uniform"
+      ]
+    },
+    "denoise": {
+      "type": "number",
+      "default": 1,
+      "label": "降噪强度"
+    },
+    "unet_name": {
+      "type": "string",
+      "default": "qwen_image_2.1_int8_convrot.safetensors",
+      "label": "UNET 模型"
+    },
+    "unet_weight_dtype": {
+      "type": "string",
+      "default": "default",
+      "label": "UNET 权重类型"
+    },
+    "clip_name": {
+      "type": "string",
+      "default": "qwen3vl_8b_int8_convrot.safetensors",
+      "label": "CLIP 模型"
+    },
+    "clip_type": {
+      "type": "string",
+      "default": "qwen_image",
+      "label": "CLIP 类型"
+    },
+    "clip_device": {
+      "type": "string",
+      "default": "default",
+      "label": "CLIP 设备"
+    },
+    "vae_name": {
+      "type": "string",
+      "default": "qwen_image_2.1_vae_bf16.safetensors",
+      "label": "VAE 模型"
+    },
+    "cache_device": {
+      "type": "string",
+      "default": "auto",
+      "label": "编辑模型缓存设备",
+      "enum": [
+        "auto",
+        "cpu"
+      ]
+    },
+    "cache_dtype": {
+      "type": "string",
+      "default": "default",
+      "label": "编辑模型缓存类型"
+    },
+    "filename_prefix": {
+      "type": "string",
+      "default": "Qwen_image_2.1",
+      "label": "输出文件名前缀"
+    },
+    "comfyui_submit_timeout": {
+      "type": "integer",
+      "default": 30,
+      "label": "ComfyUI 提交超时（秒）"
+    },
+    "comfyui_poll_timeout": {
+      "type": "integer",
+      "default": 600,
+      "label": "ComfyUI 生成超时（秒）"
+    },
+    "comfyui_poll_interval": {
+      "type": "number",
+      "default": 1,
+      "label": "ComfyUI 轮询间隔（秒）"
+    },
+    "reference_download_timeout": {
+      "type": "integer",
+      "default": 120,
+      "label": "参考图下载超时（秒）"
+    },
+    "max_reference_image_mb": {
+      "type": "integer",
+      "default": 25,
+      "label": "单张参考图大小上限（MB）"
+    }
+  },
+  "constraints": {
+    "max_reference_images": 10,
+    "supports_text2image": true,
+    "supports_image2image": true
+  }
+}

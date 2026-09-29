@@ -1,0 +1,5 @@
+# 收据记录精确源字节；不同平台 checkout 不应改变换行和 SHA。
+*/source/** -text
+*.cfp -text
+*.iap -text
+*.vap -text

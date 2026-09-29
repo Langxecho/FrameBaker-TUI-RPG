@@ -1,0 +1,31 @@
+{
+  "pluginId": "minimax-h3-t8-i2v",
+  "version": "1.0.0",
+  "archive": "minimax-h3-t8-i2v.vap",
+  "sha256": "b77f5f4395b901758d913e92fa724b5697a9048496510a9dbcf8e08346f0b4b6",
+  "credentialsIncluded": false,
+  "files": [
+    {
+      "name": "plugin.json",
+      "bytes": 1245,
+      "sha256": "878bcb9ca1195c016cf859e21257d6cc314df52c9eaab5d590b28cc9b97ad706"
+    },
+    {
+      "name": "provider.py",
+      "bytes": 763,
+      "sha256": "f9ee63cb851eb8693c9b3a6e14025fe634ecbd7cd1895c59c14f7292298b2d39"
+    },
+    {
+      "name": "comfy_workflow_provider.py",
+      "bytes": 9114,
+      "sha256": "bf97ca978295794bf451df7c0cd95584732986a7f8c5ef14054d249a9fcfc220"
+    },
+    {
+      "name": "workflow.json",
+      "bytes": 4972,
+      "sha256": "f7672f1b35111d750f334ee210404b9129bc67f7a381c03a1a2316e86dfec62d"
+    }
+  ],
+  "validation": "manifest-and-archive-roundtrip-only",
+  "generationTested": false
+}

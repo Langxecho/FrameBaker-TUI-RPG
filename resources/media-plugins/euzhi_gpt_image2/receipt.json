@@ -1,0 +1,26 @@
+{
+  "pluginId": "euzhi_gpt_image2",
+  "version": "1.0.0",
+  "archive": "euzhi_gpt_image2.iap",
+  "sha256": "d750f304a5f10d162f179aeac16b0a8ee624b1c0648d761485f29de07aa88db7",
+  "credentialsIncluded": false,
+  "files": [
+    {
+      "name": "plugin.json",
+      "bytes": 1499,
+      "sha256": "0918c1e9af140f717e2cd532884e7ee4718121daf74da3895e420a3cf1240f58"
+    },
+    {
+      "name": "provider.py",
+      "bytes": 3195,
+      "sha256": "2e7ad35d811963ebd8b1d46d44b9d653a9d836993df58895590fbed6d9ad2718"
+    },
+    {
+      "name": "README.md",
+      "bytes": 191,
+      "sha256": "bec946732941d2229b7099cddc1419c0e167cf0e761add6535827fe4c4e5242c"
+    }
+  ],
+  "validation": "manifest-and-archive-roundtrip-only",
+  "generationTested": false
+}
