@@ -197,7 +197,7 @@ export const zh = {
   "animation.binding.boundTo": "已绑定到：{bone}",
   "animation.binding.chooseBone": "选择骨骼",
   "animation.binding.originalImage": "原图",
-  "animation.binding.cutoutImage": "抠图",
+  "animation.binding.cutoutImage": "后处理图",
   "animation.binding.region": "区域附件", "animation.binding.slot": "插槽", "animation.binding.slotName": "插槽名称", "animation.binding.slotId": "肢体槽 ID",
   "animation.binding.restPreview": "静止姿势预览", "animation.binding.yUp": "世界空间 Y 轴向上；预览已明确转换为屏幕 Y 轴向下。",
   "animation.binding.rotateLeft": "向左旋转 5°",

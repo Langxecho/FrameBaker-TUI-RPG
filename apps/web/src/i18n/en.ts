@@ -119,7 +119,7 @@ export const en = {
   "animation.binding.boundTo": "Bound to: {bone}",
   "animation.binding.chooseBone": "Choose bone",
   "animation.binding.originalImage": "Original",
-  "animation.binding.cutoutImage": "Cutout",
+  "animation.binding.cutoutImage": "Processed",
   "animation.binding.region": "Region", "animation.binding.slot": "Slot", "animation.binding.slotName": "Slot name", "animation.binding.slotId": "Part slot ID",
   "animation.binding.restPreview": "Rest pose preview", "animation.binding.yUp": "World space is Y-up; the preview explicitly flips to screen Y-down.",
   "animation.binding.rotateLeft": "Rotate left 5°",

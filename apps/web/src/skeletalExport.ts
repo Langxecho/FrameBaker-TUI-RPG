@@ -8,7 +8,7 @@ import {
   type MotionClip,
   type Skeleton,
 } from "@framebaker/shared";
-import { materialImageUrl } from "./api/mediaUrls";
+import { fetchMaterialWorkingImage } from "./api/mediaUrls";
 import type { SkeletalProjectDocument } from "./api";
 import { createZip } from "./zip";
 
@@ -137,14 +137,14 @@ export async function loadProjectTextures(
   if (!document.character) return [];
   const textures: Array<{ attachmentId: string; bytes: Uint8Array }> = [];
   for (const attachment of document.character.binding.attachments) {
-    const response = await fetch(materialImageUrl(attachment.materialId, undefined, attachment.imageSlot, undefined, true));
+    const response = await fetchMaterialWorkingImage(attachment.materialId);
     if (!response.ok) throw new Error(`附件「${attachment.name}」纹理读取失败`);
     textures.push({ attachmentId: attachment.id, bytes: new Uint8Array(await response.arrayBuffer()) });
   }
   for (const item of document.equipment ?? []) {
     for (const attachment of item.attachments) {
       if (textures.some((t) => t.attachmentId === attachment.id)) continue;
-      const response = await fetch(materialImageUrl(attachment.materialId, undefined, attachment.imageSlot, undefined, true));
+      const response = await fetchMaterialWorkingImage(attachment.materialId);
       if (!response.ok) throw new Error(`装备附件「${attachment.name}」纹理读取失败`);
       textures.push({ attachmentId: attachment.id, bytes: new Uint8Array(await response.arrayBuffer()) });
     }

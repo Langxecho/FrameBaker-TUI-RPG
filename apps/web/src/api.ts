@@ -58,7 +58,7 @@ import type {
 import { materialDownloadUrl, normalizeMaterial } from "./mediaMaterialUiState";
 
 export type { AttackEffect, AttackEffectCell, Frame, FramePatch, Job, Material, Project, ProjectKind, Folder, FolderKind, SkeletalProjectDocument, WSMessage, AnimationAxis, AnimationTrack, TimelineStep, TimelineResponse, CharacterPartSet, CharacterPartSetMember, CharacterPartSetSource, GenerationIntent, MediaKind, MediaPluginKind, MediaPluginSummary, MediaPluginDetail, MediaPluginGenerationRequest } from "@framebaker/shared";
-export { frameImageUrl, materialFileUrl, materialImageUrl, materialThumbnailUrl, projectThumbnailUrl } from "./api/mediaUrls";
+export { frameImageUrl, materialFileUrl, materialImageUrl, materialThumbnailUrl, projectThumbnailUrl, fetchMaterialWorkingImage } from "./api/mediaUrls";
 export { wsClient } from "./api/ws";
 export { materialDownloadUrl, normalizeMaterial } from "./mediaMaterialUiState";
 

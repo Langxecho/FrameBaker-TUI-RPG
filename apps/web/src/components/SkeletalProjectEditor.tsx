@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BUILTIN_HUMANOID_SKELETON_ID, stripBuiltinAnimationMarker, verifyFbanimV2Entries, type ActionTemplate, type AnimationAssetSummary, type BodyProfile, type CharacterBinding, type CharacterLoadout, type EquipmentDefinition, type Material, type MotionClip, type SkeletalProjectAnimation, type Skeleton } from "@framebaker/shared";
 import { ArrowLeft, Bone, Boxes, Camera, Copy, Crosshair, Download, Package, Pause, Pencil, Play, Plus, Shield, Swords, Trash2, Upload, X } from "lucide-react";
-import { api, type Folder, type Project, type SkeletalProjectDocument } from "../api";
-import { wsClient } from "../api/ws";
+import { api, wsClient, type Folder, type Project, type SkeletalProjectDocument } from "../api";
+import { promoteAttachmentsToProcessed } from "../attachmentMedia";
 import { localizeSkeletonName } from "../builtinAnimationLabels";
 import { useModalEscClose } from "../hooks/useModalEscClose";
 import { useT } from "../i18n";
@@ -45,6 +45,7 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const saveRevisionRef = useRef(0);
   const pendingSaveCountRef = useRef(0);
+  const knownProcessedMaterialsRef = useRef(new Set<string>());
   const importInputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +169,18 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
         setAssets(nextAssets);
         setMaterials(nextMaterials.filter((item) => item.kind === "image"));
         setMaterialFolders(nextMaterialFolders);
+        const binding = nextDocument.character?.binding;
+        if (binding) {
+          const processedIds = new Set(nextMaterials.filter((item) => item.kind === "image" && item.processed_path).map((item) => item.id));
+          const promoted = promoteAttachmentsToProcessed(binding.attachments, processedIds, knownProcessedMaterialsRef.current);
+          knownProcessedMaterialsRef.current = promoted.known;
+          if (promoted.changed) {
+            const nextBinding = { ...binding, attachments: promoted.attachments };
+            documentRef.current = { ...nextDocument, character: { binding: nextBinding } };
+            setDocument(documentRef.current);
+            void api.putSkeletalProjectDocument(project.id, documentRef.current).catch(() => undefined);
+          }
+        }
       })
       .catch((e) => active && notify(t("skeletal.loadFailed", { msg: (e as Error).message })));
     return () => { active = false; };
@@ -389,9 +402,23 @@ export default function SkeletalProjectEditor({ project, onBack }: { project: Pr
   }, [document, save, t, skeleton?.id, binding?.skeletonId]);
 
   const reloadMaterialLibrary = useCallback(async () => {
-    const nextMaterials = await api.listMaterials();
-    setMaterials(nextMaterials.filter((item) => item.kind === "image"));
-  }, []);
+    const nextMaterials = (await api.listMaterials()).filter((item) => item.kind === "image");
+    setMaterials(nextMaterials);
+    const current = documentRef.current;
+    const binding = current?.character?.binding;
+    if (!binding) return;
+    const processedIds = new Set(nextMaterials.filter((item) => item.processed_path).map((item) => item.id));
+    const promoted = promoteAttachmentsToProcessed(binding.attachments, processedIds, knownProcessedMaterialsRef.current);
+    knownProcessedMaterialsRef.current = promoted.known;
+    if (promoted.changed) {
+      await save({ ...current, character: { binding: { ...binding, attachments: promoted.attachments } } });
+    }
+  }, [save]);
+
+  useEffect(() => wsClient.subscribe((msg) => {
+    if (msg.type !== "material_updated" && msg.type !== "materials_changed") return;
+    void reloadMaterialLibrary().catch((e) => notify(t("skeletal.loadFailed", { msg: (e as Error).message })));
+  }), [reloadMaterialLibrary, t]);
 
   const saveSkeleton = async (next: Skeleton) => {
     if (busy) return;

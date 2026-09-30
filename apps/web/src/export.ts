@@ -1,5 +1,5 @@
 import { buildFbanimV2Entries, type MotionClip, type SkeletalProjectDocument, type Skeleton } from "@framebaker/shared";
-import { api, frameImageUrl, materialDownloadUrl, materialImageUrl, type Frame, type TimelineResponse } from "./api";
+import { api, fetchMaterialWorkingImage, frameImageUrl, materialDownloadUrl, materialImageUrl, type Frame, type TimelineResponse } from "./api";
 import type { AttackEffectCell } from "./api";
 import { attackEffectBounds, drawAttackEffect } from "./attackEffect";
 import { transformedFrameRectBounds } from "./frameGeometry";
@@ -30,7 +30,7 @@ export async function exportSkeletalProjectPackage(name: string, document: Skele
     return { ...action, motionClip: asset as MotionClip };
   }));
   const textures = await Promise.all(document.character.binding.attachments.map(async (attachment) => {
-    const response = await fetch(materialImageUrl(attachment.materialId, undefined, attachment.imageSlot, undefined, true));
+    const response = await fetchMaterialWorkingImage(attachment.materialId);
     if (!response.ok) throw new Error(`附件「${attachment.name}」纹理读取失败`);
     return { attachmentId: attachment.id, bytes: new Uint8Array(await response.arrayBuffer()) };
   }));

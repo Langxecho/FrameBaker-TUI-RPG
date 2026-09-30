@@ -12,6 +12,13 @@ export const materialImageUrl = (
 ) =>
   `/api/materials/${id}/image.png?type=${type}${v ? `&v=${v}` : ""}${size ? `&size=${size}` : ""}${strict ? "&strict=1" : ""}`;
 
+/** 绑定预览/导出：镜像等编辑写在 processed，缺失时回退 raw。 */
+export async function fetchMaterialWorkingImage(id: string): Promise<Response> {
+  const processed = await fetch(materialImageUrl(id, undefined, "processed", undefined, true));
+  if (processed.ok) return processed;
+  return fetch(materialImageUrl(id, undefined, "raw", undefined, true));
+}
+
 /** 素材文件 URL（视频勿用 .png 后缀，避免部分浏览器误判） */
 export const materialFileUrl = (id: string, v?: number, type: "raw" | "processed" = "raw") =>
   `/api/materials/${id}/image?type=${type}${v ? `&v=${v}` : ""}`;
