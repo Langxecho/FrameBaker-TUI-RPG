@@ -1,0 +1,29 @@
+{
+  "tag": "her1t10_fix_c21n",
+  "clip_tag": "her1am_c21n",
+  "revision_after": 1335,
+  "budget_after": 85,
+  "live_untouched": true,
+  "live_mats": {
+    "upper": "68a7242a",
+    "forearm": "47d77217"
+  },
+  "foreshrt_mats": {
+    "att-p19x-upper_arm_far_foreshrt_g1aim-her1": "35878b00",
+    "att-p19x-forearm_far_foreshrt_g1aim-her1": "1475c51c",
+    "att-p19x-elbow_far_foreshrt_g1aim-her1": "e329720b"
+  },
+  "recipe": "aim/fire/recover: HIDE base far; STRIP all foreshrt+StageC (rest HIDE); SHOW p15. No floating iron bucket.",
+  "root_cause": "c21l SHOWed foreshrt trio above torso; local offsets cannot place forearm at 正确.jpg emerge-from-chest; hide-all matches clean silhouette.",
+  "mid_float_aim": 519,
+  "g3": {
+    "c34-g3:her1bt-aim": "c34-g3:aim-clip-her1am3c"
+  },
+  "self_qc": "FAIL",
+  "self_qc_detail": "floating trio removed; emerge-from-chest forearm absent; art redraw required",
+  "qc_boards": [
+    "qc_vs_correct_triptych.png",
+    "qc_gunside_triptych.png",
+    "g1_aim_before_after.png"
+  ]
+}

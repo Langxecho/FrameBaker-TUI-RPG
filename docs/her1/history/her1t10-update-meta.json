@@ -1,0 +1,361 @@
+{
+ "tag": "her1t10",
+ "clip_tag": "her1am_c21l",
+ "revision_before": 1297,
+ "mode": "apply",
+ "budget_before": 123,
+ "id_suffix_note": "Used *-her1 attachment ids (not bare sprite_id) to match her1 StageC/elbow convention and avoid future live id collision; PNG filenames keep sprite_id without -her1.",
+ "drawOrder_note": "Task suggested ~811/812/813 but those are occupied by c22c-her1/c21c-her1/thigh_near-her1; using verified-free 842/843/844 (first free cluster after her1 far-arm/leg block).",
+ "atts_created": {
+  "att-p19x-upper_arm_far_foreshrt_g1aim-her1": {
+   "clone": "att-p19x-upper_arm_far_c22c-her1",
+   "boneId": "upper_arm_far",
+   "drawOrder": 842,
+   "size": [
+    122,
+    168
+   ],
+   "pivot": [
+    0.35222222222222227,
+    0.897196261682243
+   ],
+   "native": [
+    61,
+    84
+   ],
+   "png": "att-p19x-upper_arm_far_foreshrt_g1aim.png",
+   "materialId": "35878b00-f6cf-4548-a57f-9dee4f7b9331",
+   "mat_short": "35878b00",
+   "rest_scale": [
+    0.001,
+    0.001,
+    1.0
+   ]
+  },
+  "att-p19x-forearm_far_foreshrt_g1aim-her1": {
+   "clone": "att-p19x-forearm_far_c21c-her1",
+   "boneId": "forearm_far",
+   "drawOrder": 843,
+   "size": [
+    50,
+    78
+   ],
+   "pivot": [
+    0.29880952380952375,
+    0.8235294117647058
+   ],
+   "native": [
+    25,
+    39
+   ],
+   "png": "att-p19x-forearm_far_foreshrt_g1aim.png",
+   "materialId": "1475c51c-f726-44e5-a1fe-5bd84ff2ce93",
+   "mat_short": "1475c51c",
+   "rest_scale": [
+    0.001,
+    0.001,
+    1.0
+   ]
+  },
+  "att-p19x-elbow_far_foreshrt_g1aim-her1": {
+   "clone": "att-p19y-elbow_far-c21-p90-her1",
+   "boneId": "forearm_far",
+   "drawOrder": 844,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "native": [
+    72,
+    72
+   ],
+   "png": "att-p19x-elbow_far_foreshrt_g1aim.png",
+   "materialId": "e329720b-a03a-49b1-b80b-a1683747f1a0",
+   "mat_short": "e329720b",
+   "rest_scale": [
+    0.001,
+    0.001,
+    1.0
+   ]
+  }
+ },
+ "mats": {
+  "att-p19x-upper_arm_far_foreshrt_g1aim-her1": "35878b00-f6cf-4548-a57f-9dee4f7b9331",
+  "att-p19x-forearm_far_foreshrt_g1aim-her1": "1475c51c-f726-44e5-a1fe-5bd84ff2ce93",
+  "att-p19x-elbow_far_foreshrt_g1aim-her1": "e329720b-a03a-49b1-b80b-a1683747f1a0"
+ },
+ "live_snapshot_before": {
+  "att-upper_arm_far": {
+   "mat_short": "68a7242a",
+   "size": [
+    112,
+    200
+   ],
+   "pivot": [
+    0.28303571428571433,
+    0.86
+   ]
+  },
+  "att-forearm_far": {
+   "mat_short": "47d77217",
+   "size": [
+    96,
+    160
+   ],
+   "pivot": [
+    0.38645833333333335,
+    0.8
+   ]
+  },
+  "att-p19x-upper_arm_far_c22c": {
+   "mat_short": "3dd07aff",
+   "size": [
+    90,
+    214
+   ],
+   "pivot": [
+    0.35222222222222227,
+    0.897196261682243
+   ]
+  },
+  "att-p19x-forearm_far_c21c": {
+   "mat_short": "de1c4516",
+   "size": [
+    84,
+    136
+   ],
+   "pivot": [
+    0.29880952380952375,
+    0.8235294117647058
+   ]
+  },
+  "att-p19x-upper_arm_far_c22c-her1": {
+   "mat_short": "8b5194c2",
+   "size": [
+    122,
+    168
+   ],
+   "pivot": [
+    0.35222222222222227,
+    0.897196261682243
+   ]
+  },
+  "att-p19x-forearm_far_c21c-her1": {
+   "mat_short": "71bb17a1",
+   "size": [
+    50,
+    78
+   ],
+   "pivot": [
+    0.29880952380952375,
+    0.8235294117647058
+   ]
+  },
+  "att-p19y-elbow_far-c21-p90-her1": {
+   "mat_short": "3039b867",
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ]
+  }
+ },
+ "policy": {
+  "additive_only": true,
+  "no_live_mutate": true,
+  "no_g3_g4_g5": true,
+  "no_t03c": true,
+  "layer_hide": "attachmentVisibility scale; rest HIDE 0.001; SHOW 1000; no translate-far"
+ },
+ "clip_summaries": {
+  "idle": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:c34-g1-K05-p19y-her1:p15-idle-support": [
+    1000.0,
+    1000.0,
+    1.0
+   ],
+   "att:att-forearm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-upper_arm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-cap_far": [
+    0.001,
+    0.001,
+    1.0
+   ]
+  },
+  "prepare": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:c34-g1-K05-p19y-her1:p15-idle-support": [
+    1000.0,
+    1000.0,
+    1.0
+   ]
+  },
+  "aim": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "att:att-forearm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-upper_arm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-p19x-upper_arm_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ],
+   "att:att-p19x-forearm_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ],
+   "att:att-p19x-elbow_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ]
+  },
+  "fire": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "att:att-forearm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-upper_arm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-p19x-upper_arm_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ],
+   "att:att-p19x-forearm_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ],
+   "att:att-p19x-elbow_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ]
+  },
+  "recover": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "att:att-forearm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-upper_arm_far": [
+    0.001,
+    0.001,
+    1.0
+   ],
+   "att:att-p19x-upper_arm_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ],
+   "att:att-p19x-forearm_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ],
+   "att:att-p19x-elbow_far_foreshrt_g1aim-her1": [
+    1000.0,
+    1000.0,
+    1.0
+   ]
+  },
+  "cancel": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    0.001,
+    0.001,
+    1.0
+   ]
+  },
+  "hit": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    0.001,
+    0.001,
+    1.0
+   ]
+  },
+  "enter": {
+   "att:c34-g1-K05-p19y-her1:p15-support": [
+    0.001,
+    0.001,
+    1.0
+   ]
+  }
+ },
+ "expected_rev": 1297,
+ "artist_source": "/workspace/uploads/art_handoff_v2/_check_手_T10_v6/",
+ "revision_after": 1307,
+ "budget_after": 113,
+ "live_untouched": true,
+ "mat_shorts": {
+  "att-p19x-upper_arm_far_foreshrt_g1aim-her1": "35878b00",
+  "att-p19x-forearm_far_foreshrt_g1aim-her1": "1475c51c",
+  "att-p19x-elbow_far_foreshrt_g1aim-her1": "e329720b"
+ },
+ "previews": {
+  "box": "/workspace/art/pkg/03_效果预览/her1_t10_foreshrt/",
+  "handoff": "/workspace/uploads/art_handoff_v2/03_效果预览/her1_t10_foreshrt/",
+  "echo": "E:\\CodexBuild\\demo-final-20261015\\phase15\\p19\\her1\\render\\her1_t10_foreshrt\\\\"
+ },
+ "selfcheck": {
+  "aim_foreshrt_visible": true,
+  "fire_foreshrt_visible": true,
+  "elbow_gap_filled_vs_c21k": true,
+  "idle_prepare_no_new_chest_stump": true,
+  "idle_foreshrt_not_shown": true,
+  "live_untouched": true,
+  "g3_g4_g5_untouched": true,
+  "t03c_untouched": true,
+  "notes": "Before/after vs her1am_c21k aim: foreshrt trio fills far-arm/elbow gap; idle keeps c21k HIDE far (intentional)."
+ }
+}

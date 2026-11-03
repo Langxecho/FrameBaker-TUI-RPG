@@ -1,0 +1,8 @@
+README_给美术.txt
+T03b_支撑手_原板备份.psd
+T03c_支撑手.psd
+T03c_支撑手_在这里画.png
+T03c_支撑手_在这里画_放大.png
+_task.json
+参考
+说明.txt

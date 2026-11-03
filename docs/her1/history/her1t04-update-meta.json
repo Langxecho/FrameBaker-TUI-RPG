@@ -1,0 +1,265 @@
+{
+ "revision_before": 340,
+ "mode": "apply",
+ "tag": "her1t04",
+ "source_equipment": "c34-g4-K01-p19y",
+ "new_equipment": "c34-g4-K01-p19y-her1",
+ "materials_uploaded": {
+  "p19/her1/stage/hand_fire_g4_y-her1.png": "6f35f19e-a6d7-4d81-a6eb-7651d81d686d",
+  "p19/her1/stage/hand_sup_g4_y-her1.png": "b6e68e55-1735-4c54-9f24-775ae7717976"
+ },
+ "hand_materialIds": {
+  "fire": "6f35f19e-a6d7-4d81-a6eb-7651d81d686d",
+  "support": "b6e68e55-1735-4c54-9f24-775ae7717976"
+ },
+ "hand_mats_short": {
+  "fire": "6f35f19e",
+  "support": "b6e68e55"
+ },
+ "attachment_map": {
+  "c34-g4-K01-p19y:gun-rigid": "c34-g4-K01-p19y-her1:gun-rigid",
+  "c34-g4-K01-p19y:grip-hand": "c34-g4-K01-p19y-her1:grip-hand",
+  "c34-g4-K01-p19y:support-hand": "c34-g4-K01-p19y-her1:support-hand",
+  "c34-g4:legacy-support-hand": "c34-g4:legacy-support-hand-her1",
+  "c34-g4:p13g4-support-f007": "c34-g4:p13g4-support-f007-her1",
+  "c34-g4:p13g4-support-f019": "c34-g4:p13g4-support-f019-her1",
+  "c34-g4:p13g4-support-f020": "c34-g4:p13g4-support-f020-her1",
+  "c34-g4:p13g4-support-f021": "c34-g4:p13g4-support-f021-her1",
+  "c34-g4:p13g4-support-f022": "c34-g4:p13g4-support-f022-her1",
+  "c34-g4:p13g4-support-f024": "c34-g4:p13g4-support-f024-her1",
+  "c34-g4:p13g4-support-f025": "c34-g4:p13g4-support-f025-her1",
+  "c34-g4:p13g4-support-f026": "c34-g4:p13g4-support-f026-her1",
+  "c34-g4:p13g4-support-f028": "c34-g4:p13g4-support-f028-her1",
+  "c34-g4-K01-p19y:p15-support": "c34-g4-K01-p19y-her1:p15-support"
+ },
+ "attachment_detail": {
+  "c34-g4-K01-p19y-her1:gun-rigid": {
+   "from": "c34-g4-K01-p19y:gun-rigid",
+   "role": "kept",
+   "materialId": "8dccb3a6-6c38-4627-8800-6550d54bb5b3",
+   "size": [
+    412,
+    124
+   ],
+   "pivot": [
+    0.3300970873786408,
+    0.6451612903225806
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4-K01-p19y-her1:grip-hand": {
+   "from": "c34-g4-K01-p19y:grip-hand",
+   "role": "fire",
+   "materialId": "6f35f19e-a6d7-4d81-a6eb-7651d81d686d",
+   "size": [
+    66,
+    78
+   ],
+   "pivot": [
+    0.3333333333333333,
+    1.0
+   ],
+   "native": [
+    33,
+    39
+   ],
+   "png": "hand_fire_g4_y-her1.png",
+   "kept_clone_material": false
+  },
+  "c34-g4-K01-p19y-her1:support-hand": {
+   "from": "c34-g4-K01-p19y:support-hand",
+   "role": "support",
+   "materialId": "b6e68e55-1735-4c54-9f24-775ae7717976",
+   "size": [
+    62,
+    64
+   ],
+   "pivot": [
+    0.6774193548387096,
+    1.0
+   ],
+   "native": [
+    31,
+    32
+   ],
+   "png": "hand_sup_g4_y-her1.png",
+   "kept_clone_material": false
+  },
+  "c34-g4:legacy-support-hand-her1": {
+   "from": "c34-g4:legacy-support-hand",
+   "role": "support",
+   "materialId": "b6e68e55-1735-4c54-9f24-775ae7717976",
+   "size": [
+    62,
+    64
+   ],
+   "pivot": [
+    0.6774193548387096,
+    1.0
+   ],
+   "native": [
+    31,
+    32
+   ],
+   "png": "hand_sup_g4_y-her1.png",
+   "kept_clone_material": false
+  },
+  "c34-g4:p13g4-support-f007-her1": {
+   "from": "c34-g4:p13g4-support-f007",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f019-her1": {
+   "from": "c34-g4:p13g4-support-f019",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f020-her1": {
+   "from": "c34-g4:p13g4-support-f020",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f021-her1": {
+   "from": "c34-g4:p13g4-support-f021",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f022-her1": {
+   "from": "c34-g4:p13g4-support-f022",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f024-her1": {
+   "from": "c34-g4:p13g4-support-f024",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f025-her1": {
+   "from": "c34-g4:p13g4-support-f025",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f026-her1": {
+   "from": "c34-g4:p13g4-support-f026",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4:p13g4-support-f028-her1": {
+   "from": "c34-g4:p13g4-support-f028",
+   "role": "kept",
+   "materialId": "ff62b44b-f85e-428f-84e4-9d1c249bc6bb",
+   "size": [
+    160,
+    74
+   ],
+   "pivot": [
+    0,
+    1
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g4-K01-p19y-her1:p15-support": {
+   "from": "c34-g4-K01-p19y:p15-support",
+   "role": "kept",
+   "materialId": "72b1b2d5-6e07-4315-9c6a-a8dfde0e6e5a",
+   "size": [
+    115,
+    112
+   ],
+   "pivot": [
+    0.22185117733627635,
+    0.8647783549783566
+   ],
+   "kept_clone_material": true
+  }
+ },
+ "policy": {
+  "additive_only": true,
+  "upload_hands_only": true,
+  "keep_gun_rigid_material": true,
+  "keep_p15_support_material": true,
+  "keep_p13g4_support_materials": true,
+  "remap_legacy_support_to_artist_support": true,
+  "no_live_mutate": true,
+  "no_clips_actions_pointer": true,
+  "leave_her1t03_alone": true,
+  "live_att_prefix_src": "c34-g4-K01-p19y:",
+  "live_att_prefix_shared": "c34-g4:",
+  "note_task_json_prefix_was": "c34-g4-K01: (shorter — NOT used; followed LIVE …p19y: + c34-g4:)"
+ },
+ "artist_source": "/workspace/uploads/art_handoff_v2/_check_手_T04_v1/export/",
+ "expected_rev": 340,
+ "revision_after": 341
+}

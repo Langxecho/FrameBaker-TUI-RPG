@@ -1,0 +1,344 @@
+{
+ "task_id": "T03c",
+ "folder": "T03c_冲锋枪更大支撑手_g3",
+ "title": "T03c 冲锋枪（MP-9，K02）更大画布支撑手重画 · 贴住护木接远腕",
+ "gun": "g3 K02",
+ "rig": "r153",
+ "fb_project": "90acc389",
+ "palette": [
+  {
+   "name": "手套1_最暗",
+   "key": "glove1",
+   "rgb": [
+    12,
+    12,
+    16
+   ]
+  },
+  {
+   "name": "手套2_暗",
+   "key": "glove2",
+   "rgb": [
+    30,
+    30,
+    36
+   ]
+  },
+  {
+   "name": "手套3_中",
+   "key": "glove3",
+   "rgb": [
+    51,
+    51,
+    58
+   ]
+  },
+  {
+   "name": "手套4_亮边",
+   "key": "glove4",
+   "rgb": [
+    72,
+    72,
+    84
+   ]
+  },
+  {
+   "name": "皮肤1_最亮",
+   "key": "skin1",
+   "rgb": [
+    252,
+    205,
+    163
+   ]
+  },
+  {
+   "name": "皮肤2_亮",
+   "key": "skin2",
+   "rgb": [
+    242,
+    177,
+    133
+   ]
+  },
+  {
+   "name": "皮肤3_中",
+   "key": "skin3",
+   "rgb": [
+    237,
+    155,
+    112
+   ]
+  },
+  {
+   "name": "皮肤4_暗",
+   "key": "skin4",
+   "rgb": [
+    233,
+    123,
+    85
+   ]
+  },
+  {
+   "name": "褶皱线",
+   "key": "crease",
+   "rgb": [
+    185,
+    114,
+    89
+   ]
+  },
+  {
+   "name": "深阴影",
+   "key": "deep_shadow",
+   "rgb": [
+    162,
+    73,
+    57
+   ]
+  },
+  {
+   "name": "描边",
+   "key": "outline",
+   "rgb": [
+    9,
+    5,
+    9
+   ]
+  },
+  {
+   "name": "腿部原画肤色",
+   "key": "leg_skin",
+   "rgb": [
+    251,
+    202,
+    160
+   ]
+  }
+ ],
+ "batch": "支撑手更大画布重画",
+ "priority": "高",
+ "note_zh": "更大画布重画支撑手（左手/远侧托枪手）；射击手不动。画布 29×31→89×38（左侧留白接手腕/远臂）；可整张重画、把手画得更粗更大。手必须贴住枪护木/前托，不要悬空。腕口要能接到远侧小臂；靠手腕一侧是切口（open_edge）可不描边；外露轮廓连续 1px RGB(9,5,9)。直接点像素；不要把小手放大糊一层当成品。替换 T03b her1 support（sprite_id 仍 hand_sup_g3_y）。",
+ "replaces": "T03b",
+ "sprites": [
+  {
+   "sprite_png": "hand_sup_g3_y.png",
+   "sprite_id": "hand_sup_g3_y",
+   "native_size": [
+    89,
+    38
+   ],
+   "rig_size": [
+    178,
+    76
+   ],
+   "pivot": [
+    0.7865168539325843,
+    0.7894736842105263
+   ],
+   "socket": "secondaryGrip",
+   "pivot_px": [
+    70.0,
+    8.0
+   ],
+   "pivot_px_note": "y-from-top in art px; FB pivot[] y is from bottom",
+   "pivot_px_fb_y_from_bottom": [
+    70.0,
+    30.0
+   ],
+   "paste_offset": [
+    60,
+    7
+   ],
+   "old_t03b_pivot_px_on_29x31": [
+    10.0,
+    1.0
+   ],
+   "fb_equipment": "c34-g3-K02-p19v-p19y",
+   "fb_attachments": [
+    "c34-g3-K02-p19v:support-hand"
+   ],
+   "fb_attachments_her1_note": "her1 additive equip c34-g3-K02-p19v-p19y-her1:support-hand (mat 55fec0ec from T03b); rematerialize later — NOT in this pack",
+   "gun_local_topleft": [
+    210.0,
+    127.0
+   ],
+   "notes": "更大画布：小手起点贴于 (60,7)，对齐 hand_supm_g3 内容位；pivot 保持 secondaryGrip 相对粘贴块不变 → pivot_px=[70.0, 8.0] (y自上)。1 美术像素 = 2 rig；FB pivot y 从下。",
+   "psd": "T03c_支撑手.psd",
+   "label": "支撑手",
+   "problem_box": [
+    32,
+    4,
+    88,
+    37
+   ],
+   "hint_boxes": {
+    "grow_thicken": [
+     56,
+     4,
+     88,
+     37
+    ],
+    "wrist_extend_left": [
+     32,
+     5,
+     59,
+     37
+    ]
+   },
+   "open_edge_pixels": [
+    [
+     60,
+     29
+    ],
+    [
+     61,
+     29
+    ],
+    [
+     60,
+     30
+    ],
+    [
+     61,
+     30
+    ],
+    [
+     60,
+     31
+    ],
+    [
+     61,
+     31
+    ],
+    [
+     60,
+     32
+    ],
+    [
+     61,
+     32
+    ],
+    [
+     60,
+     33
+    ],
+    [
+     61,
+     33
+    ],
+    [
+     60,
+     34
+    ],
+    [
+     61,
+     34
+    ],
+    [
+     62,
+     34
+    ],
+    [
+     61,
+     35
+    ],
+    [
+     62,
+     35
+    ],
+    [
+     63,
+     35
+    ],
+    [
+     62,
+     36
+    ],
+    [
+     63,
+     36
+    ],
+    [
+     64,
+     36
+    ],
+    [
+     65,
+     36
+    ],
+    [
+     66,
+     36
+    ],
+    [
+     67,
+     36
+    ],
+    [
+     68,
+     36
+    ],
+    [
+     69,
+     36
+    ],
+    [
+     70,
+     36
+    ],
+    [
+     71,
+     36
+    ],
+    [
+     72,
+     36
+    ],
+    [
+     63,
+     37
+    ],
+    [
+     64,
+     37
+    ],
+    [
+     65,
+     37
+    ],
+    [
+     66,
+     37
+    ],
+    [
+     67,
+     37
+    ],
+    [
+     68,
+     37
+    ],
+    [
+     69,
+     37
+    ],
+    [
+     70,
+     37
+    ],
+    [
+     71,
+     37
+    ]
+   ],
+   "open_edge_note": "seeded from left/proximal edge of placed starter; artist may extend wrist into left pad — that seam remains open_edge (no outline required)",
+   "intended_open_edge_band": [
+    0,
+    0,
+    59,
+    37
+   ],
+   "prefill_snapped_pixels": 552
+  }
+ ]
+}

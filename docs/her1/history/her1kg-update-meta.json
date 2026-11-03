@@ -1,0 +1,310 @@
+{
+ "revision_before": 338,
+ "mode": "apply",
+ "tag": "her1kg",
+ "knees_g2g5_created": {
+  "att-p19x-knee_far_g2-her1": {
+   "src_live_base": "att-p19x-knee_far_g2",
+   "drawOrder": 832,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "cb59d38d-d7b8-45a5-896d-42f855ebde4a",
+   "native": [
+    120,
+    120
+   ],
+   "side": "far",
+   "gun": "g2",
+   "bone": "calf_far",
+   "label_zh": "远侧·左轮",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "att-p19x-knee_far_g3-her1": {
+   "src_live_base": "att-p19x-knee_far_g3",
+   "drawOrder": 833,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "7ade57f1-fdb8-48aa-a10e-5391a7256e45",
+   "native": [
+    120,
+    120
+   ],
+   "side": "far",
+   "gun": "g3",
+   "bone": "calf_far",
+   "label_zh": "远侧·冲锋枪",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "att-p19x-knee_far_g4-her1": {
+   "src_live_base": "att-p19x-knee_far_g4",
+   "drawOrder": 834,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "7c6156ab-297b-467e-a3fa-456d33676750",
+   "native": [
+    120,
+    120
+   ],
+   "side": "far",
+   "gun": "g4",
+   "bone": "calf_far",
+   "label_zh": "远侧·步枪",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "att-p19x-knee_far_g5-her1": {
+   "src_live_base": "att-p19x-knee_far_g5",
+   "drawOrder": 836,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "5f000e88-a91c-4939-abc4-be086e94bd61",
+   "native": [
+    120,
+    120
+   ],
+   "side": "far",
+   "gun": "g5",
+   "bone": "calf_far",
+   "label_zh": "远侧·狙击",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "att-p19x-knee_near_g2-her1": {
+   "src_live_base": "att-p19x-knee_near_g2",
+   "drawOrder": 837,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "b8cb4799-f5a3-41d8-858b-a6487346aca2",
+   "native": [
+    120,
+    120
+   ],
+   "side": "near",
+   "gun": "g2",
+   "bone": "calf_near",
+   "label_zh": "近侧·左轮",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "att-p19x-knee_near_g3-her1": {
+   "src_live_base": "att-p19x-knee_near_g3",
+   "drawOrder": 838,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "8cbb8e7a-cb07-4ca8-81bf-197938cf242e",
+   "native": [
+    120,
+    120
+   ],
+   "side": "near",
+   "gun": "g3",
+   "bone": "calf_near",
+   "label_zh": "近侧·冲锋枪",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "att-p19x-knee_near_g4-her1": {
+   "src_live_base": "att-p19x-knee_near_g4",
+   "drawOrder": 839,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "8d9f3656-e1e8-41e5-9855-e48bea4cb9f3",
+   "native": [
+    120,
+    120
+   ],
+   "side": "near",
+   "gun": "g4",
+   "bone": "calf_near",
+   "label_zh": "近侧·步枪",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "att-p19x-knee_near_g5-her1": {
+   "src_live_base": "att-p19x-knee_near_g5",
+   "drawOrder": 841,
+   "size": [
+    240,
+    240
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "90eba8c2-590b-40af-9e9c-cab772632a9c",
+   "native": [
+    120,
+    120
+   ],
+   "side": "near",
+   "gun": "g5",
+   "bone": "calf_near",
+   "label_zh": "近侧·狙击",
+   "live_rest_translation": [
+    0,
+    0,
+    0
+   ],
+   "live_rest_rotation": [
+    0,
+    0,
+    0,
+    1
+   ]
+  }
+ },
+ "mats": {
+  "att-p19x-knee_far_g2-her1": "cb59d38d-d7b8-45a5-896d-42f855ebde4a",
+  "att-p19x-knee_far_g3-her1": "7ade57f1-fdb8-48aa-a10e-5391a7256e45",
+  "att-p19x-knee_far_g4-her1": "7c6156ab-297b-467e-a3fa-456d33676750",
+  "att-p19x-knee_far_g5-her1": "5f000e88-a91c-4939-abc4-be086e94bd61",
+  "att-p19x-knee_near_g2-her1": "b8cb4799-f5a3-41d8-858b-a6487346aca2",
+  "att-p19x-knee_near_g3-her1": "8cbb8e7a-cb07-4ca8-81bf-197938cf242e",
+  "att-p19x-knee_near_g4-her1": "8d9f3656-e1e8-41e5-9855-e48bea4cb9f3",
+  "att-p19x-knee_near_g5-her1": "90eba8c2-590b-40af-9e9c-cab772632a9c"
+ },
+ "template_policy": "clone_live_base (her1m1 elbow style) — all 8 live bases exist",
+ "note": "ADD only; clip wiring M2",
+ "knee_g2g5_drawOrders": {
+  "far": {
+   "2": 832,
+   "3": 833,
+   "4": 834,
+   "5": 836
+  },
+  "near": {
+   "2": 837,
+   "3": 838,
+   "4": 839,
+   "5": 841
+  }
+ },
+ "templates_used": {
+  "att-p19x-knee_far_g2-her1": "att-p19x-knee_far_g2",
+  "att-p19x-knee_far_g3-her1": "att-p19x-knee_far_g3",
+  "att-p19x-knee_far_g4-her1": "att-p19x-knee_far_g4",
+  "att-p19x-knee_far_g5-her1": "att-p19x-knee_far_g5",
+  "att-p19x-knee_near_g2-her1": "att-p19x-knee_near_g2",
+  "att-p19x-knee_near_g3-her1": "att-p19x-knee_near_g3",
+  "att-p19x-knee_near_g4-her1": "att-p19x-knee_near_g4",
+  "att-p19x-knee_near_g5-her1": "att-p19x-knee_near_g5"
+ },
+ "revision_after": 339,
+ "mats_short": {
+  "att-p19x-knee_far_g2-her1": "cb59d38d",
+  "att-p19x-knee_far_g3-her1": "7ade57f1",
+  "att-p19x-knee_far_g4-her1": "7c6156ab",
+  "att-p19x-knee_far_g5-her1": "5f000e88",
+  "att-p19x-knee_near_g2-her1": "b8cb4799",
+  "att-p19x-knee_near_g3-her1": "8cbb8e7a",
+  "att-p19x-knee_near_g4-her1": "8d9f3656",
+  "att-p19x-knee_near_g5-her1": "90eba8c2"
+ }
+}

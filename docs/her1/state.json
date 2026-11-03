@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-11-03",
+  "lastLiveCheck": "2026-11-03T07:25:00+08:00",
+  "echo": {
+    "machine": "ECHO b4abf5bf-…",
+    "mcpUrl": "http://127.0.0.1:39127/mcp",
+    "apiBase": "http://127.0.0.1:39127",
+    "projectId": "90acc389-43ae-44de-bb7e-daed07f85472",
+    "storage": "storage-wqy-pilot",
+    "workDir": "E:\\CodexBuild\\demo-final-20261015\\phase15\\p19\\her1",
+    "lastKnownRevision": 1335,
+    "budgetLeft": 85
+  },
+  "liaison": {
+    "role": "美术对接师",
+    "agentId": "f5dc4070-c855-4a83-8313-1b47c4828415"
+  },
+  "phases": ["idle", "prepare", "aim", "fire", "recover", "cancel", "hit", "enter"],
+  "guns": {
+    "G1": {
+      "kCode": "K05",
+      "label": "手枪",
+      "clipPrefix": "c34-g1",
+      "actionPrefix": "c34-g1:her1bt-",
+      "clipTag": "her1am_c21n",
+      "liveEquipment": "c34-g1-K05-p19y",
+      "her1Equipment": ["c34-g1-K05-p19y-her1", "c34-g1-K05-p19y-her1-hd"]
+    },
+    "G2": {
+      "kCode": null,
+      "label": "左轮",
+      "clipPrefix": "c34-g2",
+      "actionPrefix": null,
+      "clipTag": null,
+      "liveEquipment": null,
+      "her1Equipment": [],
+      "note": "只有膝铁桶 att-p19x-knee_{far,near}_g2-her1 已入库；握枪手与 her1 装备未开工"
+    },
+    "G3": {
+      "kCode": "K02",
+      "label": "冲锋枪 MP-9",
+      "clipPrefix": "c34-g3",
+      "actionPrefix": "c34-g3:her1bt-",
+      "clipTag": "her1am3c",
+      "liveEquipment": "c34-g3-K02-p19v-p19y",
+      "her1Equipment": ["c34-g3-K02-p19v-p19y-her1", "c34-g3-K02-p19v-p19y-her1-hd"]
+    },
+    "G4": {
+      "kCode": "K01",
+      "label": "步枪 铁脉 AR-77",
+      "clipPrefix": "c34-g4",
+      "actionPrefix": "c34-g4:her1bt-",
+      "clipTag": "her1am4d",
+      "liveEquipment": "c34-g4-K01-p19y",
+      "her1Equipment": ["c34-g4-K01-p19y-her1"]
+    },
+    "G5": {
+      "kCode": "K07",
+      "label": "狙击 破晓",
+      "clipPrefix": "c34-g5",
+      "actionPrefix": "c34-g5:her1bt-",
+      "clipTag": "her1am5",
+      "liveEquipment": "c34-g5-K07-p19y",
+      "her1Equipment": ["c34-g5-K07-p19y-her1"]
+    }
+  },
+  "live": {
+    "note": "live 轨只读。写入前后都核对这些素材前缀；任何变化即停止并回报。",
+    "bindingMaterials": {
+      "att-upper_arm_far": "68a7242a",
+      "att-forearm_far": "47d77217",
+      "att-upper_arm_near": "1a614ab6",
+      "att-p19x-upper_arm_far_c22c": "3dd07aff",
+      "att-p19x-forearm_far_c21c": "de1c4516"
+    },
+    "equipmentMaterials": {
+      "c34-g3-K02-p19v-p19y:support-hand": "59fc3f63"
+    },
+    "equipment": ["c34-g1-K05-p19y", "c34-g3-K02-p19v-p19y", "c34-g4-K01-p19y", "c34-g5-K07-p19y"],
+    "clipTags": ["p16k10"],
+    "other": ["art01", "art02", "r70–r76", "8188/Comfy", "prod deploy"]
+  },
+  "retiredClipTags": {
+    "her1b": "her1hl/her1m2 在 clip 中写了 0.001 HIDE-scale，渲染失败",
+    "her1f": "用 translate-far [5000,5000,0] 藏层，违反显隐规范",
+    "her1am_c21j": "对 p15-idle-support 写 HIDE-scale，PREVIEW_RENDER_FAILED",
+    "her1am3b": "额外 HIDE 轨，PREVIEW_RENDER_FAILED",
+    "her1am_c21l": "SHOW 透视三件在躯干上层，悬空 FAIL",
+    "her1am_c21m": "只 SHOW 透视小臂，仍悬空（试验）"
+  },
+  "visibility": {
+    "hideScaleThreshold": 0.1,
+    "translateFarLimit": 1000,
+    "showOverscaleLimit": 1.5,
+    "hideScaleAllowlist": ["att-cap_near", "att-cap_far", "att-shoulder_cap_near"],
+    "hideScaleForbidden": ["att-shoulder_cap_near-redraw1"],
+    "stripOnlyPatterns": ["p15-idle-support"]
+  },
+  "packs": {
+    "T03c": {
+      "title": "T03c 冲锋枪（MP-9，K02）更大画布支撑手",
+      "priority": 1,
+      "status": "waiting-artist",
+      "gun": "G3",
+      "dir": "docs/her1/packs/T03c",
+      "echoPackDir": "01_待改/T03c_冲锋枪更大支撑手_g3",
+      "returnDir": "02_已交",
+      "layerName": "在这里画",
+      "checkHistory": [
+        { "round": "starter", "verdict": "PASS", "semi": 0, "outlineBreaks": 0 },
+        { "round": "v1", "date": "2026-11-02", "verdict": "FAIL", "semi": 103, "outlineBreaks": 47 },
+        { "round": "v2", "date": "2026-11-02", "verdict": "FAIL", "semi": 77, "outlineBreaks": 48, "paletteOk": true, "redoNote": "T03c_只要改外面_标注.png：只改外轮廓/alpha，蓝色引导内保持" }
+      ],
+      "sprites": [
+        {
+          "spriteId": "hand_sup_g3_y",
+          "psd": "T03c_支撑手.psd",
+          "required": true,
+          "openEdge": { "band": [0, 0, 59, 37], "side": "left" },
+          "target": {
+            "kind": "equipment-attachment",
+            "equipment": ["c34-g3-K02-p19v-p19y-her1", "c34-g3-K02-p19v-p19y-her1-hd"],
+            "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand",
+            "currentMaterial": "55fec0ec",
+            "currentSize": [58, 62]
+          }
+        }
+      ],
+      "wiring": {
+        "default": "none",
+        "note": "T03b 已证 support-hand rest=[1,1,1] 且 her1am3c 已显示它；rematerialize 单独即可生效。自审若仍断腕，再用 wire 子命令以 her1am3c 为基线开新 tag（建议 her1am3d），只动远臂相关 att: 轨。",
+        "baseClipTag": "her1am3c",
+        "suggestedTag": "her1am3d"
+      }
+    },
+    "T10b": {
+      "title": "T10b 手枪瞄准远侧前臂胸口托出",
+      "priority": 2,
+      "status": "waiting-artist",
+      "gun": "G1",
+      "dir": "docs/her1/packs/T10b",
+      "echoPackDir": "01_待改/T10b_手枪瞄准远侧前臂胸口托出_g1",
+      "returnDir": "02_已交",
+      "layerName": "在这里画",
+      "checkHistory": [],
+      "sprites": [
+        {
+          "spriteId": "att-p19x-forearm_far_foreshrt_g1aim",
+          "psd": "T10b_远侧前臂胸口托出.psd",
+          "required": true,
+          "target": {
+            "kind": "binding-attachment",
+            "attachmentId": "att-p19x-forearm_far_foreshrt_g1aim-her1",
+            "currentMaterial": "1475c51c",
+            "currentSize": [50, 78]
+          }
+        },
+        {
+          "spriteId": "att-p19x-elbow_far_foreshrt_g1aim",
+          "psd": "T10b_远侧手肘胸口托出.psd",
+          "required": false,
+          "target": {
+            "kind": "binding-attachment",
+            "attachmentId": "att-p19x-elbow_far_foreshrt_g1aim-her1",
+            "currentMaterial": "e329720b",
+            "currentSize": [144, 144]
+          }
+        }
+      ],
+      "wiring": {
+        "default": "show-delivered",
+        "baseClipTag": "her1am_c21n",
+        "suggestedTag": "her1am_c21o",
+        "phases": ["aim", "fire"],
+        "show": ["att-p19x-forearm_far_foreshrt_g1aim-her1"],
+        "showIfDelivered": ["att-p19x-elbow_far_foreshrt_g1aim-her1"],
+        "strip": ["att-p19x-upper_arm_far_foreshrt_g1aim-her1"],
+        "note": "瞄准/开火共用；大臂保持 STRIP（被胸口挡住）。recover 是否也显示由自审决定（c21l 曾在 recover 显示），需要时加 --phases aim,fire,recover。"
+      }
+    }
+  }
+}
