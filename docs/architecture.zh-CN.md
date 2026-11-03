@@ -81,6 +81,12 @@
 
 根级 `scripts/version.ts` 实现 main 的 `MAJOR.WEEK.BUG` 发布规则，并统一同步根包/workspace package 版本、Bun lockfile workspace 版本、MCP 对外版本及中英文 changelog 发布标题。WEEK 是大版本内单调递增的开发周序号，不使用会跨年回退的 ISO 自然周。版本历史存放在 `docs/CHANGELOG.md` 与 `docs/CHANGELOG.zh-CN.md`，详细规则见 `docs/VERSIONING.md` 与 `docs/VERSIONING.zh-CN.md`。
 
+### 制作 SOP 与 her1 续作
+
+- `skill/` 是 FrameBaker 制作 SOP 的唯一真源（`fb-character-authoring`、`rpg-content-production`、`her1-fb-self-qc`）；`skill/README.md` 给出索引、去重约定（Region 显隐规则只在 `references/region-visibility.md`）和“被引用但未入库”的 ECHO 文档清单。它们是供 agent 阅读的 Markdown，不会被自动加载。
+- `docs/her1/` 是 HELLO WORLD her1 的单一真相源：`README.md`（状态、枪种映射、clip 指针、live 只读清单、待交美术包）、`state.json`（脚本读取的机读状态）、`ECHO_RUNBOOK.md`、`packs/<任务>/`（美术包合同）和只读的 `history/`。
+- `scripts/her1/` 是独立的 Bun CLI（`bun run her1 <命令>`，自带 `tsconfig.json`，已纳入 `bun run typecheck`）。离线模块：`lib/png.ts` / `lib/psd.ts`（最小 PNG/PSD 读取，无依赖）、`lib/checkArt.ts`（美术包合同检查）、`lib/visibility.ts`（clip 显隐审计与加性接线 clip 派生）、`lib/plans.ts`（rematerialize / 接线 / 回退操作计划）。`lib/echo.ts` 是最小 Streamable HTTP MCP + REST 客户端，`lib/runner.ts` 负责写入闸门（必需工具、live 素材核对、`--expected-rev`、幂等键、写后 live 快照）并把结果回写 `docs/her1/state.json`。运行输出在 gitignored 的 `storage/her1-runs/`。测试：`tests/her1-*.test.ts`（含假 ECHO 服务）。
+
 ### 跨仓库 fbanim-v3 夹具
 
 - 权威源：`tests/fixtures/fbanim-v3/`（入库字节 + `manifest.json`）。

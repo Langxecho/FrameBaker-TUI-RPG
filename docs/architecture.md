@@ -90,6 +90,12 @@ Root `tsconfig.base.json` provides shared compilerOptions (strict, moduleResolut
 
 Root `scripts/version.ts` implements the `MAJOR.WEEK.BUG` main-release policy and keeps the root/workspace package versions, Bun lockfile workspace versions, MCP-reported version, and bilingual changelog release headings synchronized. The week is a monotonic development-week counter within a major, not an ISO calendar week. Version history lives in `docs/CHANGELOG.md` and `docs/CHANGELOG.zh-CN.md`; policy details live in `docs/VERSIONING.md` and `docs/VERSIONING.zh-CN.md`.
 
+### Production SOPs and her1 continuation
+
+- `skill/` holds the FrameBaker production SOPs (`fb-character-authoring`, `rpg-content-production`, `her1-fb-self-qc`) as the single source; `skill/README.md` indexes them, records de-duplication (Region visibility rules only in `references/region-visibility.md`) and the list of referenced-but-missing ECHO documents. They are plain Markdown read by agents, not auto-loaded.
+- `docs/her1/` is the HELLO WORLD her1 single source of truth: `README.md` (status, gun mapping, clip pointers, live read-only list, pending art packs), `state.json` (machine-readable state consumed by scripts), `ECHO_RUNBOOK.md`, `packs/<task>/` (art pack contracts) and read-only `history/`.
+- `scripts/her1/` is a standalone Bun CLI (`bun run her1 <cmd>`, own `tsconfig.json`, included in `bun run typecheck`). Offline modules: `lib/png.ts` / `lib/psd.ts` (minimal PNG/PSD readers, no deps), `lib/checkArt.ts` (art-pack contract check), `lib/visibility.ts` (clip visibility audit and additive wiring-clip derivation), `lib/plans.ts` (rematerialize/wiring/revert operation plans). `lib/echo.ts` is a minimal Streamable HTTP MCP + REST client and `lib/runner.ts` gates writes (required tools, live material check, `--expected-rev`, idempotency key, post-write live snapshot) and writes results back to `docs/her1/state.json`. Run outputs go to gitignored `storage/her1-runs/`. Tests: `tests/her1-*.test.ts` (including a fake ECHO server).
+
 ### Cross-repo fbanim-v3 fixtures
 
 - Canonical source: `tests/fixtures/fbanim-v3/` (checked-in bytes + `manifest.json`).

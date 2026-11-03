@@ -7,6 +7,8 @@ This document records features, changes, and bug fixes by release. Main releases
 ### Added
 
 - Added an independent media plugin system for `.iap` / `.vap` / `.aap` packages parallel to `GenProvider`: Zip Slip-safe install under `storage/media-plugins`, trusted-code UI warning, secrets/params settings, `/generate` three-tab center, unified image/video/audio materials, async queue jobs with cancel that kills the Python child and cleans `storage/media-plugin-runs`, `.venv-media` setup scripts (`scripts/setup_media.sh` / `setup_media.ps1`, base dep `requests` only), optional `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`, and MCP query/generate tools only (`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`; material IDs only — no install/delete/secrets/local paths).
+- Migrated the FrameBaker production SOPs from ECHO's local cache into `skill/` as the single source (`fb-character-authoring` with a new canonical `references/region-visibility.md`, `rpg-content-production`, `her1-fb-self-qc`, plus a `skill/README.md` index, de-duplication notes and a missing-documents list).
+- Added `docs/her1/` as the HELLO WORLD her1 single source of truth (status page, machine-readable `state.json`, ECHO runbook, T03c/T10b art pack contracts, read-only history) and the `scripts/her1/` toolchain (`bun run her1`): offline PSD/PNG art-pack check and clip visibility audit, and ECHO-side dry-run-by-default rematerialize / thin wiring / revert with tool, live-material, `--expected-rev` and post-write live-snapshot gates. `bun run typecheck` now also checks `scripts/her1`.
 
 ### Removed
 
