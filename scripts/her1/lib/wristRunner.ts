@@ -5,13 +5,16 @@ import type { MotionClip } from "../../../packages/shared/src/animation";
 import { fetchClip, fetchMaterialImage, fetchSkeleton } from "./echo";
 import type { AicOperation } from "./plans";
 import { decodePng, encodePng, type RgbaImage } from "./png";
+import type { EquipmentDefinition } from "../../../packages/shared/src/equipment";
+import type { SkeletalProjectDocument } from "../../../packages/shared/src/skeletalProject";
 import { composeScene, flattenChecker, rasterize, sceneBounds, upscale, type IkMode } from "./render";
 import { applyGuarded, assertRevisionGate, connect, receipt, writeJson, writePlan, type ApplyGate, type RunContext } from "./runner";
 import { hstack, measureSeam, type SeamMetrics, type SeamSpec } from "./seam";
-import { clipKeyTimes, ensureDir, loadSnapshot, safeFileName, selectMaterials, writeJsonFile, type LoadedSnapshot, type SnapshotManifest } from "./snapshot";
+import { clipKeyTimes, ensureDir, loadSnapshot, safeFileName, selectMaterials, snapshotPath, writeJsonFile, type LoadedSnapshot, type SnapshotManifest } from "./snapshot";
 import { actionIdFor, clipIdFor, loadTask, REPO_ROOT, type GunKey, type Her1State } from "./state";
 import { auditClipVisibility, collectRestScales } from "./visibility";
-import { deriveWristFixClip, type WristFixSpec } from "./wristFix";
+import { deriveWristFixClip, MAX_ALIGN_DEG, type WristFixSpec } from "./wristFix";
+import { activeSupportIk, analyzeIkWrist, applyIkLever, classifyIkWrist, cutForEquipment, VERDICT_LABEL, type ArtSpec, type IkLever, type SupportIk, type WristVerdict } from "./wristIk";
 
 export const CORE_PHASES = ["idle", "prepare", "aim", "fire", "recover"];
 export const RENDER_TOOL = "aic_render_preview";
@@ -28,7 +31,7 @@ export function seamSpecFromState(state: Her1State, defaults: WristDefaults, far
   const band = state.packs.T03c.sprites[0]?.openEdge?.band ?? sprite.intended_open_edge_band;
   if (!band) throw new Error("T03c 合同没有接缝带");
   const outline = task.palette.find((entry) => entry.key === "outline")?.rgb ?? [9, 5, 9];
-  return { handAttachmentId: defaults.handAttachmentId, farRootBone, openBand: [...band] as [number, number, number, number], nativeSize: [...sprite.native_size] as [number, number], outline: [...outline] as [number, number, number] };
+  return { handAttachmentId: defaults.handAttachmentId, farRootBone, joinRootBone: defaults.lowerBone, openBand: [...band] as [number, number, number, number], nativeSize: [...sprite.native_size] as [number, number], outline: [...outline] as [number, number, number] };
 }
 
 function substitute(value: unknown, vars: Record<string, string | number>): unknown {
@@ -65,7 +68,7 @@ export async function runSnapshot(ctx: RunContext, input: { gun: GunKey; equipme
     const action = document.animations.find((item) => item.id === actionId);
     if (!action) { if (CORE_PHASES.includes(phase)) ctx.log(`  警告：缺动作 ${actionId}`); continue; }
     const clip = await fetchClip(ctx.apiBase, action.motionClipId);
-    const clipFile = join("clips", `${safeFileName(clip.id)}.json`);
+    const clipFile = snapshotPath("clips", `${safeFileName(clip.id)}.json`);
     writeJsonFile(join(dir, clipFile), clip);
     actions.push({ phase, actionId, motionClipId: action.motionClipId, clipFile });
     clips.push(clip);
@@ -79,7 +82,7 @@ export async function runSnapshot(ctx: RunContext, input: { gun: GunKey; equipme
     try {
       const bytes = await fetchMaterialImage(ctx.apiBase, materialId, entry.imageSlot);
       const image = decodePng(bytes);
-      const file = join("materials", `${safeFileName(materialId)}.png`);
+      const file = snapshotPath("materials", `${safeFileName(materialId)}.png`);
       writeFileSync(join(dir, file), bytes);
       materials.push({ materialId, file, imageSlot: entry.imageSlot, attachmentIds: [...entry.attachmentIds].sort(), size: [image.width, image.height] });
     } catch (error) {
@@ -99,7 +102,7 @@ export async function runSnapshot(ctx: RunContext, input: { gun: GunKey; equipme
         const args = substitute(template, { projectId: ctx.projectId, actionId: action.actionId, clipId: action.motionClipId, phase: action.phase, time, equipmentId: equipmentIds.at(-1) ?? "" }) as Record<string, unknown>;
         const result = await connection.client.callTool(RENDER_TOOL, args);
         if (result.isError || !result.images.length) { ctx.log(`  参考渲染失败 ${action.phase} t=${time}：${result.texts.join(" ").slice(0, 200)}`); continue; }
-        const file = join("references", `${action.phase}_t${time.toFixed(3)}.png`);
+        const file = snapshotPath("references", `${action.phase}_t${time.toFixed(3)}.png`);
         writeFileSync(join(dir, file), result.images[0]!.data);
         references.push({ phase: action.phase, time, file, equipmentId: equipmentIds.at(-1) });
       }
@@ -157,15 +160,33 @@ interface PlanFile {
   phases: Array<{ phase: string; actionId: string; baseClipId: string; baseClipSha: string; newClipId: string; clipFile: string; maxResidual: number; worstAlignDeg: number }>;
   operations: AicOperation[];
   selfQc?: { verdict: "PASS" | "FAIL"; failures: number; frames: number };
+  /** clip：改远臂旋转轨；equipment-ik：远臂被双手 IK 驱动，改 her1 装备杠杆。 */
+  mode?: "clip" | "equipment-ik";
+  verdict?: WristVerdict;
+  verdictLabel?: string;
+  /** equipment-ik：候选装备（自审未过时只供 render --plan 复现，不进 operations）。 */
+  candidateEquipment?: EquipmentDefinition;
+  baseEquipment?: { id: string; sha: string };
+  ik?: { constraintId: string; baseline: { worstAlignDeg: number; medianCutGap: number; unreachable: number }; best: { lever: IkLever; worstAlignDeg: number; unreachable: number }; artSpec: ArtSpec };
+}
+
+function readPlan(planPath?: string): PlanFile | undefined {
+  return planPath ? JSON.parse(readFileSync(planPath, "utf8")) as PlanFile : undefined;
 }
 
 function clipsForRender(snapshot: LoadedSnapshot, planPath?: string): Record<string, MotionClip> {
-  if (!planPath) return snapshot.clips;
-  const plan = JSON.parse(readFileSync(planPath, "utf8")) as PlanFile;
+  const plan = readPlan(planPath);
+  if (!plan || !planPath) return snapshot.clips;
   const out = { ...snapshot.clips };
   const dir = join(planPath, "..");
   for (const phase of plan.phases) out[phase.phase] = JSON.parse(readFileSync(join(dir, phase.clipFile), "utf8")) as MotionClip;
   return out;
+}
+
+function documentForRender(snapshot: LoadedSnapshot, plan?: PlanFile): SkeletalProjectDocument {
+  const candidate = plan?.candidateEquipment;
+  if (!candidate) return snapshot.document;
+  return { ...snapshot.document, equipment: [...(snapshot.document.equipment ?? []).filter((item) => item.id !== candidate.id), candidate] };
 }
 
 function defaultEquipment(snapshot: LoadedSnapshot, override?: string): string[] {
@@ -181,12 +202,22 @@ function renderTimes(clip: MotionClip, times: number[] | undefined, max: number)
   return evenly([...new Set([...keys, ...mids])].sort((a, b) => a - b), max);
 }
 
+/** 自动选帧时并上 ECHO 参考图时刻，方便逐张对照。 */
+function framesFor(snapshot: LoadedSnapshot, phase: string, clip: MotionClip, max: number): number[] {
+  const refs = snapshot.manifest.references.filter((ref) => ref.phase === phase).map((ref) => ref.time);
+  return [...new Set([...renderTimes(clip, undefined, max), ...refs].map((t) => Math.round(t * 1000) / 1000))].filter((t) => t <= clip.duration + 1e-6).sort((a, b) => a - b);
+}
+
+const evenTimes = (clip: MotionClip, steps: number) => Array.from({ length: steps + 1 }, (_, i) => Math.round(clip.duration * i / steps * 1e6) / 1e6);
+
 /** 离线渲染 + 腕口度量：每帧全身图（×2）、腕口特写叠加（×zoom）、可选与 ECHO 参考图并排；结果写 seam.json。 */
 export function runRender(ctx: RunContext, input: RenderInput): RenderOutcome {
   const snapshot = loadSnapshot(input.snapshot);
+  const plan = readPlan(input.plan);
   const clips = clipsForRender(snapshot, input.plan);
+  const document = documentForRender(snapshot, plan);
   const spec = seamSpecFromState(ctx.state, input.defaults, input.farRootBone);
-  const equipmentIds = defaultEquipment(snapshot, input.equipmentId);
+  const equipmentIds = defaultEquipment(snapshot, input.equipmentId ?? plan?.candidateEquipment?.id);
   const phases = input.phases ?? snapshot.manifest.actions.map((item) => item.phase).filter((phase) => CORE_PHASES.includes(phase));
   const outDir = ensureDir(ctx.outDir);
   const metrics: RenderOutcome["metrics"] = [];
@@ -195,8 +226,9 @@ export function runRender(ctx: RunContext, input: RenderInput): RenderOutcome {
     const clip = clips[phase];
     if (!clip) { ctx.log(`  ${phase}: 快照里没有 clip`); continue; }
     const strip: RgbaImage[] = [];
-    for (const time of renderTimes(clip, input.phaseTimes?.[phase] ?? input.times, input.maxTimes)) {
-      const scene = composeScene({ document: snapshot.document, skeleton: snapshot.skeleton, clip, time, equipmentIds, ik: input.ik });
+    const explicit = input.phaseTimes?.[phase] ?? input.times;
+    for (const time of explicit?.length ? renderTimes(clip, explicit, input.maxTimes) : framesFor(snapshot, phase, clip, input.maxTimes)) {
+      const scene = composeScene({ document, skeleton: snapshot.skeleton, clip, time, equipmentIds, ik: input.ik });
       for (const item of scene.items) if (!snapshot.images.has(item.materialId) && item.world && Math.abs(item.world[0]) + Math.abs(item.world[1]) > 0.01) missing.add(item.attachmentId);
       const full = rasterize(scene.items, snapshot.images, { bounds: sceneBounds(scene.items) });
       const stem = `${phase}_t${time.toFixed(3)}`;
@@ -248,9 +280,11 @@ export function runFixWrist(ctx: RunContext, input: FixWristInput): { planPath: 
   if (ctx.state.retiredClipTags[input.tag]) throw new Error(`tag ${input.tag} 已退役：${ctx.state.retiredClipTags[input.tag]}`);
   const equipmentIds = defaultEquipment(snapshot, input.equipmentId);
   const spec: WristFixSpec = { ...seamSpecFromState(ctx.state, input.defaults, input.farRootBone), upperBone: input.upperBone, lowerBone: input.lowerBone, equipmentIds, overlap: input.overlap, step: input.step, maxDelta: input.maxDelta };
+  const phases = input.phases ?? snapshot.manifest.actions.map((item) => item.phase).filter((phase) => CORE_PHASES.includes(phase));
+  const ik = equipmentIds[0] ? activeSupportIk(snapshot.document, snapshot.skeleton, equipmentIds[0], spec.handAttachmentId) : null;
+  if (ik) return runFixWristIk(ctx, input, snapshot, spec, phases, ik);
   const restScales = collectRestScales(snapshot.document);
   const outDir = ensureDir(ctx.outDir);
-  const phases = input.phases ?? snapshot.manifest.actions.map((item) => item.phase).filter((phase) => CORE_PHASES.includes(phase));
   const plan: PlanFile = { kind: "her1-wrist-fix", createdAt: new Date().toISOString(), gun: input.gun, snapshotRevision: snapshot.manifest.revision, baseTag: "", tag: input.tag, spec, phases: [], operations: [] };
   const samples: Record<string, unknown> = {};
   const phaseTimes: Record<string, number[]> = {};
@@ -282,8 +316,19 @@ export function runFixWrist(ctx: RunContext, input: FixWristInput): { planPath: 
   writeJson(join(outDir, "wristfix-samples.json"), samples);
   const planPath = join(outDir, "plan.json");
   writeJson(planPath, plan);
-  const before = runRender({ ...ctx, outDir: join(outDir, "before") }, { snapshot: input.snapshot, phases, phaseTimes, maxTimes: RENDER_FRAMES, ik: "off", zoom: input.zoom, farRootBone: input.farRootBone, defaults: input.defaults, equipmentId: input.equipmentId });
-  const after = runRender({ ...ctx, outDir: join(outDir, "after") }, { snapshot: input.snapshot, phases, phaseTimes, maxTimes: RENDER_FRAMES, plan: planPath, ik: "off", zoom: input.zoom, farRootBone: input.farRootBone, defaults: input.defaults, equipmentId: input.equipmentId });
+  const { before, after } = renderBeforeAfter(ctx, input, outDir, phases, phaseTimes, planPath);
+  const failures = after.metrics.filter((m) => m.verdict === "FAIL").length;
+  plan.selfQc = { verdict: after.pass ? "PASS" : "FAIL", failures, frames: after.metrics.length };
+  writeJson(planPath, plan);
+  ctx.log(`修前 FAIL ${before.metrics.filter((m) => m.verdict === "FAIL").length}/${before.metrics.length}，修后 FAIL ${failures}/${after.metrics.length}；计划 ${planPath}`);
+  ctx.log(after.pass ? "离线度量 PASS；仍需逐张看 after/*_wrist.png 与全身图再下结论。" : "离线度量 FAIL：不要交 ECHO 写入。");
+  return { planPath, pass: after.pass };
+}
+
+function renderBeforeAfter(ctx: RunContext, input: FixWristInput, outDir: string, phases: string[], phaseTimes: Record<string, number[]>, planPath: string): { before: RenderOutcome; after: RenderOutcome } {
+  const common = { snapshot: input.snapshot, phases, phaseTimes, maxTimes: RENDER_FRAMES, ik: "weapon-align" as const, zoom: input.zoom, farRootBone: input.farRootBone, defaults: input.defaults };
+  const before = runRender({ ...ctx, outDir: join(outDir, "before") }, { ...common, equipmentId: input.equipmentId });
+  const after = runRender({ ...ctx, outDir: join(outDir, "after") }, { ...common, plan: planPath });
   for (const phase of phases) {
     const b = join(outDir, "before", `${phase}_wrist_strip.png`), a = join(outDir, "after", `${phase}_wrist_strip.png`);
     if (existsSync(b) && existsSync(a)) {
@@ -291,12 +336,65 @@ export function runFixWrist(ctx: RunContext, input: FixWristInput): { planPath: 
       writeFileSync(join(outDir, `${phase}_before_after.png`), encodePng(vstack([top, bottom])));
     }
   }
-  const failures = after.metrics.filter((m) => m.verdict === "FAIL").length;
-  plan.selfQc = { verdict: after.pass ? "PASS" : "FAIL", failures, frames: after.metrics.length };
+  return { before, after };
+}
+
+const IK_SEARCH_STEPS = 8;
+
+/**
+ * 远臂被双手 IK 驱动（clip 远臂旋转无效）：在 her1 装备上搜 secondaryGrip / 支撑手 rest / bendDirection，
+ * 腕口切口移到 IK 目标、指节仍在护木上；几何 + 渲染都过才出 upsert-equipment，否则只给结论与画师规格。
+ */
+function runFixWristIk(ctx: RunContext, input: FixWristInput, snapshot: LoadedSnapshot, spec: WristFixSpec, phases: string[], ik: SupportIk): { planPath: string; pass: boolean } {
+  const equipmentId = ik.equipment.id;
+  const c = ik.constraint;
+  ctx.log(`  ${equipmentId} 带双手 IK ${c.id}（mix ${c.mix}，${c.upperBoneId}→${c.lowerBoneId}→${c.endBoneId}${c.alignEnd ? "，alignEnd" : ""}）；支撑手挂在 ${ik.socketBone}（IK 链内）`);
+  ctx.log("  clip 里的远臂旋转会被 IK 覆盖，改 clip 无效 → 搜 her1 装备杠杆（secondaryGrip / 支撑手 rest / bendDirection）");
+  const clips = phases.map((phase) => {
+    const clip = snapshot.clips[phase];
+    if (!clip) throw new Error(`快照缺 ${phase}`);
+    return { phase, clip, times: evenTimes(clip, IK_SEARCH_STEPS) };
+  });
+  const input0 = { document: snapshot.document, skeleton: snapshot.skeleton, images: snapshot.images, equipmentId, spec };
+  const report = analyzeIkWrist(input0, ik, clips, undefined, input.overlap);
+  if (typeof report === "string") throw new Error(report);
+  const outDir = ensureDir(ctx.outDir);
+  writeJson(join(outDir, "wristik-report.json"), report);
+  const b = report.baseline, best = report.best;
+  ctx.log(`  基线：前臂与腕口最大夹角 ${b.worstAlignDeg.toFixed(0)}°，腕口中心离前臂远端 ${b.medianCutGap.toFixed(0)}（中位），IK 够不着 ${b.unreachable}/${b.samples.length} 帧`);
+  ctx.log(`  最佳杠杆：指节沿枪管 ${best.lever.slide}、垂直 ${best.lever.lift}、手转 ${best.lever.rotateDeg}°、bend ${best.lever.bend} → 最大夹角 ${best.worstAlignDeg.toFixed(0)}°，够不着 ${best.unreachable} 帧${report.geometricPass ? "" : `（> ${MAX_ALIGN_DEG}° 或够不着：几何上接不上）`}`);
+  const cut = cutForEquipment(snapshot.document, snapshot.images, equipmentId, spec)!;
+  const candidateId = `${equipmentId}-${input.tag}`;
+  const { equipment: candidate } = applyIkLever(snapshot.document, snapshot.skeleton, equipmentId, spec.handAttachmentId, cut, best.lever, { newId: candidateId, overlap: input.overlap });
+  const phaseTimes = Object.fromEntries(clips.map(({ phase, clip }) => [phase, framesFor(snapshot, phase, clip, RENDER_FRAMES)]));
+  const plan: PlanFile = {
+    kind: "her1-wrist-fix", mode: "equipment-ik", createdAt: new Date().toISOString(), gun: input.gun, snapshotRevision: snapshot.manifest.revision, baseTag: "", tag: input.tag,
+    spec: { ...spec, equipmentIds: [candidateId] }, phases: [], operations: [],
+    candidateEquipment: candidate, baseEquipment: { id: equipmentId, sha: sha(ik.equipment) },
+    ik: { constraintId: report.constraintId, baseline: { worstAlignDeg: b.worstAlignDeg, medianCutGap: b.medianCutGap, unreachable: b.unreachable }, best: { lever: best.lever, worstAlignDeg: best.worstAlignDeg, unreachable: best.unreachable }, artSpec: report.artSpec },
+  };
+  const planPath = join(outDir, "plan.json");
   writeJson(planPath, plan);
-  ctx.log(`修前 FAIL ${before.metrics.filter((m) => m.verdict === "FAIL").length}/${before.metrics.length}，修后 FAIL ${failures}/${after.metrics.length}；计划 ${planPath}`);
-  ctx.log(after.pass ? "离线度量 PASS；仍需逐张看 after/*_wrist.png 与全身图再下结论。" : "离线度量 FAIL：不要交 ECHO 写入。");
-  return { planPath, pass: after.pass };
+  const { before, after } = renderBeforeAfter(ctx, input, outDir, phases, phaseTimes, planPath);
+  const verdict = classifyIkWrist(report, after.pass);
+  const failures = after.metrics.filter((m) => m.verdict === "FAIL").length;
+  plan.verdict = verdict;
+  plan.verdictLabel = VERDICT_LABEL[verdict];
+  plan.selfQc = { verdict: verdict === "wiring-fixable" ? "PASS" : "FAIL", failures, frames: after.metrics.length };
+  if (verdict === "wiring-fixable") plan.operations = [{ type: "upsert-equipment", equipment: candidate }];
+  writeJson(planPath, plan);
+  ctx.log(`修前 FAIL ${before.metrics.filter((m) => m.verdict === "FAIL").length}/${before.metrics.length}，候选装备 ${candidateId} 修后 FAIL ${failures}/${after.metrics.length}；计划 ${planPath}`);
+  ctx.log(`结论：${VERDICT_LABEL[verdict]}`);
+  if (verdict !== "wiring-fixable") {
+    const spec2 = report.artSpec;
+    ctx.log(`  画师规格：${spec2.pivot}`);
+    for (const group of spec2.groups) ctx.log(`    ${group.phases.join("/")}：前臂进手 ${group.forearmRelDeg.toFixed(0)}°（${group.minDeg.toFixed(0)}~${group.maxDeg.toFixed(0)}°），腕口切口朝 ${group.cutOutwardRelDeg.toFixed(0)}°${group.forearm ? `；前臂可见 ${group.forearm.visiblePct}%` : ""}`);
+    for (const t of spec2.transitions) ctx.log(`    过渡 ${t.phase}：${t.fromDeg.toFixed(0)}° → ${t.toDeg.toFixed(0)}°${t.swapAt === null ? "" : `，约 t=${t.swapAt.toFixed(2)} 换手`}`);
+    ctx.log(`    现手图：腕口进手 ${spec2.current.cutRelDeg.toFixed(0)}°，切口中心离前臂远端 ${spec2.current.cutGap.toFixed(0)}`);
+    for (const note of spec2.notes) ctx.log(`    ${note}`);
+    ctx.log("计划不含写入操作；不要交 ECHO 写入。");
+  } else ctx.log("离线度量 PASS；仍需逐张看 after/*_wrist.png 与全身图再下结论。");
+  return { planPath, pass: verdict === "wiring-fixable" };
 }
 
 function vstack(images: RgbaImage[], gap = 8): RgbaImage {
@@ -316,14 +414,22 @@ function vstack(images: RgbaImage[], gap = 8): RgbaImage {
 export async function runApplyPlan(ctx: RunContext, input: { plan: string; allowUnreviewed?: boolean } & ApplyGate): Promise<void> {
   const plan = JSON.parse(readFileSync(input.plan, "utf8")) as PlanFile;
   if (plan.kind !== "her1-wrist-fix") throw new Error("不是 her1-wrist-fix 计划");
+  const equipmentMode = plan.mode === "equipment-ik";
   for (const op of plan.operations) {
-    if (op.type !== "create-motion-clip" && op.type !== "upsert-action") throw new Error(`计划含不允许的操作 ${op.type}`);
-    const id = op.type === "create-motion-clip" ? op.asset.id : op.action.id;
+    const allowed = equipmentMode ? op.type === "upsert-equipment" : op.type === "create-motion-clip" || op.type === "upsert-action";
+    if (!allowed) throw new Error(`计划含不允许的操作 ${op.type}`);
+    const id = op.type === "create-motion-clip" ? op.asset.id : op.type === "upsert-action" ? op.action.id : op.type === "upsert-equipment" ? op.equipment.id : "";
     if (!id.includes("her1")) throw new Error(`「${id}」不是加性 her1 对象`);
+    if (op.type === "upsert-equipment" && id === plan.baseEquipment?.id) throw new Error(`计划会覆盖基线装备 ${id}；只允许写新 id`);
   }
-  if (plan.selfQc?.verdict !== "PASS" && !input.allowUnreviewed) throw new Error("计划未通过离线自审（selfQc 不是 PASS），拒绝写入");
+  if (plan.selfQc?.verdict !== "PASS" && !input.allowUnreviewed) throw new Error(`计划未通过离线自审（selfQc 不是 PASS${plan.verdictLabel ? `，结论：${plan.verdictLabel}` : ""}），拒绝写入`);
   const connection = await connect(ctx);
   assertRevisionGate(connection, input);
+  if (equipmentMode) {
+    const base = (connection.document.equipment ?? []).find((item) => item.id === plan.baseEquipment?.id);
+    if (!base || sha(base) !== plan.baseEquipment?.sha) throw new Error(`基线装备 ${plan.baseEquipment?.id ?? "?"} 与快照不同；重新快照`);
+    for (const op of plan.operations) if (op.type === "upsert-equipment" && (connection.document.equipment ?? []).some((item) => item.id === op.equipment.id)) throw new Error(`装备 ${op.equipment.id} 已存在；换 tag 重跑 fix-wrist`);
+  }
   for (const phase of plan.phases) {
     const action = connection.document.animations.find((item) => item.id === phase.actionId);
     if (action?.motionClipId !== phase.baseClipId) throw new Error(`${phase.actionId} 当前指向 ${action?.motionClipId ?? "缺失"}，计划基线是 ${phase.baseClipId}；重新快照`);
@@ -331,11 +437,18 @@ export async function runApplyPlan(ctx: RunContext, input: { plan: string; allow
     if (sha(base) !== phase.baseClipSha) throw new Error(`${phase.baseClipId} 内容与快照不同；重新快照`);
   }
   writePlan(ctx, `wristfix-${plan.tag}`, connection, plan.operations);
-  ctx.log(`计划：${plan.phases.map((p) => `${p.actionId} → ${p.newClipId}`).join("、")}（快照 rev ${plan.snapshotRevision}，当前 rev ${connection.revision}）`);
+  const summary = equipmentMode ? `新装备 ${plan.candidateEquipment?.id}（基于 ${plan.baseEquipment?.id}；loadout 切换仍等 ECHO）` : plan.phases.map((p) => `${p.actionId} → ${p.newClipId}`).join("、");
+  ctx.log(`计划：${summary}（快照 rev ${plan.snapshotRevision}，当前 rev ${connection.revision}）`);
   if (!input.apply) { ctx.log(`dry-run 完成。确认后加 --apply --expected-rev ${connection.revision}`); return; }
   const outcome = await applyGuarded(ctx, connection, `wristfix-${plan.gun.toLowerCase()}-${plan.tag}`, plan.operations, input);
   receipt(ctx, `wristfix-${plan.tag}`, { revisionBefore: connection.revision, revisionAfter: outcome.revision, plan: input.plan, phases: plan.phases.map((p) => p.newClipId) });
-  if (input.updateState) {
+  if (input.updateState && equipmentMode) {
+    const gun = ctx.state.guns[plan.gun];
+    const id = plan.candidateEquipment?.id;
+    if (id && !gun.her1Equipment.includes(id)) gun.her1Equipment = [...gun.her1Equipment, id];
+    ctx.state.echo.lastKnownRevision = outcome.revision;
+    writeJson(ctx.statePath, ctx.state);
+  } else if (input.updateState) {
     const gun = ctx.state.guns[plan.gun];
     const covered = plan.phases.map((p) => p.phase);
     if (CORE_PHASES.every((phase) => covered.includes(phase))) {

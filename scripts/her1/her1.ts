@@ -20,10 +20,11 @@ const HELP = `her1 工具链
   status                                   打印 state.json：待交美术包、clip 指针、live 规则
   check --pack T03c|T10b --input <psd|png> [--sprite <id>] [--starter <png>] [--open-edge-mask <png>] [--record]
   audit-clip --clip <clip.json> --document <skeletal-document.json>
-  render --snapshot <dir> [--plan <plan.json>] [--phases …] [--times 0,0.4] [--equipment <id>] [--ik off|socket]
-                                           离线渲染快照（全身 ×2 + 腕口特写），量支撑手腕口，写 seam.json
+  render --snapshot <dir> [--plan <plan.json>] [--phases …] [--times 0,0.4] [--equipment <id>] [--ik weapon-align|weapon|off]
+                                           离线渲染快照（默认按 FB 双手 IK + alignEnd；全身 ×2 + 腕口特写），量支撑手腕口，写 seam.json
   fix-wrist --snapshot <dir> [--tag her1am3d] [--phases …] [--upper upper_arm_far] [--lower forearm_far]
-            [--overlap 4] [--step 0.04]    离线求解远臂两骨，派生新 clip + 计划，前后对比渲染并自审
+            [--overlap 4] [--step 0.04]    远臂被双手 IK 驱动时搜 her1 装备杠杆并判「接线可修 / 仍需画师新手 / 够不着」；
+                                           否则求解远臂两骨派生新 clip；都会前后对比渲染并自审
 
 连接 ECHO FB（默认 dry-run，写入需 --apply --expected-rev N）：
   tools [--name <tool>]                    tools/list；给 --name 时打印该工具完整 inputSchema
@@ -178,7 +179,7 @@ async function main(): Promise<number> {
     return 0;
   }
   if (command === "render") {
-    const outcome = runRender(ctx, { snapshot: resolve(need(flags, "snapshot")), plan: str(flags, "plan") ? resolve(str(flags, "plan")!) : undefined, phases: str(flags, "phases") ? list(str(flags, "phases")) : undefined, times: str(flags, "times") ? list(str(flags, "times")).map(Number) : undefined, maxTimes: Number(str(flags, "max-times") ?? 8), equipmentId: str(flags, "equipment"), ik: (str(flags, "ik") ?? "off") as IkMode, zoom: Number(str(flags, "zoom") ?? 4), farRootBone, defaults: G3_WRIST });
+    const outcome = runRender(ctx, { snapshot: resolve(need(flags, "snapshot")), plan: str(flags, "plan") ? resolve(str(flags, "plan")!) : undefined, phases: str(flags, "phases") ? list(str(flags, "phases")) : undefined, times: str(flags, "times") ? list(str(flags, "times")).map(Number) : undefined, maxTimes: Number(str(flags, "max-times") ?? 8), equipmentId: str(flags, "equipment"), ik: (str(flags, "ik") ?? "weapon-align") as IkMode, zoom: Number(str(flags, "zoom") ?? 4), farRootBone, defaults: G3_WRIST });
     return outcome.pass ? 0 : 2;
   }
   if (command === "fix-wrist") {
