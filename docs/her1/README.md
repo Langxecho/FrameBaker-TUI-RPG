@@ -69,7 +69,8 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 | --- | --- | --- |
 | her1am3 | — | T03 握枪手 + StageC `FAR_C21C`（只显 live 透视残肢）→ 断腕 |
 | her1am3b | — | 额外 HIDE 轨 → `PREVIEW_RENDER_FAILED`。**退役** |
-| **her1am3c** | **1268→1274** | 当前：去掉 `FAR_C21C`，远臂 keepbase；support-hand rest `[1,1,1]` 已显示。T03c（rev 1339）只换了素材，没有改这个 clip |
+| **her1am3c** | **1268→1274** | 当前：去掉 `FAR_C21C`，远臂 keepbase；support-hand rest `[1,1,1]` 已显示。T03c（rev 1339）只换了素材，没有改这个 clip；T03c 后腕口明显接不上 |
+| her1am3d | 未写 | 计划：`fix-wrist` 派生，只替换远臂两条旋转轨（§6 T03c） |
 
 ### 3.3 铁桶接线（M2）现状
 
@@ -111,14 +112,21 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 
 ## 6. 美术包（按优先级）
 
-### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · **已落地**（2026-11-04，rev 1339）
+### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · **已入库，腕口 FAIL**（2026-11-04，rev 1339）
 
 - 检查：v1、v2 FAIL（v1：103 半透明 / 47 描边断口；v2：77 / 48）。**v7 PASS_seam_exempt**：89×38，腕口豁免带 `intended_open_edge_band=[0,0,59,37]`，带外的外露半透明和描边断口都是 0。PSD md5 `4ffa0575…`。v3–v6 的检查结论没有回报。
 - 写入：ECHO 在 worktree `F:\CodeProject\FB-her1-run`（`origin/cursor/her1-cloud-handoff-7321`）上执行 check → `t03c --apply`。rev 1335→1336 首次 rematerialize；之后做过 drawOffset / 旧 pivot 试验，又恢复合同 pivot。当前 rev **1339**，live 快照一致。
 - 结果：`c34-g3-K02-p19v-p19y-her1` 与 `-her1-hd` 的 `:support-hand` 现为素材 **`e53e3c92`**（`hand_sup_g3_y-her1`），size **[178,76]**，pivot 为合同值 `[0.786517, 0.789474]`。live `59fc3f63` 未动。clip 仍是 her1am3c，没有接线。
 - 待核实：回报只确认 pivot 已恢复，support-hand 的 drawOffset 终值没有回报。下次 probe 时从工程文档核对，记入 `state.json` 的 `packs.T03c.landed.drawOffsetNote`。
-- 自审（G3 idle/prepare/aim/fire/recover 自渲）：护木下的支撑手在。远臂接腕仍有已知残差，与 T03b 同类，默认不改 clip。
-- 后续（可选）：要处理接腕残差时，先自审确定是接线问题还是素材问题。接线问题用 `wire` 以 her1am3c 为基线开 `her1am3d`，只动远臂相关 her1 `att:` 轨；素材问题再开新包。
+- 自审：**FAIL**。ECHO 复审 G3 五态，支撑手与远臂腕口明显接不上，不是残差级。早先“护木下支撑手在、接腕残差同 T03b”的结论作废。
+- 已核实（代码与历史记录，不依赖实机渲染）：
+  - 合同 pivot 换算正确：pivot_px `[70,8]`（自上）对应 FB 左下原点的 `[70/89, 30/38]`，手图内容与 T03b 同位，问题不在 support-hand 枢轴；
+  - `drawOffset` 只影响层序、不移动位置，drawOffset 试验修不了腕口；
+  - FB 预览不做双手 IK，远臂完全由 her1am3c 的 FK 摆位，支撑手刚性挂在 `rifle-support` socket；
+  - T03b-fix 前后前臂远端 x 都停在 594，her1am3c 从没把前臂送到支撑手位置。
+- 最可能的根因：接线。her1am3c 远臂两骨的姿势没对准 T03c 的腕口。次要可能是素材：腕口延伸的方向或宽度和远臂对不上。
+- 修法（runbook §6.1）：ECHO 只读 `snapshot`，云端用 `fix-wrist` 以 her1am3c 为基线求解 `her1am3d`（只替换远臂两条旋转轨）并离线自审，PASS 后 ECHO `apply-plan`。`fix-wrist` 会报前臂与腕口的夹角和宽度是否覆盖，据此判断要不要等画师的新手。`wire` 只管显隐，修不了位置。
+- 阻塞：云端还没拿到真实工程快照，未自渲、未写任何东西。her1am3d 不存在；live 未动。
 
 ### T10b（优先级 2，现为唯一待交包）— G1 手枪瞄准远侧前臂胸口托出 · 等画师
 
@@ -130,7 +138,7 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 
 ### 其余美术债（尚未开包）
 
-腰缝旋转露缝；脸/颈洞；近肘缺比 p45 更直的一档（aim 约 30°）；膝 g1 接缝；握枪手↔前臂接缝；G3 远臂接腕残差（T03c 后仍在）。开包前先自审确认属于素材问题，再按 skill 流程开 `01_待改/`。
+腰缝旋转露缝；脸/颈洞；近肘缺比 p45 更直的一档（aim 约 30°）；膝 g1 接缝；握枪手↔前臂接缝。（G3 远臂接腕已转入 T03c 的腕口修正，见上。）开包前先自审确认属于素材问题，再按 skill 流程开 `01_待改/`。
 
 ## 7. 更新协议
 

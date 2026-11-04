@@ -102,7 +102,7 @@
     "T03c": {
       "title": "T03c 冲锋枪（MP-9，K02）更大画布支撑手",
       "priority": 1,
-      "status": "landed",
+      "status": "landed-wrist-fail",
       "gun": "G3",
       "dir": "docs/her1/packs/T03c",
       "echoPackDir": "01_待改/T03c_冲锋枪更大支撑手_g3",
@@ -127,7 +127,21 @@
         "clip": "her1am3c（未接线）",
         "liveSnapshot": "一致",
         "drawOffsetNote": "回报只确认 pivot 已恢复合同值；support-hand 的 drawOffset 终值未回报，下次 probe 时从工程文档核对并记入此处",
-        "selfQc": "G3 idle/prepare/aim/fire/recover 自渲：护木下支撑手在；远臂接腕仍有 T03b 同类已知残差，默认不改 clip"
+        "selfQc": "ECHO 复审 FAIL：支撑手与远臂腕口明显接不上（不是残差级）；早先“护木下支撑手在、接腕残差同 T03b”的结论作废"
+      },
+      "wristFix": {
+        "status": "blocked-need-snapshot",
+        "verdict": "FAIL（ECHO 自渲判定；云端尚未拿到真实工程，未自渲）",
+        "verifiedFacts": [
+          "合同 pivot 换算正确：native 89×38、pivot_px [70,8]（自上）= FB pivot [70/89, 30/38]（左下原点），手图内容与 T03b 同位，问题不在 support-hand 枢轴",
+          "drawOffset 只影响层序、不移动位置，drawOffset 试验修不了腕口",
+          "FB 预览不做双手 IK（solveTwoBoneIk2d 只用于诊断）：远臂完全由 her1am3c 的 FK 摆位，支撑手刚性挂在 rifle-support socket",
+          "T03b-fix 前后远臂前臂远端 x 都停在 594：her1am3c 没把前臂送到支撑手位置"
+        ],
+        "likelyCause": "接线：her1am3c 的远臂（upper_arm_far / forearm_far）姿势没对准 T03c 腕口。次要可能是腕口延伸方向或宽度与远臂对不上（素材问题）；fix-wrist 的夹角与宽度度量能区分两者",
+        "plan": "ECHO 跑只读 snapshot（runbook §6.1 ①）→ 云端 render + fix-wrist 求 her1am3d 并自审 → 自审 PASS 后 ECHO apply-plan",
+        "newTag": "her1am3d",
+        "written": false
       },
       "sprites": [
         {
@@ -146,7 +160,7 @@
       ],
       "wiring": {
         "default": "none",
-        "note": "已落地（rev 1339），her1am3c 未改，rematerialize 单独生效。远臂接腕残差若经自审确认是接线问题，再用 wire 以 her1am3c 为基线开 her1am3d，只动远臂相关 her1 att: 轨；若是素材问题再开新包。",
+        "note": "已落地（rev 1339），her1am3c 未改。腕口接不上：用 fix-wrist 以 her1am3c 为基线派生 her1am3d（只替换远臂两条旋转轨），见 runbook §6.1；wire 只管显隐，修不了位置。",
         "baseClipTag": "her1am3c",
         "suggestedTag": "her1am3d"
       }
