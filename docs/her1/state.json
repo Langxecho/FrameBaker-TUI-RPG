@@ -145,6 +145,15 @@
           "her1 装备杠杆搜索（指节沿枪管 ±40 / 垂直 ±12 / 手转 ±20° / 两种 bend）：基线最大夹角 119°，最佳 77°（> 20° 上限），且手离开护木；离开枪身的大范围扫描仍 ≥51°",
           "现有 p15 下托手只有手不在枪上时角度才过关，不可用"
         ],
+        "liveQc": {
+          "date": "2026-11-04",
+          "revision": 1339,
+          "verdict": "FAIL",
+          "ikParity": "aic_sample_pose 五态 35 时刻 × 4 骨，离线 --ik weapon-align 位置/角度误差 0",
+          "evidence": { "idle@1.5": "11117c2f", "prepare@0.315": "1dc3d0a2", "aim@1.2": "af3a9013", "fire@0.15": "33a24781", "recover@0.125": "106d88bd", "recover@0.5": "59ccff2e" },
+          "prepareOvershoot": "prepare 0.24~0.36 前臂（腕→肘）−37°~−6°，相对瞄准手 −48° 最多差约 42°；接受、加过渡手或平滑 prepare 由 ECHO 定",
+          "written": false
+        },
         "cause": "素材几何：一张刚性手图的腕口方向固定（54°、离 pivot 82），而 IK 下前臂按相位以 14° 或 132° 进手，并停在 pivot 上；不是接线问题，现有资产上没有加性解",
         "artSpec": {
           "angleFrame": "枪坐标系：0° = 沿枪管指向枪口，90° = 垂直枪管朝上；支撑手随枪转（alignEnd）",

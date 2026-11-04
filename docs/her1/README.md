@@ -138,6 +138,11 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
   - 待机手（idle，prepare/recover 前段）：远臂前臂藏在躯干后，腕口不能开口，画收口袖口或把腕藏到枪身后（若要画延伸，方向 14°）；
   - 两张都挂 `rifle-support`，rest 隐藏 0.001，按 `att:` scale 换显：prepare 约 t=0.21、recover 约 t=0.13 换手。
 - 自审：修前、修后的腕口特写与全身图都 FAIL，`plan.json` 判定 `needs-art`、无写入操作，没有推回 PR，也没有交 ECHO 写入。live 未动。
+- **ECHO 真机复核（2026-11-04，rev 1339，只读）**：结论成立，仍需画师新手。
+  - `probe` 一致：rev 1339，live 素材 6 项一致，G3 五态 → her1am3c。
+  - 离线 IK 与真机一致：`aic_sample_pose` 五态 35 个时刻 × upper_arm_far / forearm_far / hand_far / hand_near，离线 `--ik weapon-align` 位置、角度误差都是 0。
+  - 真机 `aic_render_preview`（1024，her1-hd）目视自审 FAIL：idle / recover 末段远臂在躯干后，开口腕口浮在胸前；prepare 后段 / aim / fire 肘甩到枪口一侧前下方，前臂从右下回折进手，手指指回肘部。证据 `evidenceId` 前 8 位：idle 1.5 `11117c2f`、prepare 0.315 `1dc3d0a2`、aim 1.2 `af3a9013`、fire 0.15 `33a24781`、recover 0.125 `106d88bd`、recover 0.5 `59ccff2e`。
+  - 换手时刻细采样（前臂从腕指向肘，手图/枪坐标）：prepare 0~0.15 为 −166°~−141°，0.18 −104°，0.21 起 −52°；**0.24~0.36 过冲到 −37°~−6°**，0.39 回到 −46°。recover 0.06 前 −48°~−50°，0.09 −72°，0.12 −112°，0.15 起 −140°~−167°。瞄准手在 prepare 0.24~0.36 仍会有最多约 42° 的错位：要么接受这几帧，要么让对接师加一张过渡手，要么由 ECHO 决定是否平滑 prepare 的持枪轨迹（动作设计层面）。
 
 ### T10b（优先级 2）— G1 手枪瞄准远侧前臂胸口托出 · 等画师
 
