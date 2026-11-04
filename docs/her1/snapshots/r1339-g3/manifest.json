@@ -1,0 +1,4103 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-11-04T06:19:37.362Z",
+  "projectId": "90acc389-43ae-44de-bb7e-daed07f85472",
+  "revision": 1339,
+  "gun": "G3",
+  "equipmentIds": [
+    "c34-g3-K02-p19v-p19y-her1",
+    "c34-g3-K02-p19v-p19y-her1-hd"
+  ],
+  "skeletonId": "c34-skel-30934e37",
+  "actions": [
+    {
+      "phase": "idle",
+      "actionId": "c34-g3:her1bt-idle",
+      "motionClipId": "c34-g3:idle-clip-her1am3c",
+      "clipFile": "clips\\c34-g3_idle-clip-her1am3c.json"
+    },
+    {
+      "phase": "prepare",
+      "actionId": "c34-g3:her1bt-prepare",
+      "motionClipId": "c34-g3:prepare-clip-her1am3c",
+      "clipFile": "clips\\c34-g3_prepare-clip-her1am3c.json"
+    },
+    {
+      "phase": "aim",
+      "actionId": "c34-g3:her1bt-aim",
+      "motionClipId": "c34-g3:aim-clip-her1am3c",
+      "clipFile": "clips\\c34-g3_aim-clip-her1am3c.json"
+    },
+    {
+      "phase": "fire",
+      "actionId": "c34-g3:her1bt-fire",
+      "motionClipId": "c34-g3:fire-clip-her1am3c",
+      "clipFile": "clips\\c34-g3_fire-clip-her1am3c.json"
+    },
+    {
+      "phase": "recover",
+      "actionId": "c34-g3:her1bt-recover",
+      "motionClipId": "c34-g3:recover-clip-her1am3c",
+      "clipFile": "clips\\c34-g3_recover-clip-her1am3c.json"
+    }
+  ],
+  "materials": [
+    {
+      "materialId": "149134cb-e279-4679-9bb1-0b48b30addf2",
+      "file": "materials\\149134cb-e279-4679-9bb1-0b48b30addf2.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "c34-g3-K02-p19v-p19y-her1:gun-rigid"
+      ],
+      "size": [
+        166,
+        58
+      ]
+    },
+    {
+      "materialId": "7c417ebc-9a98-408c-a2a6-e21bbe4c35b6",
+      "file": "materials\\7c417ebc-9a98-408c-a2a6-e21bbe4c35b6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "c34-g3-K02-p19v-p19y-her1:grip-hand"
+      ],
+      "size": [
+        32,
+        39
+      ]
+    },
+    {
+      "materialId": "e53e3c92-4007-405c-ad4c-49fc2fe944c3",
+      "file": "materials\\e53e3c92-4007-405c-ad4c-49fc2fe944c3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "c34-g3-K02-p19v-p19y-her1:support-hand"
+      ],
+      "size": [
+        89,
+        38
+      ]
+    },
+    {
+      "materialId": "72b1b2d5-6e07-4315-9c6a-a8dfde0e6e5a",
+      "file": "materials\\72b1b2d5-6e07-4315-9c6a-a8dfde0e6e5a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "c34-g3-K02-p19v-p19y-her1:p15-support"
+      ],
+      "size": [
+        115,
+        112
+      ]
+    },
+    {
+      "materialId": "68a7242a-855a-41e7-8ee5-1f3aa5b37c8f",
+      "file": "materials\\68a7242a-855a-41e7-8ee5-1f3aa5b37c8f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-upper_arm_far"
+      ],
+      "size": [
+        56,
+        100
+      ]
+    },
+    {
+      "materialId": "17e2deb4-c1ac-4018-b19b-2a8053e825b5",
+      "file": "materials\\17e2deb4-c1ac-4018-b19b-2a8053e825b5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-ua-dm15"
+      ],
+      "size": [
+        96,
+        112
+      ]
+    },
+    {
+      "materialId": "4e75db5f-3e8e-4a6b-bfce-e9ffd54b7439",
+      "file": "materials\\4e75db5f-3e8e-4a6b-bfce-e9ffd54b7439.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-ua-dp0"
+      ],
+      "size": [
+        112,
+        97
+      ]
+    },
+    {
+      "materialId": "05f79aac-9a32-4c29-865f-ad6e06f9708e",
+      "file": "materials\\05f79aac-9a32-4c29-865f-ad6e06f9708e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-ua-dp15"
+      ],
+      "size": [
+        123,
+        77
+      ]
+    },
+    {
+      "materialId": "30466d6b-4aa2-415d-a234-d2c183d70892",
+      "file": "materials\\30466d6b-4aa2-415d-a234-d2c183d70892.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5b-far-ua-kp0"
+      ],
+      "size": [
+        97,
+        82
+      ]
+    },
+    {
+      "materialId": "d49c862e-dc64-40e4-b7c0-f2f134cbe8f9",
+      "file": "materials\\d49c862e-dc64-40e4-b7c0-f2f134cbe8f9.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5c-far-ua-kp0"
+      ],
+      "size": [
+        96,
+        81
+      ]
+    },
+    {
+      "materialId": "dc1f3031-e0a3-4d6f-a7bc-4dea21f1a207",
+      "file": "materials\\dc1f3031-e0a3-4d6f-a7bc-4dea21f1a207.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-ua-km1"
+      ],
+      "size": [
+        84,
+        112
+      ]
+    },
+    {
+      "materialId": "8e9575f0-8308-4cbc-b0bb-5eb306eb5dfb",
+      "file": "materials\\8e9575f0-8308-4cbc-b0bb-5eb306eb5dfb.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-ua-km2"
+      ],
+      "size": [
+        53,
+        125
+      ]
+    },
+    {
+      "materialId": "adfa05a1-d167-4753-96fe-dd65c08dd946",
+      "file": "materials\\adfa05a1-d167-4753-96fe-dd65c08dd946.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-ua-km3"
+      ],
+      "size": [
+        45,
+        127
+      ]
+    },
+    {
+      "materialId": "4aec6f92-417f-47a2-998a-c7bea9ca4f59",
+      "file": "materials\\4aec6f92-417f-47a2-998a-c7bea9ca4f59.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-ua-km4"
+      ],
+      "size": [
+        77,
+        117
+      ]
+    },
+    {
+      "materialId": "857b1e1e-f72e-4e64-a004-546c77d09877",
+      "file": "materials\\857b1e1e-f72e-4e64-a004-546c77d09877.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-ua-kp0"
+      ],
+      "size": [
+        108,
+        90
+      ]
+    },
+    {
+      "materialId": "4f0b36cb-0d2b-4d5e-b757-e6346671a54b",
+      "file": "materials\\4f0b36cb-0d2b-4d5e-b757-e6346671a54b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-ua-kp1"
+      ],
+      "size": [
+        123,
+        61
+      ]
+    },
+    {
+      "materialId": "ac6a2217-db2b-40b3-8835-ff49063b6fb8",
+      "file": "materials\\ac6a2217-db2b-40b3-8835-ff49063b6fb8.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-ua-kp0-p45"
+      ],
+      "size": [
+        86,
+        73
+      ]
+    },
+    {
+      "materialId": "dad3cd56-0806-44d3-a04a-ccad472e19bc",
+      "file": "materials\\dad3cd56-0806-44d3-a04a-ccad472e19bc.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-ua-kp0-p45"
+      ],
+      "size": [
+        90,
+        77
+      ]
+    },
+    {
+      "materialId": "f7e89f68-21a9-4a3e-827a-af3d22a910ee",
+      "file": "materials\\f7e89f68-21a9-4a3e-827a-af3d22a910ee.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-ua-kp1-p45"
+      ],
+      "size": [
+        96,
+        53
+      ]
+    },
+    {
+      "materialId": "92266da3-89b7-4c4b-8873-0dda801cb0fe",
+      "file": "materials\\92266da3-89b7-4c4b-8873-0dda801cb0fe.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-ua-kp1-p45"
+      ],
+      "size": [
+        100,
+        57
+      ]
+    },
+    {
+      "materialId": "2f0bc8b8-6182-4d93-831e-f8ebbaf7de17",
+      "file": "materials\\2f0bc8b8-6182-4d93-831e-f8ebbaf7de17.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-ua-kp2-p45"
+      ],
+      "size": [
+        99,
+        38
+      ]
+    },
+    {
+      "materialId": "3bc6933f-d96c-4edc-b348-49bdf16fdffb",
+      "file": "materials\\3bc6933f-d96c-4edc-b348-49bdf16fdffb.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-ua-kp2-p45"
+      ],
+      "size": [
+        103,
+        42
+      ]
+    },
+    {
+      "materialId": "7b82ee07-34eb-44b1-93fc-ad36220b617f",
+      "file": "materials\\7b82ee07-34eb-44b1-93fc-ad36220b617f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-ua-kp3-p45"
+      ],
+      "size": [
+        94,
+        58
+      ]
+    },
+    {
+      "materialId": "3597428c-d855-4bb8-b782-16ecbcab34ac",
+      "file": "materials\\3597428c-d855-4bb8-b782-16ecbcab34ac.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-ua-km1-p45"
+      ],
+      "size": [
+        69,
+        89
+      ]
+    },
+    {
+      "materialId": "5eb2e5ee-92c6-457e-a765-e327bd6ae0f9",
+      "file": "materials\\5eb2e5ee-92c6-457e-a765-e327bd6ae0f9.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-ua-km1-p45"
+      ],
+      "size": [
+        73,
+        93
+      ]
+    },
+    {
+      "materialId": "9f1d0c04-56d1-4eb3-b3e4-e1cb484b75fa",
+      "file": "materials\\9f1d0c04-56d1-4eb3-b3e4-e1cb484b75fa.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-ua-km2-p45"
+      ],
+      "size": [
+        46,
+        98
+      ]
+    },
+    {
+      "materialId": "892e3cbb-c40e-4651-93c6-b0badf8b7a2a",
+      "file": "materials\\892e3cbb-c40e-4651-93c6-b0badf8b7a2a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-ua-km3-p45"
+      ],
+      "size": [
+        41,
+        99
+      ]
+    },
+    {
+      "materialId": "c29440dc-ddbc-4ff9-a413-34309bf89b88",
+      "file": "materials\\c29440dc-ddbc-4ff9-a413-34309bf89b88.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-ua-km3-p45"
+      ],
+      "size": [
+        45,
+        103
+      ]
+    },
+    {
+      "materialId": "1d620696-5287-403a-bfbf-836b72838073",
+      "file": "materials\\1d620696-5287-403a-bfbf-836b72838073.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-ua-km2-p45"
+      ],
+      "size": [
+        51,
+        102
+      ]
+    },
+    {
+      "materialId": "92c5f9df-a10c-4011-8335-006d689aacaa",
+      "file": "materials\\92c5f9df-a10c-4011-8335-006d689aacaa.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-ua-kp3-p45"
+      ],
+      "size": [
+        98,
+        62
+      ]
+    },
+    {
+      "materialId": "f51fd76b-aefa-4b76-a679-1f42dbe3b16b",
+      "file": "materials\\f51fd76b-aefa-4b76-a679-1f42dbe3b16b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-ua-km1"
+      ],
+      "size": [
+        88,
+        116
+      ]
+    },
+    {
+      "materialId": "198b079e-ad16-4e08-8dda-fbc3f0bdb348",
+      "file": "materials\\198b079e-ad16-4e08-8dda-fbc3f0bdb348.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-ua-km2"
+      ],
+      "size": [
+        57,
+        128
+      ]
+    },
+    {
+      "materialId": "6f18c9db-db7b-4f54-afa4-cdf9027f161f",
+      "file": "materials\\6f18c9db-db7b-4f54-afa4-cdf9027f161f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-ua-km3"
+      ],
+      "size": [
+        49,
+        131
+      ]
+    },
+    {
+      "materialId": "03ef7b52-690f-482d-a39b-3f54b506dd61",
+      "file": "materials\\03ef7b52-690f-482d-a39b-3f54b506dd61.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-ua-km4"
+      ],
+      "size": [
+        81,
+        120
+      ]
+    },
+    {
+      "materialId": "3c80de3f-50db-4ac6-a3e7-ee5cf6686087",
+      "file": "materials\\3c80de3f-50db-4ac6-a3e7-ee5cf6686087.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-ua-kp0"
+      ],
+      "size": [
+        112,
+        95
+      ]
+    },
+    {
+      "materialId": "e6cc4994-616e-4dc7-8586-1bd356c5afea",
+      "file": "materials\\e6cc4994-616e-4dc7-8586-1bd356c5afea.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-ua-kp1"
+      ],
+      "size": [
+        127,
+        66
+      ]
+    },
+    {
+      "materialId": "1b1597bc-9b53-4e7d-922f-ca94653f62b1",
+      "file": "materials\\1b1597bc-9b53-4e7d-922f-ca94653f62b1.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-ua-km1"
+      ],
+      "size": [
+        76,
+        100
+      ]
+    },
+    {
+      "materialId": "a8ac4d0b-9098-4b66-b490-295633426cb5",
+      "file": "materials\\a8ac4d0b-9098-4b66-b490-295633426cb5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-ua-km2"
+      ],
+      "size": [
+        50,
+        111
+      ]
+    },
+    {
+      "materialId": "146f56e0-19b4-43da-8046-0399496e74a5",
+      "file": "materials\\146f56e0-19b4-43da-8046-0399496e74a5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-ua-km3"
+      ],
+      "size": [
+        43,
+        112
+      ]
+    },
+    {
+      "materialId": "f9281dc6-3132-4284-a108-55a0e9c39f8f",
+      "file": "materials\\f9281dc6-3132-4284-a108-55a0e9c39f8f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-ua-km4"
+      ],
+      "size": [
+        70,
+        104
+      ]
+    },
+    {
+      "materialId": "c7a501fc-34a3-4d9b-a81f-e1ecf02333fb",
+      "file": "materials\\c7a501fc-34a3-4d9b-a81f-e1ecf02333fb.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-ua-km1"
+      ],
+      "size": [
+        80,
+        104
+      ]
+    },
+    {
+      "materialId": "a395f464-c9b4-4e71-980a-1bc884cf0c31",
+      "file": "materials\\a395f464-c9b4-4e71-980a-1bc884cf0c31.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-ua-km2"
+      ],
+      "size": [
+        54,
+        114
+      ]
+    },
+    {
+      "materialId": "2131dfb2-9981-4555-9f9e-904ccc6677a9",
+      "file": "materials\\2131dfb2-9981-4555-9f9e-904ccc6677a9.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-ua-km3"
+      ],
+      "size": [
+        47,
+        116
+      ]
+    },
+    {
+      "materialId": "81e6c574-f552-4dd3-a680-69f6adacacf1",
+      "file": "materials\\81e6c574-f552-4dd3-a680-69f6adacacf1.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-ua-km4"
+      ],
+      "size": [
+        74,
+        107
+      ]
+    },
+    {
+      "materialId": "5b969a22-d3a9-4cf5-ad86-4e26590f02a2",
+      "file": "materials\\5b969a22-d3a9-4cf5-ad86-4e26590f02a2.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-ua-kp0"
+      ],
+      "size": [
+        100,
+        86
+      ]
+    },
+    {
+      "materialId": "47d77217-0f3a-4b3e-8a8d-01b2aefccdbf",
+      "file": "materials\\47d77217-0f3a-4b3e-8a8d-01b2aefccdbf.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-forearm_far"
+      ],
+      "size": [
+        48,
+        80
+      ]
+    },
+    {
+      "materialId": "5c04ab07-49ae-4096-925a-a5ebb31534f1",
+      "file": "materials\\5c04ab07-49ae-4096-925a-a5ebb31534f1.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-fa-dm15-fs0"
+      ],
+      "size": [
+        42,
+        109
+      ]
+    },
+    {
+      "materialId": "995c7b75-2040-43b5-b9cd-86bf6d36de9a",
+      "file": "materials\\995c7b75-2040-43b5-b9cd-86bf6d36de9a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-fa-dm15-fs1"
+      ],
+      "size": [
+        42,
+        109
+      ]
+    },
+    {
+      "materialId": "60ab8ed7-4420-4315-9e65-caab0c352eeb",
+      "file": "materials\\60ab8ed7-4420-4315-9e65-caab0c352eeb.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-fa-dp0-fs0"
+      ],
+      "size": [
+        60,
+        105
+      ]
+    },
+    {
+      "materialId": "36f6ed51-a109-465b-ac6b-e1620a5a837d",
+      "file": "materials\\36f6ed51-a109-465b-ac6b-e1620a5a837d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-fa-dp0-fs1"
+      ],
+      "size": [
+        60,
+        105
+      ]
+    },
+    {
+      "materialId": "3f550db9-d0b2-49c8-ab89-e6b4f7183e7a",
+      "file": "materials\\3f550db9-d0b2-49c8-ab89-e6b4f7183e7a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-fa-dp15-fs0"
+      ],
+      "size": [
+        77,
+        97
+      ]
+    },
+    {
+      "materialId": "24a13974-dfef-4691-8314-e6f2ba166fd0",
+      "file": "materials\\24a13974-dfef-4691-8314-e6f2ba166fd0.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-fa-dp15-fs1"
+      ],
+      "size": [
+        77,
+        97
+      ]
+    },
+    {
+      "materialId": "dcf877b2-899d-4c19-a889-93c479c021af",
+      "file": "materials\\dcf877b2-899d-4c19-a889-93c479c021af.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5b-far-fa-kp0-p0"
+      ],
+      "size": [
+        47,
+        90
+      ]
+    },
+    {
+      "materialId": "d75dc2f3-d15a-4dc6-a0d8-484a84b0d33f",
+      "file": "materials\\d75dc2f3-d15a-4dc6-a0d8-484a84b0d33f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5c-far-fa-kp0-p0"
+      ],
+      "size": [
+        47,
+        89
+      ]
+    },
+    {
+      "materialId": "d04cee22-9949-4af9-9b40-38cfe9339a1f",
+      "file": "materials\\d04cee22-9949-4af9-9b40-38cfe9339a1f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-fa-km1-p0"
+      ],
+      "size": [
+        32,
+        100
+      ]
+    },
+    {
+      "materialId": "df6daf59-69ea-4f21-b676-d185d8631f4b",
+      "file": "materials\\df6daf59-69ea-4f21-b676-d185d8631f4b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-fa-km2-p0"
+      ],
+      "size": [
+        52,
+        94
+      ]
+    },
+    {
+      "materialId": "0752d47e-6ef0-43f8-81e6-0f7f1f9add59",
+      "file": "materials\\0752d47e-6ef0-43f8-81e6-0f7f1f9add59.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-fa-km3-p0"
+      ],
+      "size": [
+        75,
+        81
+      ]
+    },
+    {
+      "materialId": "b7299918-fc14-4e54-86ee-091f0060a150",
+      "file": "materials\\b7299918-fc14-4e54-86ee-091f0060a150.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-fa-km4-p0"
+      ],
+      "size": [
+        91,
+        61
+      ]
+    },
+    {
+      "materialId": "43a7e81d-5808-439c-a4a7-4e5cb2b8da71",
+      "file": "materials\\43a7e81d-5808-439c-a4a7-4e5cb2b8da71.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-fa-kp0-p0"
+      ],
+      "size": [
+        49,
+        95
+      ]
+    },
+    {
+      "materialId": "f08a4ea7-f962-48f8-827a-bdfcf3e9acf9",
+      "file": "materials\\f08a4ea7-f962-48f8-827a-bdfcf3e9acf9.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-fa-kp1-p0"
+      ],
+      "size": [
+        71,
+        84
+      ]
+    },
+    {
+      "materialId": "7de63391-e801-4c1f-adb6-ea807dad2907",
+      "file": "materials\\7de63391-e801-4c1f-adb6-ea807dad2907.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-fa-km1-p30"
+      ],
+      "size": [
+        33,
+        90
+      ]
+    },
+    {
+      "materialId": "b6bdf714-5560-42be-b46b-c991c560d92e",
+      "file": "materials\\b6bdf714-5560-42be-b46b-c991c560d92e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-fa-km1-p30"
+      ],
+      "size": [
+        41,
+        96
+      ]
+    },
+    {
+      "materialId": "dcb9cec5-dd7a-455c-ad29-551ed54387fc",
+      "file": "materials\\dcb9cec5-dd7a-455c-ad29-551ed54387fc.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-fa-km2-p30"
+      ],
+      "size": [
+        49,
+        85
+      ]
+    },
+    {
+      "materialId": "624978f3-5651-4e8a-9d08-c964893f20c5",
+      "file": "materials\\624978f3-5651-4e8a-9d08-c964893f20c5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-fa-km2-p30"
+      ],
+      "size": [
+        57,
+        92
+      ]
+    },
+    {
+      "materialId": "5d4b43a4-6122-44ab-992b-0c777a563eb3",
+      "file": "materials\\5d4b43a4-6122-44ab-992b-0c777a563eb3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-fa-kp0-p30"
+      ],
+      "size": [
+        46,
+        86
+      ]
+    },
+    {
+      "materialId": "2b0fec91-2115-453c-b99a-21948d06a1c2",
+      "file": "materials\\2b0fec91-2115-453c-b99a-21948d06a1c2.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-fa-km3-p30"
+      ],
+      "size": [
+        68,
+        73
+      ]
+    },
+    {
+      "materialId": "5793e765-7ce4-4597-b735-56f0519abee4",
+      "file": "materials\\5793e765-7ce4-4597-b735-56f0519abee4.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-fa-km4-p30"
+      ],
+      "size": [
+        82,
+        57
+      ]
+    },
+    {
+      "materialId": "03e73313-8614-4b21-8fd6-bfd3b4b3f8df",
+      "file": "materials\\03e73313-8614-4b21-8fd6-bfd3b4b3f8df.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-fa-km4-p30"
+      ],
+      "size": [
+        89,
+        64
+      ]
+    },
+    {
+      "materialId": "fee90248-b9e2-4b06-a8fe-fa826ceb32ba",
+      "file": "materials\\fee90248-b9e2-4b06-a8fe-fa826ceb32ba.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-fa-km5-p30"
+      ],
+      "size": [
+        89,
+        35
+      ]
+    },
+    {
+      "materialId": "16debda7-ea71-4b7f-bad2-f91880b605de",
+      "file": "materials\\16debda7-ea71-4b7f-bad2-f91880b605de.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-fa-km5-p30"
+      ],
+      "size": [
+        96,
+        43
+      ]
+    },
+    {
+      "materialId": "1bb3ec0e-6c26-4fa2-b2c7-8e16902e3dae",
+      "file": "materials\\1bb3ec0e-6c26-4fa2-b2c7-8e16902e3dae.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-fa-km3-p30"
+      ],
+      "size": [
+        76,
+        80
+      ]
+    },
+    {
+      "materialId": "d1c72556-a952-46ad-a8de-ebfae27c7cd5",
+      "file": "materials\\d1c72556-a952-46ad-a8de-ebfae27c7cd5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-fa-kp0-p30"
+      ],
+      "size": [
+        54,
+        93
+      ]
+    },
+    {
+      "materialId": "d7bde83a-84b8-47c3-8620-1b66cb800160",
+      "file": "materials\\d7bde83a-84b8-47c3-8620-1b66cb800160.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-fa-km1-p0"
+      ],
+      "size": [
+        40,
+        106
+      ]
+    },
+    {
+      "materialId": "17beec50-abf8-4b25-b081-238ac3360675",
+      "file": "materials\\17beec50-abf8-4b25-b081-238ac3360675.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-fa-km2-p0"
+      ],
+      "size": [
+        60,
+        101
+      ]
+    },
+    {
+      "materialId": "3ee2ae5f-2494-4e62-9d19-7e9c5525f8b8",
+      "file": "materials\\3ee2ae5f-2494-4e62-9d19-7e9c5525f8b8.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-fa-km3-p0"
+      ],
+      "size": [
+        82,
+        87
+      ]
+    },
+    {
+      "materialId": "427eafe1-8e17-495a-9497-ac268010b8a7",
+      "file": "materials\\427eafe1-8e17-495a-9497-ac268010b8a7.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-fa-km4-p0"
+      ],
+      "size": [
+        97,
+        68
+      ]
+    },
+    {
+      "materialId": "aaa6adc9-9d64-4492-a0fb-37d8f112785d",
+      "file": "materials\\aaa6adc9-9d64-4492-a0fb-37d8f112785d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-fa-kp0-p0"
+      ],
+      "size": [
+        56,
+        102
+      ]
+    },
+    {
+      "materialId": "76c25fff-2403-4b24-a95c-97bbade8cfc8",
+      "file": "materials\\76c25fff-2403-4b24-a95c-97bbade8cfc8.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-fa-kp1-p0"
+      ],
+      "size": [
+        79,
+        90
+      ]
+    },
+    {
+      "materialId": "d7eab1ac-f9f5-4f72-b726-75900f247334",
+      "file": "materials\\d7eab1ac-f9f5-4f72-b726-75900f247334.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-fa-km1-p0"
+      ],
+      "size": [
+        32,
+        94
+      ]
+    },
+    {
+      "materialId": "14742f18-a7c6-49f7-9fee-c4a23f5a1129",
+      "file": "materials\\14742f18-a7c6-49f7-9fee-c4a23f5a1129.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-fa-km2-p0"
+      ],
+      "size": [
+        50,
+        89
+      ]
+    },
+    {
+      "materialId": "f688857d-81cc-43cb-9008-41de73e52e9f",
+      "file": "materials\\f688857d-81cc-43cb-9008-41de73e52e9f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-fa-km3-p0"
+      ],
+      "size": [
+        71,
+        76
+      ]
+    },
+    {
+      "materialId": "b2d3bd39-967a-48c9-a710-73a8b40b0257",
+      "file": "materials\\b2d3bd39-967a-48c9-a710-73a8b40b0257.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-fa-km4-p0"
+      ],
+      "size": [
+        86,
+        58
+      ]
+    },
+    {
+      "materialId": "c96a0c52-cb91-4601-9afa-8ce031626348",
+      "file": "materials\\c96a0c52-cb91-4601-9afa-8ce031626348.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-fa-km1-p0"
+      ],
+      "size": [
+        40,
+        101
+      ]
+    },
+    {
+      "materialId": "87b49e0d-82fa-4daf-a5bf-d869c79b1737",
+      "file": "materials\\87b49e0d-82fa-4daf-a5bf-d869c79b1737.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-fa-km2-p0"
+      ],
+      "size": [
+        58,
+        95
+      ]
+    },
+    {
+      "materialId": "5b375971-62be-4984-ade7-4e856225fc1d",
+      "file": "materials\\5b375971-62be-4984-ade7-4e856225fc1d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-fa-km3-p0"
+      ],
+      "size": [
+        78,
+        83
+      ]
+    },
+    {
+      "materialId": "a7facb8a-5990-4094-93a7-4ff32ade4a81",
+      "file": "materials\\a7facb8a-5990-4094-93a7-4ff32ade4a81.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-fa-km4-p0"
+      ],
+      "size": [
+        92,
+        65
+      ]
+    },
+    {
+      "materialId": "f32c4a26-bf6b-41b0-8100-870a51e1a8f8",
+      "file": "materials\\f32c4a26-bf6b-41b0-8100-870a51e1a8f8.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-fa-kp0-p0"
+      ],
+      "size": [
+        54,
+        97
+      ]
+    },
+    {
+      "materialId": "4089f8f7-7115-4068-91de-c044f574a7b3",
+      "file": "materials\\4089f8f7-7115-4068-91de-c044f574a7b3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-cap_far"
+      ],
+      "size": [
+        14,
+        14
+      ]
+    },
+    {
+      "materialId": "228dafe3-1261-49a7-aa05-9c65fe4283bc",
+      "file": "materials\\228dafe3-1261-49a7-aa05-9c65fe4283bc.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-elbow-b122"
+      ],
+      "size": [
+        42,
+        42
+      ]
+    },
+    {
+      "materialId": "abb235d8-1101-4d93-afef-d54aedc880f6",
+      "file": "materials\\abb235d8-1101-4d93-afef-d54aedc880f6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-elbow-b136"
+      ],
+      "size": [
+        42,
+        42
+      ]
+    },
+    {
+      "materialId": "67c78a5a-fadf-4634-b84a-f757800e2668",
+      "file": "materials\\67c78a5a-fadf-4634-b84a-f757800e2668.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5-far-elbow-b150"
+      ],
+      "size": [
+        42,
+        42
+      ]
+    },
+    {
+      "materialId": "e4cb82d4-9f8c-4245-b0d7-d75c5b0f3895",
+      "file": "materials\\e4cb82d4-9f8c-4245-b0d7-d75c5b0f3895.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5b-far-el-kp0-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "7000702d-1b32-498f-b9d8-eddf713375bc",
+      "file": "materials\\7000702d-1b32-498f-b9d8-eddf713375bc.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p5c-far-el-kp0-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "c1430baa-9184-4598-9bdd-26574ff7821d",
+      "file": "materials\\c1430baa-9184-4598-9bdd-26574ff7821d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-km1-bp1"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "0d08ed3b-0bda-4917-9876-948c835fb448",
+      "file": "materials\\0d08ed3b-0bda-4917-9876-948c835fb448.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-km2-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "dbd23af5-f7e1-45dc-b6b9-b1dfb598c9e5",
+      "file": "materials\\dbd23af5-f7e1-45dc-b6b9-b1dfb598c9e5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-km2-bp1"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "6c185e19-0497-4deb-a65b-379275b025ba",
+      "file": "materials\\6c185e19-0497-4deb-a65b-379275b025ba.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-km3-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "97a1816a-f454-4e13-86fd-d0d7757d3839",
+      "file": "materials\\97a1816a-f454-4e13-86fd-d0d7757d3839.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-km3-bp1"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "c794afa7-b7c7-4028-8413-fbdf33c6a514",
+      "file": "materials\\c794afa7-b7c7-4028-8413-fbdf33c6a514.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-km4-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "e02fc51e-41ac-4f1f-a484-dd470891ee57",
+      "file": "materials\\e02fc51e-41ac-4f1f-a484-dd470891ee57.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-kp0-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "95d51c75-e7fe-4193-9701-c1067ed39300",
+      "file": "materials\\95d51c75-e7fe-4193-9701-c1067ed39300.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-bare-far-el-kp0-bp1"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "7be16075-e632-43e1-b2b7-8328eaf8ab75",
+      "file": "materials\\7be16075-e632-43e1-b2b7-8328eaf8ab75.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-kp0-bm2"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "6241ceda-7b2a-4fa8-a794-7a4aa493f25e",
+      "file": "materials\\6241ceda-7b2a-4fa8-a794-7a4aa493f25e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-kp0-bm2"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "839c3415-aace-4503-a25f-85c9869451be",
+      "file": "materials\\839c3415-aace-4503-a25f-85c9869451be.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-kp1-bm2"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "8aa43711-1af9-4f3b-ac33-e2e86b50a60e",
+      "file": "materials\\8aa43711-1af9-4f3b-ac33-e2e86b50a60e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-kp1-bm2"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "ec0981bc-5904-4ac3-904f-41de4bacfe32",
+      "file": "materials\\ec0981bc-5904-4ac3-904f-41de4bacfe32.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-kp2-bm3"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "a3690a0a-d52b-4dd3-9cd4-a7c22e6bd4dd",
+      "file": "materials\\a3690a0a-d52b-4dd3-9cd4-a7c22e6bd4dd.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-kp2-bm3"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "a9317e96-ee50-4734-9655-7d87d467de89",
+      "file": "materials\\a9317e96-ee50-4734-9655-7d87d467de89.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-kp3-bm3"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "77bbdee8-0a3e-4836-a1d1-08042399c519",
+      "file": "materials\\77bbdee8-0a3e-4836-a1d1-08042399c519.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-kp3-bm3"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "7a8dff30-db59-41b2-a93b-e9cbf47a8a6e",
+      "file": "materials\\7a8dff30-db59-41b2-a93b-e9cbf47a8a6e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-kp4-bm4"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "8d21850f-2a3c-47be-afeb-fa932d2b74ff",
+      "file": "materials\\8d21850f-2a3c-47be-afeb-fa932d2b74ff.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-km1-bm1"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "88e19136-5be2-4d0c-aa60-39da1e804384",
+      "file": "materials\\88e19136-5be2-4d0c-aa60-39da1e804384.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-km1-bm1"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "6f75e100-5586-4e5b-9895-d99ce3046af6",
+      "file": "materials\\6f75e100-5586-4e5b-9895-d99ce3046af6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-km2-bm1"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "3a32afab-68db-44be-aada-5c863f655a20",
+      "file": "materials\\3a32afab-68db-44be-aada-5c863f655a20.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-km2-bm1"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "75e69395-08d6-46d5-85bc-7713561dab17",
+      "file": "materials\\75e69395-08d6-46d5-85bc-7713561dab17.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-kp2-bm2"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "c1fe9d99-1628-4348-bfd0-21f0af357f02",
+      "file": "materials\\c1fe9d99-1628-4348-bfd0-21f0af357f02.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-km1-bm2"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "48588a85-a016-42fa-bb45-96d34dfe7449",
+      "file": "materials\\48588a85-a016-42fa-bb45-96d34dfe7449.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-km1-bm2"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "04a70210-cb03-407f-944c-119633390f22",
+      "file": "materials\\04a70210-cb03-407f-944c-119633390f22.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-km2-bm2"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "5deb2799-0fb5-4adc-8872-9e40ff1bf008",
+      "file": "materials\\5deb2799-0fb5-4adc-8872-9e40ff1bf008.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-km2-bm2"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "00020079-580c-4c7c-a6d6-56224bd4e138",
+      "file": "materials\\00020079-580c-4c7c-a6d6-56224bd4e138.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-bare-far-el-km3-bm2"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "d4fe0bec-2c83-4969-b840-f092de0b98b3",
+      "file": "materials\\d4fe0bec-2c83-4969-b840-f092de0b98b3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-km3-bm2"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "4c5b19b5-6163-4b2e-97cd-c141f75cbfae",
+      "file": "materials\\4c5b19b5-6163-4b2e-97cd-c141f75cbfae.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-kp2-bm2"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "f78ecec9-1869-42b0-af3b-f0d5a6f17c41",
+      "file": "materials\\f78ecec9-1869-42b0-af3b-f0d5a6f17c41.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p8-slv-far-el-kp4-bm4"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "b3ee1edd-737e-43c7-9a3e-9b9be1eca9ad",
+      "file": "materials\\b3ee1edd-737e-43c7-9a3e-9b9be1eca9ad.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-km1-bp1"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "db1ba6cc-e4ef-4af9-95e7-e3a522e9f943",
+      "file": "materials\\db1ba6cc-e4ef-4af9-95e7-e3a522e9f943.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-km2-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "600a8893-f76a-4bbb-a77f-b13e84522887",
+      "file": "materials\\600a8893-f76a-4bbb-a77f-b13e84522887.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-km2-bp1"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "83b9c31d-de7a-43a2-8fa6-22c1f85e8d07",
+      "file": "materials\\83b9c31d-de7a-43a2-8fa6-22c1f85e8d07.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-km3-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "5cec7619-19b5-40c4-b341-db9ebcf3791b",
+      "file": "materials\\5cec7619-19b5-40c4-b341-db9ebcf3791b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-km3-bp1"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "874b6173-5ed7-4a8e-8799-a2908af021d7",
+      "file": "materials\\874b6173-5ed7-4a8e-8799-a2908af021d7.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-km4-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "113ae88a-3a89-40ca-9abe-f82567310bbe",
+      "file": "materials\\113ae88a-3a89-40ca-9abe-f82567310bbe.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-kp0-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "aae7138f-e14b-4484-a798-3f766a14ed4f",
+      "file": "materials\\aae7138f-e14b-4484-a798-3f766a14ed4f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p7-slv-far-el-kp0-bp1"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "e2bed7f2-c80f-4519-8b87-dda6b2528597",
+      "file": "materials\\e2bed7f2-c80f-4519-8b87-dda6b2528597.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-el-km1-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "6587f627-c1cc-4eef-b69c-6099a48bccd0",
+      "file": "materials\\6587f627-c1cc-4eef-b69c-6099a48bccd0.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-el-km2-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "67177ecb-bf3b-454d-94c7-1a27e36002ec",
+      "file": "materials\\67177ecb-bf3b-454d-94c7-1a27e36002ec.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-el-km3-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "b8d4e0c5-f283-4826-a118-f411334b6a4b",
+      "file": "materials\\b8d4e0c5-f283-4826-a118-f411334b6a4b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-bare-far-el-km4-bp0"
+      ],
+      "size": [
+        38,
+        38
+      ]
+    },
+    {
+      "materialId": "e5debd0c-4706-4a5a-bd92-12b457292121",
+      "file": "materials\\e5debd0c-4706-4a5a-bd92-12b457292121.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-el-km1-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "1a2fcae6-e5ae-402f-9f2c-07c7ff357d22",
+      "file": "materials\\1a2fcae6-e5ae-402f-9f2c-07c7ff357d22.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-el-km2-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "24f38ed5-d0b8-4e0d-8e3f-15d1755d4305",
+      "file": "materials\\24f38ed5-d0b8-4e0d-8e3f-15d1755d4305.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-el-km3-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "06e91482-6a94-4df6-9810-bc921a284478",
+      "file": "materials\\06e91482-6a94-4df6-9810-bc921a284478.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-el-km4-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "1912b81d-25c7-4a44-b4be-46b98e5c683e",
+      "file": "materials\\1912b81d-25c7-4a44-b4be-46b98e5c683e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p6-slv-far-el-kp0-bp0"
+      ],
+      "size": [
+        44,
+        44
+      ]
+    },
+    {
+      "materialId": "3592e1cc-f99f-4f66-826b-5730f7dfdda4",
+      "file": "materials\\3592e1cc-f99f-4f66-826b-5730f7dfdda4.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-hand_far"
+      ],
+      "size": [
+        39,
+        60
+      ]
+    },
+    {
+      "materialId": "e8f759b1-3eeb-4b4b-9cee-ea6c23f110f6",
+      "file": "materials\\e8f759b1-3eeb-4b4b-9cee-ea6c23f110f6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-hand_far_anchor",
+        "att-hand_near_anchor"
+      ],
+      "size": [
+        2,
+        2
+      ]
+    },
+    {
+      "materialId": "bdacd15f-7c78-4309-ae9f-69101fb6a378",
+      "file": "materials\\bdacd15f-7c78-4309-ae9f-69101fb6a378.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p95"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "e3d7fd7c-2a21-4e71-aaa4-48f473f11447",
+      "file": "materials\\e3d7fd7c-2a21-4e71-aaa4-48f473f11447.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p102"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "9fd682c3-05e2-4469-af4d-1f4114a8ac5d",
+      "file": "materials\\9fd682c3-05e2-4469-af4d-1f4114a8ac5d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p110"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "f1d9efe1-48b3-4e3b-94fc-e84a9c609459",
+      "file": "materials\\f1d9efe1-48b3-4e3b-94fc-e84a9c609459.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p118"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "22351098-a0d2-4307-9684-138f516dca5e",
+      "file": "materials\\22351098-a0d2-4307-9684-138f516dca5e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p124"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "3c1d1234-0f9a-4b31-bcb8-44b8416aa4ec",
+      "file": "materials\\3c1d1234-0f9a-4b31-bcb8-44b8416aa4ec.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p130"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "4c5c9b47-e8f7-4400-87fa-5eaa1b98464a",
+      "file": "materials\\4c5c9b47-e8f7-4400-87fa-5eaa1b98464a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p136"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "9f5497e1-c713-48a3-b890-739764dd98e0",
+      "file": "materials\\9f5497e1-c713-48a3-b890-739764dd98e0.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-elbow_far-p155"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "21b6b770-06e8-49cc-b6a5-471648569801",
+      "file": "materials\\21b6b770-06e8-49cc-b6a5-471648569801.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16g-elbow_far-p50"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "e43e58dd-a131-4ac4-aed8-f2cb32ba3643",
+      "file": "materials\\e43e58dd-a131-4ac4-aed8-f2cb32ba3643.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16g-elbow_far-p65"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "adc2ae51-b037-48a3-b503-cd6efdaf3e19",
+      "file": "materials\\adc2ae51-b037-48a3-b503-cd6efdaf3e19.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16g-elbow_far-p72"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "8cbd7609-fbe1-486d-8ebd-6a623993212e",
+      "file": "materials\\8cbd7609-fbe1-486d-8ebd-6a623993212e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16g-elbow_far-p78"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "f0b5b83a-a5db-49e6-94f2-d16f6b63a788",
+      "file": "materials\\f0b5b83a-a5db-49e6-94f2-d16f6b63a788.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-upper_arm_far_c19"
+      ],
+      "size": [
+        56,
+        100
+      ]
+    },
+    {
+      "materialId": "c3096514-1088-4a04-8698-942dbf47297b",
+      "file": "materials\\c3096514-1088-4a04-8698-942dbf47297b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-forearm_far_c19"
+      ],
+      "size": [
+        48,
+        80
+      ]
+    },
+    {
+      "materialId": "07bc6e16-b6aa-4be1-8210-ead7848efe6c",
+      "file": "materials\\07bc6e16-b6aa-4be1-8210-ead7848efe6c.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p50"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "33a1bac2-a034-4337-a96c-492cb6ad0cbe",
+      "file": "materials\\33a1bac2-a034-4337-a96c-492cb6ad0cbe.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p65"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "4aeb0f12-c790-4800-8cab-40b5d7013b2d",
+      "file": "materials\\4aeb0f12-c790-4800-8cab-40b5d7013b2d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p72"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "8d1674c4-d1a9-48a5-970b-2304be2d1072",
+      "file": "materials\\8d1674c4-d1a9-48a5-970b-2304be2d1072.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p78"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "ca57ded4-ada3-449d-951d-581db8e66eaf",
+      "file": "materials\\ca57ded4-ada3-449d-951d-581db8e66eaf.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p84"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "77d12529-769f-4047-98b1-5ef445d57783",
+      "file": "materials\\77d12529-769f-4047-98b1-5ef445d57783.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p95"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "8305e1b0-0cf6-4eb3-ab39-9b0c3bb513fc",
+      "file": "materials\\8305e1b0-0cf6-4eb3-ab39-9b0c3bb513fc.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p102"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "861c898b-e964-4079-854b-c424f2cef06e",
+      "file": "materials\\861c898b-e964-4079-854b-c424f2cef06e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p110"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "923c2a09-17b3-435a-b317-a252637800bf",
+      "file": "materials\\923c2a09-17b3-435a-b317-a252637800bf.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p118"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "ea674ddb-70c4-4936-b1df-36a28422f8fb",
+      "file": "materials\\ea674ddb-70c4-4936-b1df-36a28422f8fb.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p124"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "073adec5-0ed4-4e35-9fe8-a024fa081e91",
+      "file": "materials\\073adec5-0ed4-4e35-9fe8-a024fa081e91.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p130"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "a509d6b5-e9f8-4452-bcc6-9d882f3c50d0",
+      "file": "materials\\a509d6b5-e9f8-4452-bcc6-9d882f3c50d0.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p136"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "b7e5ab7a-e26f-4a86-9324-607975c685a5",
+      "file": "materials\\b7e5ab7a-e26f-4a86-9324-607975c685a5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p155"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "7206533a-2032-4727-86fd-4f66adde87a5",
+      "file": "materials\\7206533a-2032-4727-86fd-4f66adde87a5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p142"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "0786c3f7-e0f9-4010-9378-edbe1ada8e34",
+      "file": "materials\\0786c3f7-e0f9-4010-9378-edbe1ada8e34.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p148"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "dd6eb2ad-ead6-404a-9f6b-bbcb0453c64e",
+      "file": "materials\\dd6eb2ad-ead6-404a-9f6b-bbcb0453c64e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p162"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "df1689f0-e7e2-4598-95d5-8c39b60dd072",
+      "file": "materials\\df1689f0-e7e2-4598-95d5-8c39b60dd072.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19j-elbow_far-p168"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "569a2689-cb70-494e-8f15-f42426b33d3c",
+      "file": "materials\\569a2689-cb70-494e-8f15-f42426b33d3c.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-upper_arm_far_c20"
+      ],
+      "size": [
+        56,
+        100
+      ]
+    },
+    {
+      "materialId": "e9ae355f-da0b-4b05-986c-df43589a1957",
+      "file": "materials\\e9ae355f-da0b-4b05-986c-df43589a1957.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-forearm_far_c20"
+      ],
+      "size": [
+        48,
+        80
+      ]
+    },
+    {
+      "materialId": "d4eef001-a3b5-4939-8055-88e48af38866",
+      "file": "materials\\d4eef001-a3b5-4939-8055-88e48af38866.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-m10"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "72f806b0-018e-4726-b6c9-7e944d5ac2e8",
+      "file": "materials\\72f806b0-018e-4726-b6c9-7e944d5ac2e8.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-m5"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "f43cee3e-e99c-4495-bec8-a7d101906c88",
+      "file": "materials\\f43cee3e-e99c-4495-bec8-a7d101906c88.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p0"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "73e3d3c5-87bc-4f71-9e77-1ef64c39175d",
+      "file": "materials\\73e3d3c5-87bc-4f71-9e77-1ef64c39175d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p5"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "246a35cd-792f-4c3b-818d-cfc53e53c4b3",
+      "file": "materials\\246a35cd-792f-4c3b-818d-cfc53e53c4b3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p10"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "cc815f2b-3b5a-4206-adb3-be208f56ae6b",
+      "file": "materials\\cc815f2b-3b5a-4206-adb3-be208f56ae6b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p15"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "9520d7c7-4e76-4692-9708-99e1b186f028",
+      "file": "materials\\9520d7c7-4e76-4692-9708-99e1b186f028.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p20"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "29ab51b5-f747-4497-9b67-ca334dd7a57e",
+      "file": "materials\\29ab51b5-f747-4497-9b67-ca334dd7a57e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p25"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "bc697e39-409a-41de-a5de-052e58615918",
+      "file": "materials\\bc697e39-409a-41de-a5de-052e58615918.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p30"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "15955117-d8f7-424d-b63c-0cccf36c082b",
+      "file": "materials\\15955117-d8f7-424d-b63c-0cccf36c082b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p35"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "afa1d5d3-9695-430c-8c01-0054518c3fcd",
+      "file": "materials\\afa1d5d3-9695-430c-8c01-0054518c3fcd.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p40"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "3cb6a736-e3e1-4d80-9364-07107503eaa5",
+      "file": "materials\\3cb6a736-e3e1-4d80-9364-07107503eaa5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p45"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "f9dc2705-5cf6-422e-a446-cb0c2a26b8db",
+      "file": "materials\\f9dc2705-5cf6-422e-a446-cb0c2a26b8db.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p50"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "10654a70-0758-4463-9298-87b91cf1e9b4",
+      "file": "materials\\10654a70-0758-4463-9298-87b91cf1e9b4.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p55"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "e0a611b6-2a67-4f99-8bce-49aec7fc08b1",
+      "file": "materials\\e0a611b6-2a67-4f99-8bce-49aec7fc08b1.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p60"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "ac9ec4c9-3b8c-481a-95b5-faa384a8546e",
+      "file": "materials\\ac9ec4c9-3b8c-481a-95b5-faa384a8546e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p65"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "de2ae4d8-66d8-44d5-b9ef-7642d9bcd2b6",
+      "file": "materials\\de2ae4d8-66d8-44d5-b9ef-7642d9bcd2b6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p70"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "2aac5cae-1f29-4456-b967-6998a872e28b",
+      "file": "materials\\2aac5cae-1f29-4456-b967-6998a872e28b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p75"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "c13efb8c-12b0-4bcf-9839-a32081509f62",
+      "file": "materials\\c13efb8c-12b0-4bcf-9839-a32081509f62.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p80"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "7a134486-95ae-4bb4-8a91-086cdf06542d",
+      "file": "materials\\7a134486-95ae-4bb4-8a91-086cdf06542d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p85"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "ffac8d51-5d7d-4220-a34d-7e47bab03e99",
+      "file": "materials\\ffac8d51-5d7d-4220-a34d-7e47bab03e99.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p90"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "1f2f9512-f113-4e1a-b1f8-4c6409d51bdf",
+      "file": "materials\\1f2f9512-f113-4e1a-b1f8-4c6409d51bdf.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p95"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "32caa988-1687-439a-b617-8ffb8b3d766a",
+      "file": "materials\\32caa988-1687-439a-b617-8ffb8b3d766a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p100"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "f09dc67b-853a-43d6-9a15-4b0bce710161",
+      "file": "materials\\f09dc67b-853a-43d6-9a15-4b0bce710161.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p105"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "8def7671-91f3-4190-aafa-c5cc0d5395d2",
+      "file": "materials\\8def7671-91f3-4190-aafa-c5cc0d5395d2.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p110"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "09653914-ddee-4c84-8b20-3e138d142bc3",
+      "file": "materials\\09653914-ddee-4c84-8b20-3e138d142bc3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p115"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "afb487e9-abff-4716-8ea8-92897c6a064d",
+      "file": "materials\\afb487e9-abff-4716-8ea8-92897c6a064d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p120"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "620d56e6-1a65-4d11-9215-af0b1b40a00e",
+      "file": "materials\\620d56e6-1a65-4d11-9215-af0b1b40a00e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p125"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "284639b0-4d73-4ec8-be67-e87e68c4747b",
+      "file": "materials\\284639b0-4d73-4ec8-be67-e87e68c4747b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p130"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "1cee4343-3c8b-4d08-9442-67ab7de2435a",
+      "file": "materials\\1cee4343-3c8b-4d08-9442-67ab7de2435a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p135"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "4350da02-1989-453b-aa17-a32102eee281",
+      "file": "materials\\4350da02-1989-453b-aa17-a32102eee281.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p140"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "8cc24100-9d3b-4819-88b8-1e58788639ef",
+      "file": "materials\\8cc24100-9d3b-4819-88b8-1e58788639ef.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p145"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "d8a8cccb-ec54-4a51-a2c7-9af6589f2921",
+      "file": "materials\\d8a8cccb-ec54-4a51-a2c7-9af6589f2921.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p150"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "ee7c8605-e5d5-4b7d-8942-1b3fb675b8b9",
+      "file": "materials\\ee7c8605-e5d5-4b7d-8942-1b3fb675b8b9.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p155"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "29850fc2-6148-406c-af66-ea1ecbd6ddcf",
+      "file": "materials\\29850fc2-6148-406c-af66-ea1ecbd6ddcf.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p160"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "5fa4f8b7-bf60-495f-8191-8b5f26f4a202",
+      "file": "materials\\5fa4f8b7-bf60-495f-8191-8b5f26f4a202.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p165"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "f0578674-90c1-4faf-b74c-42a5718f2b47",
+      "file": "materials\\f0578674-90c1-4faf-b74c-42a5718f2b47.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-p170"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "92228300-0c94-4540-9ab1-6592178f039d",
+      "file": "materials\\92228300-0c94-4540-9ab1-6592178f039d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-upper_arm_far_c21"
+      ],
+      "size": [
+        52,
+        107
+      ]
+    },
+    {
+      "materialId": "e07240fc-5551-459e-a92b-33c577a0b81d",
+      "file": "materials\\e07240fc-5551-459e-a92b-33c577a0b81d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-forearm_far_c21"
+      ],
+      "size": [
+        42,
+        68
+      ]
+    },
+    {
+      "materialId": "e3f35204-698e-416b-9ff0-78e7053d70bb",
+      "file": "materials\\e3f35204-698e-416b-9ff0-78e7053d70bb.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-m10"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "c1ce3fcd-3236-4ecf-aca5-67e7d8370e7b",
+      "file": "materials\\c1ce3fcd-3236-4ecf-aca5-67e7d8370e7b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-m5"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "fdf503f8-8f7e-4cf0-8f7d-7e3742543b64",
+      "file": "materials\\fdf503f8-8f7e-4cf0-8f7d-7e3742543b64.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p0"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "8a5cbd4e-5709-4ba0-9a51-eea283d229c3",
+      "file": "materials\\8a5cbd4e-5709-4ba0-9a51-eea283d229c3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p5"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "ed4b0e71-8fd2-4195-8b7b-aa14c849358d",
+      "file": "materials\\ed4b0e71-8fd2-4195-8b7b-aa14c849358d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p10"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "d9c41eab-c0e2-4464-b226-26b828b35265",
+      "file": "materials\\d9c41eab-c0e2-4464-b226-26b828b35265.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p15"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "8397632c-ccd8-4ce9-95d7-d97b35acec05",
+      "file": "materials\\8397632c-ccd8-4ce9-95d7-d97b35acec05.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p20"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "1b80a7d3-0be4-4199-960f-e29729d98ca7",
+      "file": "materials\\1b80a7d3-0be4-4199-960f-e29729d98ca7.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p25"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "3069343f-9bf6-4709-9487-207ad8aa9020",
+      "file": "materials\\3069343f-9bf6-4709-9487-207ad8aa9020.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p30"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "2e91d1d9-f4ac-4066-8eeb-1600e73ddfd0",
+      "file": "materials\\2e91d1d9-f4ac-4066-8eeb-1600e73ddfd0.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p35"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "30ad4d61-2f5f-4642-9fc0-59591b673a12",
+      "file": "materials\\30ad4d61-2f5f-4642-9fc0-59591b673a12.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p40"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "fa924540-8f1f-46d9-b5f5-3892447526ff",
+      "file": "materials\\fa924540-8f1f-46d9-b5f5-3892447526ff.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p45"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "01e9c8e9-1f2f-4cae-9755-4b274ca31325",
+      "file": "materials\\01e9c8e9-1f2f-4cae-9755-4b274ca31325.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p50"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "9ef1442d-09c6-4122-adb9-264d7cb9eb38",
+      "file": "materials\\9ef1442d-09c6-4122-adb9-264d7cb9eb38.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p55"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "606baa88-f495-4a02-9d03-d84cb6a9c274",
+      "file": "materials\\606baa88-f495-4a02-9d03-d84cb6a9c274.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p60"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "fa54f6a3-ae1a-477f-ad56-e1450a47aeef",
+      "file": "materials\\fa54f6a3-ae1a-477f-ad56-e1450a47aeef.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p65"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "bbc2c62e-7f16-4e70-82e4-3d866b727259",
+      "file": "materials\\bbc2c62e-7f16-4e70-82e4-3d866b727259.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p70"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "b9194376-12ec-41af-908f-ace04162b879",
+      "file": "materials\\b9194376-12ec-41af-908f-ace04162b879.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p75"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "50c10db7-a685-4244-9032-d99fd20ab62f",
+      "file": "materials\\50c10db7-a685-4244-9032-d99fd20ab62f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p80"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "5314848e-4ade-4138-8cea-70249acf7bed",
+      "file": "materials\\5314848e-4ade-4138-8cea-70249acf7bed.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p85"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "596091c0-23bd-48ea-81c2-b43c947373d5",
+      "file": "materials\\596091c0-23bd-48ea-81c2-b43c947373d5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p90"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "04af1e2d-feaf-4534-b845-921217b97df6",
+      "file": "materials\\04af1e2d-feaf-4534-b845-921217b97df6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p95"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "cdefdc4b-3ab4-44b1-a78b-f9e0c98d906d",
+      "file": "materials\\cdefdc4b-3ab4-44b1-a78b-f9e0c98d906d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p100"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "7fd81517-ced2-4242-916f-bd9cb330c4fc",
+      "file": "materials\\7fd81517-ced2-4242-916f-bd9cb330c4fc.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p105"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "28ab9051-5063-4682-a57e-d537de451a9c",
+      "file": "materials\\28ab9051-5063-4682-a57e-d537de451a9c.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p110"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "e48806da-7b6e-4fff-81ea-6c17d8632f40",
+      "file": "materials\\e48806da-7b6e-4fff-81ea-6c17d8632f40.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p115"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "e9ded9ba-5c17-4c11-8859-623c9643fdf5",
+      "file": "materials\\e9ded9ba-5c17-4c11-8859-623c9643fdf5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p120"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "4d85d659-e2d6-4172-bbd5-f1707feb7ce1",
+      "file": "materials\\4d85d659-e2d6-4172-bbd5-f1707feb7ce1.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p125"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "06564b62-2a60-4471-8568-2794d672a2da",
+      "file": "materials\\06564b62-2a60-4471-8568-2794d672a2da.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p130"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "fa2aae9c-c658-4ab4-89d1-afa4dd9fc47a",
+      "file": "materials\\fa2aae9c-c658-4ab4-89d1-afa4dd9fc47a.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p135"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "9a459d9b-44d7-40ea-a6cf-f89bc506910c",
+      "file": "materials\\9a459d9b-44d7-40ea-a6cf-f89bc506910c.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p140"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "17ad5fbd-203c-4294-8382-9ef2ce4c5c51",
+      "file": "materials\\17ad5fbd-203c-4294-8382-9ef2ce4c5c51.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p145"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "eea377b1-2a63-49cf-8b9c-de3bd9cfd4c1",
+      "file": "materials\\eea377b1-2a63-49cf-8b9c-de3bd9cfd4c1.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p150"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "0cef1fc8-a01c-4f1d-be76-79cd3afa68d1",
+      "file": "materials\\0cef1fc8-a01c-4f1d-be76-79cd3afa68d1.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p155"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "695eff86-2606-4a3b-97e5-461e889a77c6",
+      "file": "materials\\695eff86-2606-4a3b-97e5-461e889a77c6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p160"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "72d070b3-9c44-44ad-8e15-83426d0d6cba",
+      "file": "materials\\72d070b3-9c44-44ad-8e15-83426d0d6cba.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p165"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "10b0efe0-bd7d-431b-a576-4f2141d0f856",
+      "file": "materials\\10b0efe0-bd7d-431b-a576-4f2141d0f856.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-elbow_far-c21-p170"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "1028df2a-b970-487a-ad56-56ea0cbd0670",
+      "file": "materials\\1028df2a-b970-487a-ad56-56ea0cbd0670.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19s-upper_arm_far_c22"
+      ],
+      "size": [
+        45,
+        107
+      ]
+    },
+    {
+      "materialId": "0b156584-2581-4115-85ce-9f1f74980fe2",
+      "file": "materials\\0b156584-2581-4115-85ce-9f1f74980fe2.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19w3-forearm_far_x40"
+      ],
+      "size": [
+        51,
+        88
+      ]
+    },
+    {
+      "materialId": "a56e81a1-67f2-403b-8d12-02b3752cb0df",
+      "file": "materials\\a56e81a1-67f2-403b-8d12-02b3752cb0df.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19w3-forearm_far_x70"
+      ],
+      "size": [
+        57,
+        103
+      ]
+    },
+    {
+      "materialId": "13c9867f-2202-4ef7-a289-a5db865ec810",
+      "file": "materials\\13c9867f-2202-4ef7-a289-a5db865ec810.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19w3-forearm_far_x100"
+      ],
+      "size": [
+        63,
+        118
+      ]
+    },
+    {
+      "materialId": "9c8b69ed-23a3-40e0-a586-777b6eeb0ed5",
+      "file": "materials\\9c8b69ed-23a3-40e0-a586-777b6eeb0ed5.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19w3-forearm_far_x130"
+      ],
+      "size": [
+        69,
+        133
+      ]
+    },
+    {
+      "materialId": "61bee6ae-aad4-4096-9740-461fd323a776",
+      "file": "materials\\61bee6ae-aad4-4096-9740-461fd323a776.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19w3-forearm_far_x160"
+      ],
+      "size": [
+        75,
+        148
+      ]
+    },
+    {
+      "materialId": "57c49949-5533-47bc-bb3a-7258943a2f8c",
+      "file": "materials\\57c49949-5533-47bc-bb3a-7258943a2f8c.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_x40"
+      ],
+      "size": [
+        70,
+        121
+      ]
+    },
+    {
+      "materialId": "7704c741-f258-4c3a-832f-6b3d666ba69d",
+      "file": "materials\\7704c741-f258-4c3a-832f-6b3d666ba69d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_x70"
+      ],
+      "size": [
+        75,
+        135
+      ]
+    },
+    {
+      "materialId": "26e940b4-bc47-443f-b72a-2b0f4f997c63",
+      "file": "materials\\26e940b4-bc47-443f-b72a-2b0f4f997c63.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_x100"
+      ],
+      "size": [
+        81,
+        149
+      ]
+    },
+    {
+      "materialId": "42f7923e-a189-4581-ae14-7d7e8a3693f4",
+      "file": "materials\\42f7923e-a189-4581-ae14-7d7e8a3693f4.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_x130"
+      ],
+      "size": [
+        86,
+        163
+      ]
+    },
+    {
+      "materialId": "64e40d7d-6535-4f1d-a89c-4de3e5dd8532",
+      "file": "materials\\64e40d7d-6535-4f1d-a89c-4de3e5dd8532.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_x160"
+      ],
+      "size": [
+        92,
+        177
+      ]
+    },
+    {
+      "materialId": "de1c4516-8534-41b4-a018-10ff4c3f44f3",
+      "file": "materials\\de1c4516-8534-41b4-a018-10ff4c3f44f3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_c21c"
+      ],
+      "size": [
+        42,
+        68
+      ]
+    },
+    {
+      "materialId": "3dd07aff-8083-427a-abb1-1ffb6ec2c631",
+      "file": "materials\\3dd07aff-8083-427a-abb1-1ffb6ec2c631.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-upper_arm_far_c22c"
+      ],
+      "size": [
+        45,
+        107
+      ]
+    },
+    {
+      "materialId": "5344d12a-d640-4183-8c5e-9d2ad6f37c24",
+      "file": "materials\\5344d12a-d640-4183-8c5e-9d2ad6f37c24.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p40"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "5b802ff3-6bd7-4e2d-9fae-998a5892e01e",
+      "file": "materials\\5b802ff3-6bd7-4e2d-9fae-998a5892e01e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p45"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "f340245a-9cdb-4d73-a5bb-ab10b6a68f12",
+      "file": "materials\\f340245a-9cdb-4d73-a5bb-ab10b6a68f12.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p50"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "bdd3f014-2eb5-4ef2-8866-1f40eafb9d1f",
+      "file": "materials\\bdd3f014-2eb5-4ef2-8866-1f40eafb9d1f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p55"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "94fe4e1e-b3ee-44ac-8fe6-ded2513972f2",
+      "file": "materials\\94fe4e1e-b3ee-44ac-8fe6-ded2513972f2.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p60"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "fc20f4bd-6c67-439e-b436-8c687a02bd6b",
+      "file": "materials\\fc20f4bd-6c67-439e-b436-8c687a02bd6b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p65"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "d1235059-631a-4435-ab0b-b9418ddb03b7",
+      "file": "materials\\d1235059-631a-4435-ab0b-b9418ddb03b7.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p70"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "5da97baf-bbd0-449b-ae1c-3b9d573a693f",
+      "file": "materials\\5da97baf-bbd0-449b-ae1c-3b9d573a693f.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p75"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "575ab686-9736-4023-a5e5-3b74c12caa70",
+      "file": "materials\\575ab686-9736-4023-a5e5-3b74c12caa70.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p80"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "9338359b-6e7c-4747-8562-47ff36a6c88d",
+      "file": "materials\\9338359b-6e7c-4747-8562-47ff36a6c88d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p85"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "75a7aacd-e81e-43e0-a199-c516d43ebb2c",
+      "file": "materials\\75a7aacd-e81e-43e0-a199-c516d43ebb2c.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p90"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "cfe9df9f-39ac-437d-9960-411974bdd202",
+      "file": "materials\\cfe9df9f-39ac-437d-9960-411974bdd202.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p95"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "2d7b2e72-390b-45c5-ba89-bda658137c74",
+      "file": "materials\\2d7b2e72-390b-45c5-ba89-bda658137c74.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p100"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "d2a2e570-f6a4-46eb-b350-dfd3121359ef",
+      "file": "materials\\d2a2e570-f6a4-46eb-b350-dfd3121359ef.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p105"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "89011d26-c04f-4694-98ba-c81637c5f9cc",
+      "file": "materials\\89011d26-c04f-4694-98ba-c81637c5f9cc.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p110"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "a303ac1d-4dea-47c6-8143-c025e17f38b4",
+      "file": "materials\\a303ac1d-4dea-47c6-8143-c025e17f38b4.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p115"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "d7e446fc-1dc0-408b-9c3a-548faca572ef",
+      "file": "materials\\d7e446fc-1dc0-408b-9c3a-548faca572ef.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p120"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "4dfcdd9a-240e-45f6-a1b8-0f2b38e66fd0",
+      "file": "materials\\4dfcdd9a-240e-45f6-a1b8-0f2b38e66fd0.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p65-redraw1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "8b5194c2-e239-43ae-b334-f179c5a3e479",
+      "file": "materials\\8b5194c2-e239-43ae-b334-f179c5a3e479.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-upper_arm_far_c22c-her1"
+      ],
+      "size": [
+        61,
+        84
+      ]
+    },
+    {
+      "materialId": "71bb17a1-4904-4ee8-bb09-b12708a58f3b",
+      "file": "materials\\71bb17a1-4904-4ee8-bb09-b12708a58f3b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_c21c-her1"
+      ],
+      "size": [
+        25,
+        39
+      ]
+    },
+    {
+      "materialId": "75a70071-5e28-4b2f-abe3-57b072ad0e99",
+      "file": "materials\\75a70071-5e28-4b2f-abe3-57b072ad0e99.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p45-her1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "9d32713d-f94e-4a66-a790-228ebfe2a87d",
+      "file": "materials\\9d32713d-f94e-4a66-a790-228ebfe2a87d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p65-her1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "67dcda71-0303-4c56-b77b-04bcbb52f0c4",
+      "file": "materials\\67dcda71-0303-4c56-b77b-04bcbb52f0c4.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p75-her1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "3039b867-b68f-4ca6-9086-56cfb06a9a0e",
+      "file": "materials\\3039b867-b68f-4ca6-9086-56cfb06a9a0e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p90-her1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "6a919d1c-3865-4550-9818-94743a121e0d",
+      "file": "materials\\6a919d1c-3865-4550-9818-94743a121e0d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p105-her1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "0d482f84-8013-48e8-8838-e3e1b302f86b",
+      "file": "materials\\0d482f84-8013-48e8-8838-e3e1b302f86b.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19y-elbow_far-c21-p120-her1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "35878b00-f6cf-4548-a57f-9dee4f7b9331",
+      "file": "materials\\35878b00-f6cf-4548-a57f-9dee4f7b9331.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-upper_arm_far_foreshrt_g1aim-her1"
+      ],
+      "size": [
+        61,
+        84
+      ]
+    },
+    {
+      "materialId": "1475c51c-f726-44e5-a1fe-5bd84ff2ce93",
+      "file": "materials\\1475c51c-f726-44e5-a1fe-5bd84ff2ce93.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-forearm_far_foreshrt_g1aim-her1"
+      ],
+      "size": [
+        25,
+        39
+      ]
+    },
+    {
+      "materialId": "e329720b-a03a-49b1-b80b-a1683747f1a0",
+      "file": "materials\\e329720b-a03a-49b1-b80b-a1683747f1a0.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p19x-elbow_far_foreshrt_g1aim-her1"
+      ],
+      "size": [
+        72,
+        72
+      ]
+    },
+    {
+      "materialId": "7e544d94-c8b4-4116-a953-f7caab65f819",
+      "file": "materials\\7e544d94-c8b4-4116-a953-f7caab65f819.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16d-thigh_far_clean"
+      ],
+      "size": [
+        80,
+        117
+      ]
+    },
+    {
+      "materialId": "adebc9ea-15ce-46fc-8a21-486089eb5188",
+      "file": "materials\\adebc9ea-15ce-46fc-8a21-486089eb5188.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-calf_far"
+      ],
+      "size": [
+        52,
+        93
+      ]
+    },
+    {
+      "materialId": "2a681820-861c-4d8b-8aaa-8ad84385577e",
+      "file": "materials\\2a681820-861c-4d8b-8aaa-8ad84385577e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-kcap_far_e"
+      ],
+      "size": [
+        30,
+        30
+      ]
+    },
+    {
+      "materialId": "fbfecc40-23e9-4818-8639-daf729337766",
+      "file": "materials\\fbfecc40-23e9-4818-8639-daf729337766.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16g-knee_far-m42"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "73cb17cb-1c21-43f6-8d8f-29df9b016905",
+      "file": "materials\\73cb17cb-1c21-43f6-8d8f-29df9b016905.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-shoe_far"
+      ],
+      "size": [
+        88,
+        78
+      ]
+    },
+    {
+      "materialId": "eed8aa19-c9ee-47e3-a03f-1ca6477a69da",
+      "file": "materials\\eed8aa19-c9ee-47e3-a03f-1ca6477a69da.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-thigh_near"
+      ],
+      "size": [
+        74,
+        110
+      ]
+    },
+    {
+      "materialId": "82ee7d55-4f1f-44fe-b4d7-70f36790adfe",
+      "file": "materials\\82ee7d55-4f1f-44fe-b4d7-70f36790adfe.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-calf_near"
+      ],
+      "size": [
+        70,
+        120
+      ]
+    },
+    {
+      "materialId": "44d43d04-f529-4669-ba42-3dd21db78ad6",
+      "file": "materials\\44d43d04-f529-4669-ba42-3dd21db78ad6.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-kcap_near_e"
+      ],
+      "size": [
+        34,
+        34
+      ]
+    },
+    {
+      "materialId": "5cd3a4c2-2c10-426f-ab65-74aa3448d8de",
+      "file": "materials\\5cd3a4c2-2c10-426f-ab65-74aa3448d8de.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16f-knee_near-m26"
+      ],
+      "size": [
+        70,
+        70
+      ]
+    },
+    {
+      "materialId": "9ac2846e-75e2-4546-8688-035f0cb358ae",
+      "file": "materials\\9ac2846e-75e2-4546-8688-035f0cb358ae.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-shoe_near"
+      ],
+      "size": [
+        59,
+        95
+      ]
+    },
+    {
+      "materialId": "b9ffaf00-c38f-40af-9b40-34345ef80b6d",
+      "file": "materials\\b9ffaf00-c38f-40af-9b40-34345ef80b6d.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-torso_lower"
+      ],
+      "size": [
+        124,
+        62
+      ]
+    },
+    {
+      "materialId": "22803adb-e76f-4d46-b05a-2f325ae23ea3",
+      "file": "materials\\22803adb-e76f-4d46-b05a-2f325ae23ea3.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-torso_upper"
+      ],
+      "size": [
+        104,
+        102
+      ]
+    },
+    {
+      "materialId": "81682496-0a6a-4c4a-b5f3-17b6f8910065",
+      "file": "materials\\81682496-0a6a-4c4a-b5f3-17b6f8910065.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-head-her1"
+      ],
+      "size": [
+        126,
+        117
+      ]
+    },
+    {
+      "materialId": "0cef4041-c195-42ea-a124-acdf323bf107",
+      "file": "materials\\0cef4041-c195-42ea-a124-acdf323bf107.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-head_cheek-her1"
+      ],
+      "size": [
+        126,
+        117
+      ]
+    },
+    {
+      "materialId": "140e5421-b1db-43ab-889f-ea9a6d466830",
+      "file": "materials\\140e5421-b1db-43ab-889f-ea9a6d466830.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-pelvis"
+      ],
+      "size": [
+        176,
+        102
+      ]
+    },
+    {
+      "materialId": "1a614ab6-aedb-4ae9-9d2e-b9c633a5021e",
+      "file": "materials\\1a614ab6-aedb-4ae9-9d2e-b9c633a5021e.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-upper_arm_near"
+      ],
+      "size": [
+        56,
+        100
+      ]
+    },
+    {
+      "materialId": "5413ea7d-a07a-42c5-93ba-7864d084ee19",
+      "file": "materials\\5413ea7d-a07a-42c5-93ba-7864d084ee19.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-forearm_near"
+      ],
+      "size": [
+        48,
+        80
+      ]
+    },
+    {
+      "materialId": "b069331d-52a1-46d4-9569-5318e58e35d4",
+      "file": "materials\\b069331d-52a1-46d4-9569-5318e58e35d4.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-cap_near"
+      ],
+      "size": [
+        14,
+        14
+      ]
+    },
+    {
+      "materialId": "a0109251-a8da-4f1a-97bb-ab18ce63a9c2",
+      "file": "materials\\a0109251-a8da-4f1a-97bb-ab18ce63a9c2.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16c-elbow_near-p122"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "0560151d-b17f-4eac-a0c9-e95dfe7cb499",
+      "file": "materials\\0560151d-b17f-4eac-a0c9-e95dfe7cb499.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-shoulder_cap_near"
+      ],
+      "size": [
+        27,
+        25
+      ]
+    },
+    {
+      "materialId": "f0d92125-0424-4a47-8b00-450edfaad409",
+      "file": "materials\\f0d92125-0424-4a47-8b00-450edfaad409.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16f-knee_near-m24"
+      ],
+      "size": [
+        70,
+        70
+      ]
+    },
+    {
+      "materialId": "44c7ffad-f4f4-47e0-abd6-5bf730c35d19",
+      "file": "materials\\44c7ffad-f4f4-47e0-abd6-5bf730c35d19.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16c-elbow_near-p128"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "f24668f9-48a2-4341-9e67-6f843f47a8fd",
+      "file": "materials\\f24668f9-48a2-4341-9e67-6f843f47a8fd.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16c-elbow_near-p134"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "b99b6d9c-0d04-47c0-bcb1-a1f07dd96447",
+      "file": "materials\\b99b6d9c-0d04-47c0-bcb1-a1f07dd96447.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16c-elbow_near-p145"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    },
+    {
+      "materialId": "374e58fc-db07-48d0-a46b-4d6320ee55e9",
+      "file": "materials\\374e58fc-db07-48d0-a46b-4d6320ee55e9.png",
+      "imageSlot": "raw",
+      "attachmentIds": [
+        "att-p16c-elbow_near-p111"
+      ],
+      "size": [
+        50,
+        50
+      ]
+    }
+  ],
+  "missingMaterials": [],
+  "renderTool": {
+    "name": "aic_render_preview",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "baseRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "actionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "timeSeconds": {
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "bodyProfileId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "equipmentIds": {
+          "default": [],
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "width": {
+          "default": 512,
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 1024
+        },
+        "height": {
+          "default": 512,
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 1024
+        },
+        "showSkeleton": {
+          "default": false,
+          "type": "boolean"
+        },
+        "facing": {
+          "default": "right",
+          "type": "string",
+          "enum": [
+            "right",
+            "left"
+          ]
+        },
+        "background": {
+          "default": "transparent",
+          "type": "string",
+          "enum": [
+            "transparent",
+            "light",
+            "dark"
+          ]
+        }
+      },
+      "required": [
+        "projectId",
+        "baseRevision"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "references": [
+    {
+      "phase": "idle",
+      "time": 0,
+      "file": "references\\idle_t0.000.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "idle",
+      "time": 0.733,
+      "file": "references\\idle_t0.733.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "idle",
+      "time": 1.467,
+      "file": "references\\idle_t1.467.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "idle",
+      "time": 2.233,
+      "file": "references\\idle_t2.233.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "idle",
+      "time": 3,
+      "file": "references\\idle_t3.000.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "prepare",
+      "time": 0,
+      "file": "references\\prepare_t0.000.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "prepare",
+      "time": 0.132,
+      "file": "references\\prepare_t0.132.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "prepare",
+      "time": 0.2,
+      "file": "references\\prepare_t0.200.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "prepare",
+      "time": 0.333,
+      "file": "references\\prepare_t0.333.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "prepare",
+      "time": 0.42,
+      "file": "references\\prepare_t0.420.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "aim",
+      "time": 0,
+      "file": "references\\aim_t0.000.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "aim",
+      "time": 0.6,
+      "file": "references\\aim_t0.600.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "aim",
+      "time": 1.2,
+      "file": "references\\aim_t1.200.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "aim",
+      "time": 1.8,
+      "file": "references\\aim_t1.800.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "aim",
+      "time": 2.4,
+      "file": "references\\aim_t2.400.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "fire",
+      "time": 0,
+      "file": "references\\fire_t0.000.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "fire",
+      "time": 0.067,
+      "file": "references\\fire_t0.067.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "fire",
+      "time": 0.133,
+      "file": "references\\fire_t0.133.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "fire",
+      "time": 0.2,
+      "file": "references\\fire_t0.200.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "fire",
+      "time": 0.3,
+      "file": "references\\fire_t0.300.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "recover",
+      "time": 0,
+      "file": "references\\recover_t0.000.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "recover",
+      "time": 0.132,
+      "file": "references\\recover_t0.132.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "recover",
+      "time": 0.232,
+      "file": "references\\recover_t0.232.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "recover",
+      "time": 0.333,
+      "file": "references\\recover_t0.333.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    },
+    {
+      "phase": "recover",
+      "time": 0.5,
+      "file": "references\\recover_t0.500.png",
+      "equipmentId": "c34-g3-K02-p19v-p19y-her1-hd"
+    }
+  ],
+  "notes": [
+    "只读快照；live 未改。",
+    "素材 318 张，缺 0 张；参考渲染 25 张。"
+  ]
+}

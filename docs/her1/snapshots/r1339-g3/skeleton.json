@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 1,
+  "kind": "skeleton",
+  "id": "c34-skel-30934e37",
+  "name": "gunner-combat-34 skeleton",
+  "coordinateSystem": {
+    "handedness": "right",
+    "upAxis": "y",
+    "forwardAxis": "+z",
+    "unit": "pixel"
+  },
+  "bones": [
+    {
+      "id": "root",
+      "name": "root",
+      "parentId": null,
+      "rest": {
+        "translation": [
+          0,
+          -640,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "pelvis",
+      "name": "pelvis",
+      "parentId": "root",
+      "rest": {
+        "translation": [
+          -20,
+          680,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "spine",
+      "name": "spine",
+      "parentId": "pelvis",
+      "rest": {
+        "translation": [
+          12,
+          86,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "chest",
+      "name": "chest",
+      "parentId": "spine",
+      "rest": {
+        "translation": [
+          0,
+          114,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "neck",
+      "name": "neck",
+      "parentId": "chest",
+      "rest": {
+        "translation": [
+          8,
+          100,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "head",
+      "name": "head",
+      "parentId": "neck",
+      "rest": {
+        "translation": [
+          0,
+          32,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "scapula_near",
+      "name": "scapula_near",
+      "parentId": "chest",
+      "rest": {
+        "translation": [
+          -100,
+          80,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "upper_arm_near",
+      "name": "upper_arm_near",
+      "parentId": "scapula_near",
+      "rest": {
+        "translation": [
+          -12,
+          20,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "forearm_near",
+      "name": "forearm_near",
+      "parentId": "upper_arm_near",
+      "rest": {
+        "translation": [
+          -54,
+          -154,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "hand_near",
+      "name": "hand_near",
+      "parentId": "forearm_near",
+      "rest": {
+        "translation": [
+          -26,
+          -146,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "scapula_far",
+      "name": "scapula_far",
+      "parentId": "chest",
+      "rest": {
+        "translation": [
+          40,
+          80,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "upper_arm_far",
+      "name": "upper_arm_far",
+      "parentId": "scapula_far",
+      "rest": {
+        "translation": [
+          14,
+          20,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "forearm_far",
+      "name": "forearm_far",
+      "parentId": "upper_arm_far",
+      "rest": {
+        "translation": [
+          34,
+          -168,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "hand_far",
+      "name": "hand_far",
+      "parentId": "forearm_far",
+      "rest": {
+        "translation": [
+          52,
+          -132,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "thigh_near",
+      "name": "thigh_near",
+      "parentId": "pelvis",
+      "rest": {
+        "translation": [
+          -60,
+          -54,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "calf_near",
+      "name": "calf_near",
+      "parentId": "thigh_near",
+      "rest": {
+        "translation": [
+          -54,
+          -226,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "shoe_near",
+      "name": "shoe_near",
+      "parentId": "calf_near",
+      "rest": {
+        "translation": [
+          -66,
+          -240,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "thigh_far",
+      "name": "thigh_far",
+      "parentId": "pelvis",
+      "rest": {
+        "translation": [
+          72,
+          -54,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "calf_far",
+      "name": "calf_far",
+      "parentId": "thigh_far",
+      "rest": {
+        "translation": [
+          34,
+          -240,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "shoe_far",
+      "name": "shoe_far",
+      "parentId": "calf_far",
+      "rest": {
+        "translation": [
+          60,
+          -186,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ]
+}
