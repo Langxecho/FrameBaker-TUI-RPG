@@ -113,7 +113,7 @@ function idempotencyKey(task: string, revision: number, operations: AicOperation
 export interface ApplyOutcome { revision: number; after: SkeletalProjectDocument; result: unknown }
 
 /** 上传素材前就要过 revision 闸门，否则 revision 不符时会在 ECHO 留下孤儿素材。 */
-function assertRevisionGate(connection: Connection, gate: ApplyGate): void {
+export function assertRevisionGate(connection: Connection, gate: ApplyGate): void {
   if (!gate.apply) return;
   if (gate.expectedRev !== connection.revision) throw new Error(`--expected-rev ${gate.expectedRev ?? "（未给）"} 与当前 revision ${connection.revision} 不符；重新 dry-run 核对后再 apply`);
 }
@@ -134,13 +134,13 @@ export async function applyGuarded(ctx: RunContext, connection: Connection, task
 }
 
 /** 计划与回退操作同时落盘；apply 失败或自审 FAIL 时用 `revert --ops <name>-revert-operations.json` 恢复。 */
-function writePlan(ctx: RunContext, name: string, connection: Connection, operations: AicOperation[]): void {
+export function writePlan(ctx: RunContext, name: string, connection: Connection, operations: AicOperation[]): void {
   mkdirSync(ctx.outDir, { recursive: true });
   writeJson(join(ctx.outDir, `${name}-operations.json`), operations);
   writeJson(join(ctx.outDir, `${name}-revert-operations.json`), revertOperations(connection.document, operations));
 }
 
-function receipt(ctx: RunContext, name: string, body: Record<string, unknown>): void {
+export function receipt(ctx: RunContext, name: string, body: Record<string, unknown>): void {
   writeJson(join(ctx.outDir, `${name}-receipt.json`), { createdAt: new Date().toISOString(), projectId: ctx.projectId, mcpUrl: ctx.mcpUrl, ...body });
 }
 

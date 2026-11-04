@@ -9,6 +9,7 @@
 - 新增独立于 `GenProvider` 的媒体插件体系，支持 `.iap` / `.vap` / `.aap`：Zip Slip 安全安装到 `storage/media-plugins`、可信代码 UI 警告、密钥/参数设置、`/generate` 三标签生成中心、统一图/视/音素材、异步队列任务（取消会杀掉 Python 子进程并清理 `storage/media-plugin-runs`）、`.venv-media` 安装脚本（`scripts/setup_media.sh` / `setup_media.ps1`，基础依赖仅 `requests`）、可选环境变量 `FRAMEBAKER_MEDIA_PYTHON` / `FRAMEBAKER_MEDIA_PLUGIN_ROOT`，以及仅查询/生成的 MCP 工具（`list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin`；只接受素材 ID——禁止安装/删除/改密钥/本地路径）。
 - 把 ECHO 本机缓存中的 FrameBaker 制作 SOP 迁入 `skill/` 作为唯一真源（`fb-character-authoring` 及新的唯一显隐规范 `references/region-visibility.md`、`rpg-content-production`、`her1-fb-self-qc`，另有 `skill/README.md` 索引、去重说明与缺失文档清单）。
 - 新增 `docs/her1/` 作为 HELLO WORLD her1 单一真相源（状态页、机读 `state.json`、ECHO 运行手册、T03c/T10b 美术包合同、只读历史记录），以及 `scripts/her1/` 工具链（`bun run her1`）：离线 PSD/PNG 美术包检查（接缝豁免带内的半透明与描边缺口不分朝向一律豁免，记为 `PASS_seam_exempt`，与对接师判定一致）与 clip 显隐审计；在 ECHO 上默认 dry-run 的 rematerialize / 薄接线 / 回退，带工具、live 素材、`--expected-rev` 与写后 live 快照闸门。`bun run typecheck` 现同时检查 `scripts/her1`。
+- 新增 her1 腕口工具链：`snapshot`（从 ECHO 只读导出工程快照到 gitignored 的 `docs/her1/snapshots/`）、`render`（复现 FB 预览语义的离线渲染，外加支撑手腕口切口衔接度量与叠加图）、`fix-wrist`（逐采样求解远臂两骨旋转并派生加性 `*-her1*` clip，取前臂最顺着腕口方向进的肘向解，朝向或宽度对不上时判为素材问题）、`apply-plan`（自审 PASS 的计划在 ECHO 上写入，带 revision、live 快照与基线 clip 哈希闸门）。
 
 ### 移除
 

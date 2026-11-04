@@ -86,6 +86,7 @@
 - `skill/` 是 FrameBaker 制作 SOP 的唯一真源（`fb-character-authoring`、`rpg-content-production`、`her1-fb-self-qc`）；`skill/README.md` 给出索引、去重约定（Region 显隐规则只在 `references/region-visibility.md`）和“被引用但未入库”的 ECHO 文档清单。它们是供 agent 阅读的 Markdown，不会被自动加载。
 - `docs/her1/` 是 HELLO WORLD her1 的单一真相源：`README.md`（状态、枪种映射、clip 指针、live 只读清单、待交美术包）、`state.json`（脚本读取的机读状态）、`ECHO_RUNBOOK.md`、`packs/<任务>/`（美术包合同）和只读的 `history/`。
 - `scripts/her1/` 是独立的 Bun CLI（`bun run her1 <命令>`，自带 `tsconfig.json`，已纳入 `bun run typecheck`）。离线模块：`lib/png.ts` / `lib/psd.ts`（最小 PNG/PSD 读取，无依赖）、`lib/checkArt.ts`（美术包合同检查）、`lib/visibility.ts`（clip 显隐审计与加性接线 clip 派生）、`lib/plans.ts`（rematerialize / 接线 / 回退操作计划）。`lib/echo.ts` 是最小 Streamable HTTP MCP + REST 客户端，`lib/runner.ts` 负责写入闸门（必需工具、live 素材核对、`--expected-rev`、幂等键、写后 live 快照）并把结果回写 `docs/her1/state.json`。运行输出在 gitignored 的 `storage/her1-runs/`。测试：`tests/her1-*.test.ts`（含假 ECHO 服务）。
+- 腕口工具链（`scripts/her1/lib/render.ts`、`seam.ts`、`wristFix.ts`、`snapshot.ts`、`wristRunner.ts`）：`snapshot` 从 ECHO 只读导出工程快照到 gitignored 的 `docs/her1/snapshots/r<rev>-<枪>/`（文档、骨架、her1bt clip、素材，可选 `aic_render_preview` 参考图）。`render` 离线复现 FB 预览语义（骨骼世界 × rest × `att:` 偏移、pivot 左下原点、装备 rest 与 socket 合成、`drawOffset` 只管层序、不做 IK），并度量支撑手腕口切口与远臂的衔接。`fix-wrist` 逐采样求解远臂上臂/前臂旋转，取前臂最顺着腕口方向进的那支肘向解，派生加性 `*-her1*` clip，并写出带修前/修后自审的计划。`apply-plan` 在 ECHO 上写入该计划，沿用 revision / live 闸门，另加基线 clip 哈希核对。
 
 ### 跨仓库 fbanim-v3 夹具
 

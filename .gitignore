@@ -1,5 +1,6 @@
 node_modules/
 storage/
+docs/her1/snapshots/
 coverage/
 .venv-matting/
 .venv-media/

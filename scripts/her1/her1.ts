@@ -11,6 +11,8 @@ import { apiBaseFromMcp, McpClient } from "./lib/echo";
 import { runCheck, runProbe, runRevert, runT03c, runT10b, runWire, type RunContext } from "./lib/runner";
 import { loadState, REPO_ROOT, STATE_PATH, type GunKey } from "./lib/state";
 import { auditClipVisibility, collectRestScales } from "./lib/visibility";
+import type { IkMode } from "./lib/render";
+import { G3_WRIST, runApplyPlan, runFixWrist, runRender, runSnapshot } from "./lib/wristRunner";
 
 const HELP = `her1 工具链
 
@@ -18,6 +20,10 @@ const HELP = `her1 工具链
   status                                   打印 state.json：待交美术包、clip 指针、live 规则
   check --pack T03c|T10b --input <psd|png> [--sprite <id>] [--starter <png>] [--open-edge-mask <png>] [--record]
   audit-clip --clip <clip.json> --document <skeletal-document.json>
+  render --snapshot <dir> [--plan <plan.json>] [--phases …] [--times 0,0.4] [--equipment <id>] [--ik off|socket]
+                                           离线渲染快照（全身 ×2 + 腕口特写），量支撑手腕口，写 seam.json
+  fix-wrist --snapshot <dir> [--tag her1am3d] [--phases …] [--upper upper_arm_far] [--lower forearm_far]
+            [--overlap 4] [--step 0.04]    离线求解远臂两骨，派生新 clip + 计划，前后对比渲染并自审
 
 连接 ECHO FB（默认 dry-run，写入需 --apply --expected-rev N）：
   tools [--name <tool>]                    tools/list；给 --name 时打印该工具完整 inputSchema
@@ -27,6 +33,9 @@ const HELP = `her1 工具链
   t10b --forearm <psd> [--elbow <psd>] [--tag her1am_c21o] [--phases aim,fire] [--no-wiring]
   wire --gun G3 --base-tag her1am3c --tag her1am3d --phases aim,fire --show <att,…> --strip <att,…>
   revert --ops <run>/<任务>-revert-operations.json   恢复某次写入前的 her1 binding/装备/动作指针
+  snapshot [--gun G3] [--dir <dir>] [--render-args <args.json>] [--ref-times 5]
+                                           只读导出工程/骨架/her1bt clip/素材（+ 参考渲染）到 docs/her1/snapshots/
+  apply-plan --plan <plan.json>            写入 fix-wrist 计划（要求 selfQc PASS、基线 clip 未变）
 
 通用选项：--mcp <url>（或 FRAMEBAKER_MCP_URL）--api <base> --project <id> --out <dir> --no-state-update
 `;
@@ -163,6 +172,20 @@ async function main(): Promise<number> {
     return 0;
   }
   if (command === "revert") { await runRevert(ctx, { ops: need(flags, "ops"), ...gate(flags) }); return 0; }
+  const farRootBone = str(flags, "far-root") ?? G3_WRIST.farRootBone;
+  if (command === "snapshot") {
+    await runSnapshot(ctx, { gun: (str(flags, "gun") ?? "G3") as GunKey, equipmentIds: str(flags, "equipment") ? list(str(flags, "equipment")) : undefined, dir: str(flags, "dir") ? resolve(str(flags, "dir")!) : undefined, renderArgs: str(flags, "render-args"), maxRefTimes: Number(str(flags, "ref-times") ?? 5), farRootBone });
+    return 0;
+  }
+  if (command === "render") {
+    const outcome = runRender(ctx, { snapshot: resolve(need(flags, "snapshot")), plan: str(flags, "plan") ? resolve(str(flags, "plan")!) : undefined, phases: str(flags, "phases") ? list(str(flags, "phases")) : undefined, times: str(flags, "times") ? list(str(flags, "times")).map(Number) : undefined, maxTimes: Number(str(flags, "max-times") ?? 8), equipmentId: str(flags, "equipment"), ik: (str(flags, "ik") ?? "off") as IkMode, zoom: Number(str(flags, "zoom") ?? 4), farRootBone, defaults: G3_WRIST });
+    return outcome.pass ? 0 : 2;
+  }
+  if (command === "fix-wrist") {
+    const outcome = runFixWrist(ctx, { snapshot: resolve(need(flags, "snapshot")), gun: (str(flags, "gun") ?? "G3") as GunKey, tag: str(flags, "tag") ?? ctx.state.packs.T03c.wiring.suggestedTag, phases: str(flags, "phases") ? list(str(flags, "phases")) : undefined, upperBone: str(flags, "upper") ?? G3_WRIST.upperBone, lowerBone: str(flags, "lower") ?? G3_WRIST.lowerBone, farRootBone, overlap: Number(str(flags, "overlap") ?? 4), step: Number(str(flags, "step") ?? 0.04), maxDelta: Number(str(flags, "max-delta") ?? 1.2), equipmentId: str(flags, "equipment"), defaults: G3_WRIST, zoom: Number(str(flags, "zoom") ?? 4) });
+    return outcome.pass ? 0 : 2;
+  }
+  if (command === "apply-plan") { await runApplyPlan(ctx, { plan: resolve(need(flags, "plan")), allowUnreviewed: flags["allow-unreviewed"] === true, ...gate(flags) }); return 0; }
   console.error(`未知子命令 ${command}\n\n${HELP}`);
   return 1;
 }

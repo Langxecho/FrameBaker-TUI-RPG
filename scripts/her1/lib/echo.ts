@@ -1,4 +1,4 @@
-import type { MotionClip } from "../../../packages/shared/src/animation";
+import type { MotionClip, Skeleton } from "../../../packages/shared/src/animation";
 import type { SkeletalProjectDocument } from "../../../packages/shared/src/skeletalProject";
 
 export interface ToolResult {
@@ -104,6 +104,19 @@ export async function fetchClip(apiBase: string, clipId: string): Promise<Motion
   const body = await getJson<{ animationAsset: { asset: MotionClip } }>(`${apiBase}/api/animation-assets/${encodeURIComponent(clipId)}`);
   if (body.animationAsset.asset.kind !== "motion-clip") throw new Error(`${clipId} 不是 MotionClip`);
   return body.animationAsset.asset;
+}
+
+export async function fetchSkeleton(apiBase: string, skeletonId: string): Promise<Skeleton> {
+  const body = await getJson<{ animationAsset: { asset: Skeleton } }>(`${apiBase}/api/animation-assets/${encodeURIComponent(skeletonId)}`);
+  if (body.animationAsset.asset.kind !== "skeleton") throw new Error(`${skeletonId} 不是 Skeleton`);
+  return body.animationAsset.asset;
+}
+
+export async function fetchMaterialImage(apiBase: string, materialId: string, slot: "raw" | "processed"): Promise<Uint8Array> {
+  const url = `${apiBase}/api/materials/${encodeURIComponent(materialId)}/image?type=${slot}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`GET ${url} HTTP ${response.status}`);
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 export async function uploadMaterial(apiBase: string, png: Uint8Array, fileName: string, metadata: Record<string, unknown>): Promise<string> {

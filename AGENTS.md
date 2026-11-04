@@ -12,10 +12,10 @@ apps/
 packages/
   shared/        @framebaker/shared — shared types/constants for front & back (no build, exports point directly to src/index.ts)
 docs/            architecture / API / roadmap / changelog documentation
-  her1/          HELLO WORLD her1 single source of truth: README.md (status) + state.json (machine-readable) + ECHO_RUNBOOK.md + packs/ + history/
+  her1/          HELLO WORLD her1 single source of truth: README.md (status) + state.json (machine-readable) + ECHO_RUNBOOK.md + packs/ + history/ (+ gitignored snapshots/ from `her1 snapshot`)
 skill/           FrameBaker production SOPs (single source; not auto-loaded — read skill/README.md, then the relevant SKILL.md)
 scripts/         environment setup (setup_matting / setup_media) + synchronized SemVer version management + fbanim fixture sync
-  her1/          her1 continuation toolchain (`bun run her1 <cmd>`): offline art check / clip visibility audit + ECHO-side guarded writes
+  her1/          her1 continuation toolchain (`bun run her1 <cmd>`): offline art check / clip visibility audit / snapshot render + wrist-seam fix + ECHO-side guarded writes
 tests/           bun tests; canonical fbanim-v3 fixtures under tests/fixtures/fbanim-v3/
 .venv-media/     gitignored Python env for media plugins (scripts/setup_media.*)
 .venv-matting/   gitignored Python env for rembg matting (scripts/setup_matting.*)
@@ -32,7 +32,7 @@ bun install          # install all workspace dependencies (bun uses isolated lay
 bun dev              # development (--hot), http://localhost:3000, PORT overridable
 bun start            # production
 bun run typecheck    # tsc -p apps/server && tsc -p apps/web && tsc -p scripts/her1, must pass after changes
-bun run her1 help    # her1 toolchain (status / check / audit-clip offline; probe / t03c / t10b / wire / revert against ECHO FB)
+bun run her1 help    # her1 toolchain (status / check / audit-clip / render / fix-wrist offline; probe / snapshot / t03c / t10b / wire / apply-plan / revert against ECHO FB)
 bun run version:check # verify all workspace versions and changelog baseline agree
 bun run version:plan -- bug|week|major # preview the next weekly version without writing
 bun run version:bump -- bug # release Unreleased notes and bump all workspace versions
@@ -60,7 +60,7 @@ No test framework; verification = typecheck + curl smoke tests (see examples in 
 - `storage/` and `node_modules/` are gitignored; clean up storage and /tmp temp files after smoke testing.
 
 - **Independent media plugins** (`.iap` image / `.vap` video / `.aap` audio): parallel to `GenProvider` — do not merge provider execution paths. Install roots are `STORAGE_ROOT/media-plugins/<kind>/<plugin-id>`; ephemeral runs under `STORAGE_ROOT/media-plugin-runs/` (cleaned after job/test). Bun spawns `apps/server/src/python/media_plugin_runner.py` via `.venv-media` with JSON request/result files — never shell-escape prompts/params. Archives are trusted executable `provider.py` (UI must warn; no OS sandbox). Setup: `scripts/setup_media.sh` / `scripts/setup_media.ps1` (ASCII + `-ExecutionPolicy Bypass` on Windows; base dep `requests` only; do not auto-install plugin-declared deps). Missing runtime → `PYTHON_RUNTIME_UNAVAILABLE` and generation/test refuse. MCP: `list_media_plugins` / `get_media_plugin` / `generate_with_media_plugin` only (material IDs; no install/delete/secrets/local paths). Job cancel/timeout best-effort terminates the Python process tree (`Bun.spawn().kill()` plus Windows `taskkill /T /F` when PID is available; Bun has no portable process-group kill) and deletes the run dir. Result URLs reject `file:` and non-http(s); local `image_path`/`video_path`/`audio_path` must already be under the current run `outputDir` (no arbitrary absolute-path copy). Runner stderr/traceback is server-log-only (truncated/redacted); jobs/MCP get stable safe codes/messages. Downloads are size-bounded; ZIP install enforces compressed/uncompressed budgets; video/audio `durationSeconds` preserves fractions.
-- **Production SOPs & her1**: character/content SOPs live only in `skill/` (index `skill/README.md`; Region visibility/iron-bucket rules only in `skill/fb-character-authoring/references/region-visibility.md`). HELLO WORLD her1 state lives only in `docs/her1/README.md` + `docs/her1/state.json` (update both in the same commit). Cloud agents cannot reach ECHO's FB (`127.0.0.1:39127`): change repo docs/scripts only and hand writes to ECHO via `docs/her1/ECHO_RUNBOOK.md`; never claim live changes without an ECHO receipt. `scripts/her1/` writes are dry-run by default, gated by `--apply --expected-rev`, additive `*-her1` ids only, and verify the live snapshot after every write; translate-far hiding and clip HIDE-scale on rest-hidden parts are rejected by its audit.
+- **Production SOPs & her1**: character/content SOPs live only in `skill/` (index `skill/README.md`; Region visibility/iron-bucket rules only in `skill/fb-character-authoring/references/region-visibility.md`). HELLO WORLD her1 state lives only in `docs/her1/README.md` + `docs/her1/state.json` (update both in the same commit). Cloud agents cannot reach ECHO's FB (`127.0.0.1:39127`): change repo docs/scripts only and hand writes to ECHO via `docs/her1/ECHO_RUNBOOK.md`; never claim live changes without an ECHO receipt. `scripts/her1/` writes are dry-run by default, gated by `--apply --expected-rev`, additive `*-her1` ids only, and verify the live snapshot after every write; translate-far hiding and clip HIDE-scale on rest-hidden parts are rejected by its audit. For visual fixes (e.g. support-hand wrist seams) get a read-only `her1 snapshot` from ECHO, self-QC offline with `render` / `fix-wrist`, and only hand ECHO an `apply-plan` whose self-QC passed (runbook §6.1).
 ## Environment Variables
 
 - `PORT` (default 3000)

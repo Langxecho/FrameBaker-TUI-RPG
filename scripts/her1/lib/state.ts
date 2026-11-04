@@ -42,8 +42,10 @@ export interface PackState {
   returnDir: string;
   layerName: string;
   checkHistory: Array<Record<string, unknown>>;
-  /** 落地记录（ECHO 回执摘要）；只有 status=landed 时存在。 */
+  /** 落地记录（ECHO 回执摘要）；status 以 landed 开头时存在。 */
   landed?: Record<string, unknown>;
+  /** 腕口修正进度（fix-wrist / apply-plan），见 ECHO_RUNBOOK §6.1。 */
+  wristFix?: Record<string, unknown>;
   sprites: PackSpriteState[];
   wiring: {
     default: "none" | "show-delivered";
