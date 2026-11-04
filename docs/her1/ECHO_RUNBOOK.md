@@ -16,6 +16,7 @@ bun run her1 help
 
 - FB 服务需已在 `http://127.0.0.1:39127` 运行（MCP `/mcp`，REST `/api/*`）。地址不同时每条命令加 `--mcp http://host:port/mcp`，或设环境变量 `FRAMEBAKER_MCP_URL`。
 - 运行输出默认写到仓库 `storage/her1-runs/<时间>-<命令>/`（gitignored）。可用 `--out <目录>` 改到 ECHO 工作目录，例如 `--out E:\CodexBuild\demo-final-20261015\phase15\p19\her1\runs\t03c-v3`。
+- 用独立 worktree（如 `F:\CodeProject\FB-her1-run`）执行时，apply 会在 worktree 里回写 `docs/her1/state.json`。拉取仓库新版本前，先把本地这份 `state.json` 的改动和仓库版对一遍（回报给云端的结果已入库），再 `git checkout -- docs/her1/state.json` 后 `git pull`，避免冲突或覆盖。
 - 所有写命令默认 **dry-run**。只有加 `--apply --expected-rev <N>` 才会写入，N 必须等于 `probe` 刚读到的 revision。
 
 ## 1. 核对现场（每次动手前）
@@ -37,12 +38,15 @@ bun run her1 check --pack T10b --input "<美术包根>\02_已交\T10b_远侧前�
 bun run her1 check --pack T10b --sprite att-p19x-elbow_far_foreshrt_g1aim --input "<…>\T10b_远侧手肘胸口托出.psd" --record
 ```
 
-- 读取 PSD 中名为「在这里画」的图层（也接受 PNG）。检查尺寸、半透明（alpha 只能 0/255）、色板、外露描边 RGB(9,5,9)；open_edge 切口（T03c 左侧腕口带）豁免。
+- 读取 PSD 中名为「在这里画」的图层（也接受 PNG）。检查尺寸、半透明（alpha 只能 0/255）、色板、外露描边 RGB(9,5,9)。
+- 接缝豁免带（`state.json` 的 `openEdge.band`，缺省取任务的 `intended_open_edge_band`，例如 T03c 腕口 `[0,0,59,37]`）内：半透明像素和描边缺口都不计失败，与朝向无关；色板仍然检查。用了豁免时结论记为 `PASS_seam_exempt`，与对接师判定一致。`_task.json` 的 `open_edge_pixels` 只豁免描边缺口。
 - 可选 `--starter <起点.png>` 统计相对起点图的改动（problem_box 内/外）。若画师把切口挪了位置，对接师可给 `--open-edge-mask <蒙版.png>`（不透明像素=豁免）。
 - 输出：`*_check.json`、`*_check_overlay.png`（×12；橙=半透明，红=描边断口，青=色板外，品红十字=pivot），PASS 时另有规范化 `<sprite>-her1.png`。
 - `--record` 把结论追加到 `state.json` 的 `checkHistory`。**FAIL 就退回画师**（叠加图给对接师，用美术语言描述），不进入下一步。
 
 ## 3. T03c（优先级 1）：G3 支撑手 rematerialize
+
+> 2026-11-04 已落地（rev 1339，素材 `e53e3c92`），不要再跑 apply。下面的命令留作同类“只换图”任务的模板；重做 T03c 前先在 README §6 写明原因。
 
 ```powershell
 bun run her1 probe                                   # 记下 revision，例如 1335

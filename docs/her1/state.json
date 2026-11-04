@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-03",
-  "lastLiveCheck": "2026-11-03T07:25:00+08:00",
+  "updatedAt": "2026-11-04",
+  "lastLiveCheck": "2026-11-04（ECHO 回报：T03c apply 后 live 快照一致）",
   "echo": {
     "machine": "ECHO b4abf5bf-…",
     "mcpUrl": "http://127.0.0.1:39127/mcp",
@@ -9,8 +9,9 @@
     "projectId": "90acc389-43ae-44de-bb7e-daed07f85472",
     "storage": "storage-wqy-pilot",
     "workDir": "E:\\CodexBuild\\demo-final-20261015\\phase15\\p19\\her1",
-    "lastKnownRevision": 1335,
-    "budgetLeft": 85
+    "lastKnownRevision": 1339,
+    "budgetLeft": null,
+    "budgetNote": "rev 1335 时余 85；T03c 期间 1335→1339 共 4 次写入，ECHO 未回报新余量，下次 probe/写入时核实后填回"
   },
   "liaison": {
     "role": "美术对接师",
@@ -101,7 +102,7 @@
     "T03c": {
       "title": "T03c 冲锋枪（MP-9，K02）更大画布支撑手",
       "priority": 1,
-      "status": "waiting-artist",
+      "status": "landed",
       "gun": "G3",
       "dir": "docs/her1/packs/T03c",
       "echoPackDir": "01_待改/T03c_冲锋枪更大支撑手_g3",
@@ -110,8 +111,24 @@
       "checkHistory": [
         { "round": "starter", "verdict": "PASS", "semi": 0, "outlineBreaks": 0 },
         { "round": "v1", "date": "2026-11-02", "verdict": "FAIL", "semi": 103, "outlineBreaks": 47 },
-        { "round": "v2", "date": "2026-11-02", "verdict": "FAIL", "semi": 77, "outlineBreaks": 48, "paletteOk": true, "redoNote": "T03c_只要改外面_标注.png：只改外轮廓/alpha，蓝色引导内保持" }
+        { "round": "v2", "date": "2026-11-02", "verdict": "FAIL", "semi": 77, "outlineBreaks": 48, "paletteOk": true, "redoNote": "T03c_只要改外面_标注.png：只改外轮廓/alpha，蓝色引导内保持" },
+        { "round": "v7", "date": "2026-11-04", "verdict": "PASS_seam_exempt", "semi": 0, "outlineBreaks": 0, "nativeSize": [89, 38], "openEdgeBand": [0, 0, 59, 37], "psdMd5Prefix": "4ffa0575", "source": "ECHO 对接师判定 + ECHO worktree scripts/her1 check（临时补丁，逻辑已合入 checkArt）", "note": "semi/outlineBreaks 为豁免带外的外露计数；v3–v6 的检查结论未回报" }
       ],
+      "landed": {
+        "date": "2026-11-04",
+        "worktree": "F:\\CodeProject\\FB-her1-run（origin/cursor/her1-cloud-handoff-7321）",
+        "revisions": "1335→1336 首次 rematerialize；之后做过 drawOffset / 旧 pivot 试验，又恢复合同 pivot；终值 rev 1339",
+        "finalRevision": 1339,
+        "material": "e53e3c92",
+        "materialName": "hand_sup_g3_y-her1",
+        "size": [178, 76],
+        "pivot": [0.7865168539325843, 0.7894736842105263],
+        "equipment": ["c34-g3-K02-p19v-p19y-her1", "c34-g3-K02-p19v-p19y-her1-hd"],
+        "clip": "her1am3c（未接线）",
+        "liveSnapshot": "一致",
+        "drawOffsetNote": "回报只确认 pivot 已恢复合同值；support-hand 的 drawOffset 终值未回报，下次 probe 时从工程文档核对并记入此处",
+        "selfQc": "G3 idle/prepare/aim/fire/recover 自渲：护木下支撑手在；远臂接腕仍有 T03b 同类已知残差，默认不改 clip"
+      },
       "sprites": [
         {
           "spriteId": "hand_sup_g3_y",
@@ -122,14 +139,14 @@
             "kind": "equipment-attachment",
             "equipment": ["c34-g3-K02-p19v-p19y-her1", "c34-g3-K02-p19v-p19y-her1-hd"],
             "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand",
-            "currentMaterial": "55fec0ec",
-            "currentSize": [58, 62]
+            "currentMaterial": "e53e3c92",
+            "currentSize": [178, 76]
           }
         }
       ],
       "wiring": {
         "default": "none",
-        "note": "T03b 已证 support-hand rest=[1,1,1] 且 her1am3c 已显示它；rematerialize 单独即可生效。自审若仍断腕，再用 wire 子命令以 her1am3c 为基线开新 tag（建议 her1am3d），只动远臂相关 att: 轨。",
+        "note": "已落地（rev 1339），her1am3c 未改，rematerialize 单独生效。远臂接腕残差若经自审确认是接线问题，再用 wire 以 her1am3c 为基线开 her1am3d，只动远臂相关 her1 att: 轨；若是素材问题再开新包。",
         "baseClipTag": "her1am3c",
         "suggestedTag": "her1am3d"
       }

@@ -27,8 +27,8 @@
 | 机器 | ECHO `b4abf5bf-…` |
 | FB MCP | `http://127.0.0.1:39127/mcp`（Streamable HTTP；REST 同端口 `/api/*`） |
 | 项目 | `90acc389-43ae-44de-bb7e-daed07f85472`，storage `storage-wqy-pilot` |
-| 最后已知 revision | **1335**（2026-11-03 07:25 live check） |
-| 编辑预算余量 | **85** |
+| 最后已知 revision | **1339**（2026-11-04 T03c 落地后，ECHO 回报 live 快照一致） |
+| 编辑预算余量 | **未知**：rev 1335 时余 85，T03c 期间写入 4 次，ECHO 尚未回报新余量。下次 probe 时核实，填回 `state.json` |
 | ECHO 工作目录 | `E:\CodexBuild\demo-final-20261015\phase15\p19\her1` |
 | ECHO 美术包 | `01_待改/`（开包）→ 画师交 `02_已交/` → 预览 `03_效果预览/` |
 | 美术对接师 agent | `f5dc4070-c855-4a83-8313-1b47c4828415`（对画师说话，不讲代码） |
@@ -69,7 +69,7 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 | --- | --- | --- |
 | her1am3 | — | T03 握枪手 + StageC `FAR_C21C`（只显 live 透视残肢）→ 断腕 |
 | her1am3b | — | 额外 HIDE 轨 → `PREVIEW_RENDER_FAILED`。**退役** |
-| **her1am3c** | **1268→1274** | 当前：去掉 `FAR_C21C`，远臂 keepbase；support-hand rest `[1,1,1]` 已显示 |
+| **her1am3c** | **1268→1274** | 当前：去掉 `FAR_C21C`，远臂 keepbase；support-hand rest `[1,1,1]` 已显示。T03c（rev 1339）只换了素材，没有改这个 clip |
 
 ### 3.3 铁桶接线（M2）现状
 
@@ -107,28 +107,30 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 | T03b-fix | 1268→1274 | G3 → her1am3c | `HAND_T03b_FIX.md` |
 | T09 | 1296→1297 | 近侧大臂腋下残留清理（upsert-binding） | `HAND_T09_IRON.md` |
 | T10 / T10-fix | 1297→1335 | 透视三件 ADD（`35878b00`/`1475c51c`/`e329720b`，rest 隐藏）；c21l 悬空 → c21n 全 STRIP | `HAND_T10_IRON.md`、`t10_fix/` |
+| **T03c** | 1335→1339 | G3 两件 her1 装备 `:support-hand` 换为 `e53e3c92`（178×76，合同 pivot）；clip 仍是 her1am3c | 本页 §6、`state.json` 的 `packs.T03c.landed` |
 
-## 6. 待办：美术包（按优先级）
+## 6. 美术包（按优先级）
 
-### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · 等画师
+### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · **已落地**（2026-11-04，rev 1339）
 
-- 状态：`waiting-artist`。画师 v1、v2 均 check FAIL（v1：103 半透明 / 47 描边断口；v2：77 半透明 / 48 描边断口，色板 OK）。已发重做标注 `T03c_只要改外面_标注.png`：只改外轮廓和 alpha，蓝色引导内保持。
-- 合同：sprite `hand_sup_g3_y`，原生 **89×38** → rig **178×76**，pivot `[0.786517, 0.789474]`（`pivot_px` [70,8] 自上），socket secondaryGrip；左侧 `[0,0,59,37]` 为腕口 open_edge 带。PSD `T03c_支撑手.psd`，图层「在这里画」。
-- 目标：两件 her1 G3 装备上的 `c34-g3-K02-p19v-p19y-her1:support-hand`（现 `55fec0ec`，58×62）。live `59fc3f63` 不动。
-- 接线：默认**不需要**。her1am3c 已显示 support-hand（rest `[1,1,1]`），rematerialize 后即生效。自审若仍断腕，再以 her1am3c 为基线开 `her1am3d`，只动远臂相关 her1 `att:` 轨。
-- 下一步：画师交 v3 到 `02_已交/` → ECHO 跑 runbook §3（check → dry-run → apply）→ 自审 G3 aim/fire/idle/prepare/recover → 写回本节。
+- 检查：v1、v2 FAIL（v1：103 半透明 / 47 描边断口；v2：77 / 48）。**v7 PASS_seam_exempt**：89×38，腕口豁免带 `intended_open_edge_band=[0,0,59,37]`，带外的外露半透明和描边断口都是 0。PSD md5 `4ffa0575…`。v3–v6 的检查结论没有回报。
+- 写入：ECHO 在 worktree `F:\CodeProject\FB-her1-run`（`origin/cursor/her1-cloud-handoff-7321`）上执行 check → `t03c --apply`。rev 1335→1336 首次 rematerialize；之后做过 drawOffset / 旧 pivot 试验，又恢复合同 pivot。当前 rev **1339**，live 快照一致。
+- 结果：`c34-g3-K02-p19v-p19y-her1` 与 `-her1-hd` 的 `:support-hand` 现为素材 **`e53e3c92`**（`hand_sup_g3_y-her1`），size **[178,76]**，pivot 为合同值 `[0.786517, 0.789474]`。live `59fc3f63` 未动。clip 仍是 her1am3c，没有接线。
+- 待核实：回报只确认 pivot 已恢复，support-hand 的 drawOffset 终值没有回报。下次 probe 时从工程文档核对，记入 `state.json` 的 `packs.T03c.landed.drawOffsetNote`。
+- 自审（G3 idle/prepare/aim/fire/recover 自渲）：护木下的支撑手在。远臂接腕仍有已知残差，与 T03b 同类，默认不改 clip。
+- 后续（可选）：要处理接腕残差时，先自审确定是接线问题还是素材问题。接线问题用 `wire` 以 her1am3c 为基线开 `her1am3d`，只动远臂相关 her1 `att:` 轨；素材问题再开新包。
 
-### T10b（优先级 2，排在 T03c 之后）— G1 手枪瞄准远侧前臂胸口托出 · 等画师
+### T10b（优先级 2，现为唯一待交包）— G1 手枪瞄准远侧前臂胸口托出 · 等画师
 
 - 状态：`waiting-artist`，包已经交给对接师。尚无回稿。
 - 合同：必交 `att-p19x-forearm_far_foreshrt_g1aim`（**25×39** → 50×78，pivot `[0.298810, 0.823529]`）；可选手肘 `att-p19x-elbow_far_foreshrt_g1aim`（72×72 → 144×144，pivot 0.5/0.5）。大臂不在包里，继续被胸口挡住（STRIP）。目标剪影对照 `正确.jpg`：前臂从胸口后方托出到枪底。
 - 目标：binding 附件 `att-p19x-forearm_far_foreshrt_g1aim-her1`（现 `1475c51c`）、可选 `att-p19x-elbow_far_foreshrt_g1aim-her1`（现 `e329720b`）；`att-p19x-upper_arm_far_foreshrt_g1aim-her1`（`35878b00`）保持 STRIP。
 - 接线：以 `her1am_c21n` 为基线开新 tag **`her1am_c21o`**，aim/fire SHOW 前臂（交了手肘则一并 SHOW），大臂 STRIP；idle/prepare/recover 仍指 c21n。recover 是否也 SHOW 由自审决定（加 `--phases aim,fire,recover`）。
-- 下一步：T03c 落定后，画师交回 → ECHO 跑 runbook §4 → 自审对照 `正确.jpg`（同枪、同动作、同时间）→ 写回本节。
+- 下一步：画师交回后，ECHO 先 `probe`（期望 rev 1339），再跑 runbook §4，然后对照 `正确.jpg` 自审（同枪、同动作、同时间），最后写回本节。
 
 ### 其余美术债（尚未开包）
 
-腰缝旋转露缝；脸/颈洞；近肘缺比 p45 更直的一档（aim 约 30°）；膝 g1 接缝；握枪手↔前臂接缝。开包前先自审确认属于素材问题，再按 skill 流程开 `01_待改/`。
+腰缝旋转露缝；脸/颈洞；近肘缺比 p45 更直的一档（aim 约 30°）；膝 g1 接缝；握枪手↔前臂接缝；G3 远臂接腕残差（T03c 后仍在）。开包前先自审确认属于素材问题，再按 skill 流程开 `01_待改/`。
 
 ## 7. 更新协议
 

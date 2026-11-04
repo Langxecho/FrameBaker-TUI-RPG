@@ -136,7 +136,7 @@ describe("her1 ECHO 运行器（假 ECHO 服务）", () => {
     expect(operations).toHaveLength(2);
     expect(JSON.stringify(operations)).toContain("pending-upload:hand_sup_g3_y");
     expect(lines.join("\n")).toContain("--apply --expected-rev 1335");
-    expect(savedState().packs.T03c.status).toBe("waiting-artist");
+    expect(savedState().packs.T03c).toEqual(loadState().packs.T03c);
   });
 
   test("T03c 检查 FAIL 时不连接 ECHO", async () => {
@@ -213,6 +213,6 @@ describe("her1 ECHO 运行器（假 ECHO 服务）", () => {
   test("写入后 live 快照若被改动，运行器报警停止", async () => {
     fake.tamperLive = true;
     await expect(runT03c(ctx, { input: writeArt("t03c-tamper.png", "T03c"), apply: true, expectedRev: 1335, updateState: true })).rejects.toThrow("live 快照发生变化");
-    expect(savedState().packs.T03c.status).toBe("waiting-artist");
+    expect(savedState().packs.T03c).toEqual(loadState().packs.T03c);
   });
 });
