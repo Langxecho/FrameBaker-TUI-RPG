@@ -14,6 +14,8 @@ export interface TaskSprite {
   pivot_px?: [number, number];
   problem_box?: [number, number, number, number];
   open_edge_pixels?: Array<[number, number]>;
+  /** 对接师约定的接缝豁免带 [x0, y0, x1, y1]（含端点）。 */
+  intended_open_edge_band?: [number, number, number, number];
 }
 
 export interface ArtTask {
@@ -22,14 +24,16 @@ export interface ArtTask {
   sprites: TaskSprite[];
 }
 
+/** 接缝豁免带：被遮挡/接骨的切口区域，带内半透明与描边缺口都不计失败（与对接师 PASS_seam_exempt 判定一致）。 */
 export interface OpenEdgeBand {
   /** [x0, y0, x1, y1]，含端点。 */
   band: [number, number, number, number];
-  /** 切口朝向：带内轮廓像素只有在这一侧邻接透明时才豁免。 */
-  side: "left" | "right" | "top" | "bottom";
+  /** 切口朝向，仅作说明，不参与判定。 */
+  side?: "left" | "right" | "top" | "bottom";
 }
 
 export interface CheckOptions {
+  /** 缺省时取任务 sprite 的 `intended_open_edge_band`。 */
   openEdgeBand?: OpenEdgeBand;
   /** 额外豁免像素（如美术移动了切口后由对接师给出的蒙版）。 */
   extraOpenEdge?: Array<[number, number]>;
@@ -41,13 +45,19 @@ export interface CheckOptions {
 export interface CheckReport {
   spriteId: string;
   verdict: "PASS" | "FAIL";
+  /** 记录与回报用：PASS 且用到接缝豁免时为 PASS_seam_exempt。 */
+  label: "PASS" | "PASS_seam_exempt" | "FAIL";
   size: { expected: [number, number]; actual: [number, number]; ok: boolean };
   opaquePixels: number;
   bbox: [number, number, number, number] | null;
   semiTransparent: Array<[number, number]>;
   offPalette: Array<{ x: number; y: number; rgb: [number, number, number] }>;
   outlineBreaks: Array<[number, number]>;
+  /** 因 open_edge（像素名单或豁免带）而不计断口的不透明边缘像素数。 */
   openEdgeExempt: number;
+  /** 豁免带内不计失败的半透明像素数。 */
+  seamSemiExempt: number;
+  openEdgeBand: [number, number, number, number] | null;
   pivot: { fb: [number, number]; pxFromTop: [number, number] | null; consistent: boolean | null };
   starterDelta: { changed: number; insideProblemBox: number; outsideProblemBox: number } | null;
   failures: string[];
@@ -84,7 +94,8 @@ export function checkSprite(image: RgbaImage, task: ArtTask, sprite: TaskSprite,
   const semiTransparent: Array<[number, number]> = [];
   const offPalette: CheckReport["offPalette"] = [];
   const outlineBreaks: Array<[number, number]> = [];
-  let opaquePixels = 0, openEdgeExempt = 0;
+  const band = options.openEdgeBand?.band ?? sprite.intended_open_edge_band ?? null;
+  let opaquePixels = 0, openEdgeExempt = 0, seamSemiExempt = 0;
   let minX = Infinity, minY = Infinity, maxX = -1, maxY = -1;
 
   for (let y = 0; y < image.height; y += 1) {
@@ -92,16 +103,18 @@ export function checkSprite(image: RgbaImage, task: ArtTask, sprite: TaskSprite,
       const o = (y * image.width + x) * 4;
       const a = image.data[o + 3];
       if (a === 0) continue;
-      if (a < 255) { semiTransparent.push([x, y]); continue; }
+      const inBand = !!band && inBox(x, y, band);
+      if (a < 255) {
+        if (inBand) seamSemiExempt += 1; else semiTransparent.push([x, y]);
+        continue;
+      }
       opaquePixels += 1;
       minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
       const rgb: [number, number, number] = [image.data[o], image.data[o + 1], image.data[o + 2]];
       if (!palette.has(rgb.join(","))) offPalette.push({ x, y, rgb });
-      const openSides = NEIGHBORS.filter(([dx, dy]) => alpha(x + dx, y + dy) < 255).map(([, , side]) => side);
-      if (openSides.length === 0) continue;
+      if (!NEIGHBORS.some(([dx, dy]) => alpha(x + dx, y + dy) < 255)) continue;
       if (rgb[0] === outline[0] && rgb[1] === outline[1] && rgb[2] === outline[2]) continue;
-      const band = options.openEdgeBand;
-      if (exempt.has(`${x},${y}`) || (band && inBox(x, y, band.band) && openSides.every((side) => side === band.side))) { openEdgeExempt += 1; continue; }
+      if (inBand || exempt.has(`${x},${y}`)) { openEdgeExempt += 1; continue; }
       outlineBreaks.push([x, y]);
     }
   }
@@ -131,9 +144,11 @@ export function checkSprite(image: RgbaImage, task: ArtTask, sprite: TaskSprite,
   if (opaquePixels === 0) failures.push("图层为空");
   if (consistent === false) failures.push("任务 pivot 与 pivot_px 不一致（任务文件本身有误）");
 
+  const seamExempt = openEdgeExempt + seamSemiExempt > 0;
   return {
     spriteId: sprite.sprite_id,
     verdict: failures.length ? "FAIL" : "PASS",
+    label: failures.length ? "FAIL" : seamExempt ? "PASS_seam_exempt" : "PASS",
     size: { expected: [ew, eh], actual: [image.width, image.height], ok: sizeOk },
     opaquePixels,
     bbox: maxX < 0 ? null : [minX, minY, maxX, maxY],
@@ -141,6 +156,8 @@ export function checkSprite(image: RgbaImage, task: ArtTask, sprite: TaskSprite,
     offPalette,
     outlineBreaks,
     openEdgeExempt,
+    seamSemiExempt,
+    openEdgeBand: band,
     pivot: { fb: sprite.pivot, pxFromTop, consistent },
     starterDelta,
     failures,

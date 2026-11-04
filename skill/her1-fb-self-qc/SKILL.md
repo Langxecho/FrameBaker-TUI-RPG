@@ -14,7 +14,7 @@ After any character change on the FB workflow (additive `*-her1`, Region SHOW/ST
 
 ## Steps
 1. Stay on FrameBaker: additive `*-her1` only; live untouched unless ECHO explicitly OK’d live; no translate-far / offscreen hide hacks; idle-support is STRIP, never HIDE-scale.
-2. 美术交回的 PSD/PNG 先跑 `bun scripts/her1/her1.ts check --pack <T03c|T10b> --input <file>`。FAIL（半透明、描边断口、色板外、尺寸不符）直接退回美术，不入库、不接线。
+2. 美术交回的 PSD/PNG 先跑 `bun scripts/her1/her1.ts check --pack <T03c|T10b> --input <file>`。FAIL（半透明、描边断口、色板外、尺寸不符）直接退回美术，不入库、不接线。接缝豁免带内的半透明和描边缺口不计失败，结论为 `PASS_seam_exempt`。
 3. Render the affected actions yourself (aim/fire/idle/prepare/recover as relevant) to stills + GIF under `03_效果预览/<任务>/`（ECHO 包目录）或 runner 的 `storage/her1-runs/<run>/render/`。
 4. Open the stills/GIF and self-QC for obvious issues:
    - silhouette vs reference（如 T10b 的 `正确.jpg`；同枪、同动作、同时间对比）；

@@ -98,14 +98,63 @@ describe("her1 check_art", () => {
     expect(checkSprite(paintBlock(7, 5, SKIN, [1, 1, 4, 3]), task, sprite).failures[0]).toContain("尺寸");
   });
 
-  test("open_edge 带只豁免朝指定侧开口的像素", () => {
+  test("open_edge 带：带内描边缺口不分朝向一律豁免，带外照常计断口", () => {
     const image = paintBlock(6, 5, SKIN, [0, 1, 4, 3], true);
-    expect(checkSprite(image, task, sprite).outlineBreaks).toEqual([[0, 2]]);
+    const plain = checkSprite(image, task, sprite);
+    expect(plain.outlineBreaks).toEqual([[0, 2]]);
+    expect(plain.label).toBe("FAIL");
     const report = checkSprite(image, task, sprite, { openEdgeBand: { band: [0, 0, 1, 4], side: "left" } });
-    expect(report.verdict).toBe("PASS");
+    expect(report.label).toBe("PASS_seam_exempt");
     expect(report.openEdgeExempt).toBe(1);
-    expect(checkSprite(image, task, sprite, { openEdgeBand: { band: [0, 0, 1, 4], side: "right" } }).verdict).toBe("FAIL");
-    expect(checkSprite(image, task, sprite, { extraOpenEdge: [[0, 2]] }).verdict).toBe("PASS");
+    expect(checkSprite(image, task, sprite, { openEdgeBand: { band: [0, 0, 1, 4], side: "right" } }).verdict).toBe("PASS");
+    expect(checkSprite(image, task, sprite, { openEdgeBand: { band: [0, 0, 1, 4] } }).verdict).toBe("PASS");
+    setPixel(image, 2, 1, [...SKIN, 255]);
+    expect(checkSprite(image, task, sprite, { openEdgeBand: { band: [0, 0, 1, 4] } }).outlineBreaks).toEqual([[2, 1]]);
+    expect(checkSprite(paintBlock(6, 5, SKIN, [0, 1, 4, 3], true), task, sprite, { extraOpenEdge: [[0, 2]] }).verdict).toBe("PASS");
+  });
+
+  test("open_edge 带：带内半透明豁免并计数，带外半透明仍 FAIL", () => {
+    const image = paintBlock(6, 5, SKIN, [1, 1, 4, 3]);
+    setPixel(image, 0, 2, [...SKIN, 90]);
+    setPixel(image, 0, 1, [9, 5, 9, 200]);
+    const band = { band: [0, 0, 1, 4] as [number, number, number, number] };
+    const report = checkSprite(image, task, sprite, { openEdgeBand: band });
+    expect(report.semiTransparent).toEqual([]);
+    expect(report.seamSemiExempt).toBe(2);
+    expect(report.label).toBe("PASS_seam_exempt");
+    setPixel(image, 5, 2, [9, 5, 9, 128]);
+    const outside = checkSprite(image, task, sprite, { openEdgeBand: band });
+    expect(outside.semiTransparent).toEqual([[5, 2]]);
+    expect(outside.verdict).toBe("FAIL");
+  });
+
+  test("未显式给豁免带时回落到任务的 intended_open_edge_band；完全不用豁免时标 PASS", () => {
+    const banded = { ...task, sprites: [{ ...sprite, intended_open_edge_band: [0, 0, 1, 4] as [number, number, number, number] }] };
+    const image = paintBlock(6, 5, SKIN, [0, 1, 4, 3], true);
+    expect(checkSprite(image, task, task.sprites[0]).verdict).toBe("FAIL");
+    const report = checkSprite(image, banded, banded.sprites[0]);
+    expect(report.label).toBe("PASS_seam_exempt");
+    expect(report.openEdgeBand).toEqual([0, 0, 1, 4]);
+    expect(checkSprite(paintBlock(6, 5, SKIN, [1, 1, 4, 3]), task, sprite).label).toBe("PASS");
+  });
+
+  test("T03c 合同：腕口带内半透明与无描边切口 → PASS_seam_exempt；带外半透明 → FAIL", () => {
+    const state = loadState();
+    const t03c = loadTask(state, "T03c");
+    const hand = findSprite(t03c, "hand_sup_g3_y");
+    const [w, h] = hand.native_size;
+    const image = paintBlock(w, h, t03c.palette[0].rgb, [0, 4, 85, 33], true);
+    for (let y = 10; y < 28; y += 3) setPixel(image, 1, y, [...t03c.palette[0].rgb, 140] as [number, number, number, number]);
+    setPixel(image, 59, 4, [...t03c.palette[0].rgb, 255] as [number, number, number, number]);
+    const options = { openEdgeBand: state.packs.T03c.sprites[0].openEdge };
+    const report = checkSprite(image, t03c, hand, options);
+    expect(report.label).toBe("PASS_seam_exempt");
+    expect(report.semiTransparent).toEqual([]);
+    expect(report.outlineBreaks).toEqual([]);
+    expect(report.seamSemiExempt).toBe(6);
+    expect(checkSprite(image, t03c, hand).label).toBe("PASS_seam_exempt");
+    setPixel(image, 70, 20, [...t03c.palette[0].rgb, 140] as [number, number, number, number]);
+    expect(checkSprite(image, t03c, hand, options).verdict).toBe("FAIL");
   });
 
   test("相对起点图统计 problem_box 内外改动，叠加图按倍率放大", () => {

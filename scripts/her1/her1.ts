@@ -82,13 +82,13 @@ function gate(flags: Record<string, string | true>) {
 
 function status(): void {
   const state = loadState();
-  console.log(`her1 状态（state.json 更新于 ${state.updatedAt}；ECHO 最后已知 rev ${state.echo.lastKnownRevision}，预算余 ${state.echo.budgetLeft}）`);
+  console.log(`her1 状态（state.json 更新于 ${state.updatedAt}；ECHO 最后已知 rev ${state.echo.lastKnownRevision}，预算余 ${state.echo.budgetLeft ?? `未知（${state.echo.budgetNote ?? "待核实"}）`}）`);
   console.log("\n枪种与 clip 指针：");
   for (const [key, gun] of Object.entries(state.guns)) {
     const overrides = gun.phaseClipTags ? `；相位覆盖 ${JSON.stringify(gun.phaseClipTags)}` : "";
     console.log(`  ${key} ${gun.kCode ?? "—"} ${gun.label}: ${gun.clipTag ? `${gun.actionPrefix}* → *-clip-${gun.clipTag}` : gun.note ?? "未开工"}${overrides}`);
   }
-  console.log("\n待交美术包（按优先级）：");
+  console.log("\n美术包（按优先级）：");
   for (const [id, pack] of Object.entries(state.packs).sort((a, b) => a[1].priority - b[1].priority)) {
     const last = pack.checkHistory.at(-1);
     console.log(`  ${id} [${pack.status}] ${pack.title}${last ? `；最近检查 ${String(last.round)} ${String(last.verdict)}` : ""}`);

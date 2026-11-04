@@ -79,11 +79,11 @@ export function runCheck(ctx: RunContext, input: CheckInput): CheckOutcome {
   writeFileSync(join(ctx.outDir, `${stem}_check_overlay.png`), encodePng(renderCheckOverlay(image, report, sprite)));
   const pngPath = join(ctx.outDir, `${sprite.sprite_id}-her1.png`);
   if (report.verdict === "PASS") writeFileSync(pngPath, encodePng(normalizedSprite(image)));
-  ctx.log(`${input.packId} ${sprite.sprite_id}: ${report.verdict}${report.failures.length ? ` — ${report.failures.join("；")}` : ""}`);
-  ctx.log(`  不透明 ${report.opaquePixels} px，open_edge 豁免 ${report.openEdgeExempt} px${report.starterDelta ? `，相对起点改动 ${report.starterDelta.changed} px` : ""}`);
+  ctx.log(`${input.packId} ${sprite.sprite_id}: ${report.label}${report.failures.length ? ` — ${report.failures.join("；")}` : ""}`);
+  ctx.log(`  不透明 ${report.opaquePixels} px，open_edge 豁免 ${report.openEdgeExempt} px${report.openEdgeBand ? `，接缝带 [${report.openEdgeBand.join(",")}] 内半透明豁免 ${report.seamSemiExempt} px` : ""}${report.starterDelta ? `，相对起点改动 ${report.starterDelta.changed} px` : ""}`);
   ctx.log(`  报告与叠加图：${ctx.outDir}`);
   if (input.record) {
-    pack.checkHistory.push({ round: basename(input.input), sprite: sprite.sprite_id, date: new Date().toISOString().slice(0, 10), verdict: report.verdict, semi: report.semiTransparent.length, outlineBreaks: report.outlineBreaks.length, offPalette: report.offPalette.length, source: "scripts/her1 check" });
+    pack.checkHistory.push({ round: basename(input.input), sprite: sprite.sprite_id, date: new Date().toISOString().slice(0, 10), verdict: report.label, semi: report.semiTransparent.length, outlineBreaks: report.outlineBreaks.length, offPalette: report.offPalette.length, seamSemiExempt: report.seamSemiExempt, openEdgeExempt: report.openEdgeExempt, source: "scripts/her1 check" });
     writeJson(ctx.statePath, ctx.state);
   }
   return { report, image, spriteId: sprite.sprite_id, pngPath };
@@ -181,7 +181,7 @@ export async function runT03c(ctx: RunContext, input: { input: string; record?: 
   ctx.log(`计划：${operations.length} 个 upsert-equipment（${operations.map((op) => op.type === "upsert-equipment" ? op.equipment.id : op.type).join("、")}），只换 support-hand 素材/尺寸/轴心`);
   if (!input.apply) return nextSteps(ctx, false, "T03c", connection.revision);
   const outcome = await applyGuarded(ctx, connection, "t03c", operations, input);
-  receipt(ctx, "T03c", { revisionBefore: connection.revision, revisionAfter: outcome.revision, materialId, operations: operations.length, check: check.report.verdict });
+  receipt(ctx, "T03c", { revisionBefore: connection.revision, revisionAfter: outcome.revision, materialId, operations: operations.length, check: check.report.label });
   if (input.updateState) {
     const sprite = ctx.state.packs.T03c.sprites[0];
     sprite.target.currentMaterial = materialId.slice(0, 8);

@@ -42,6 +42,8 @@ export interface PackState {
   returnDir: string;
   layerName: string;
   checkHistory: Array<Record<string, unknown>>;
+  /** 落地记录（ECHO 回执摘要）；只有 status=landed 时存在。 */
+  landed?: Record<string, unknown>;
   sprites: PackSpriteState[];
   wiring: {
     default: "none" | "show-delivered";
@@ -58,7 +60,8 @@ export interface PackState {
 export interface Her1State {
   schemaVersion: number;
   updatedAt: string;
-  echo: { mcpUrl: string; apiBase: string; projectId: string; storage: string; lastKnownRevision: number; budgetLeft: number; workDir: string; machine: string };
+  /** budgetLeft 为 null 表示 ECHO 尚未回报当前余量，见 budgetNote。 */
+  echo: { mcpUrl: string; apiBase: string; projectId: string; storage: string; lastKnownRevision: number; budgetLeft: number | null; budgetNote?: string; workDir: string; machine: string };
   liaison: { role: string; agentId: string };
   phases: string[];
   guns: Record<GunKey, GunState>;
