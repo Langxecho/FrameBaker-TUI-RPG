@@ -1,5 +1,6 @@
 import {
   multiplyMatrices,
+  quaternionFromZRotation,
   reparentTransform2d,
   sampleMotionClip,
   transformPoint,
@@ -12,9 +13,8 @@ import {
   type Skeleton,
   type Transform,
 } from "../../../packages/shared/src/animation";
-import type { BodyProfile, EquipmentDefinition } from "../../../packages/shared/src/equipment";
+import type { BodyProfile, BodySocketDefinition as BodySocket, EquipmentDefinition } from "../../../packages/shared/src/equipment";
 import type { SkeletalProjectDocument } from "../../../packages/shared/src/skeletalProject";
-import { solveTwoBoneIk2d } from "../../../packages/shared/src/twoBoneIk";
 import { createImage, type RgbaImage } from "./png";
 
 const IDENTITY: Mat4 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -37,7 +37,8 @@ export interface DrawItem {
   equipmentId?: string;
 }
 
-export type IkMode = "off" | "socket";
+/** 双手武器 IK：`weapon` 只解两骨；`weapon-align` 另按 alignEnd 让末端骨朝向跟 secondaryGrip。 */
+export type IkMode = "off" | "weapon" | "weapon-align";
 
 export interface SceneInput {
   document: SkeletalProjectDocument;
@@ -48,7 +49,6 @@ export interface SceneInput {
   bodyProfileId?: string;
   /** 叠加在 binding.boneRotationOffsets 之上的额外 Z 旋转（弧度），求解器用。 */
   extraRotationOffsets?: Record<string, number>;
-  /** `socket`：对带 secondaryHandConstraint 的武器，把远臂两骨解到 targetSocket（终端运行时语义，FB 预览默认不做）。 */
   ik?: IkMode;
 }
 
@@ -120,35 +120,81 @@ export function invert2d(m: Mat4): Mat4 {
   return [a, b, 0, 0, c, d, 0, 0, 0, 0, 1, 0, -(a * m[12] + c * m[13]), -(b * m[12] + d * m[13]), 0, 1];
 }
 
-function socketWorld(pose: EvaluatedPose, body: BodyProfile, socketId: string): Mat4 | undefined {
-  const socket = body.sockets.find((item) => item.id === socketId);
-  const bone = socket ? pose.worldMatrices[socket.boneId] : undefined;
-  return socket && bone ? multiplyMatrices(bone, transformToMatrix(socket.rest)) : undefined;
+export const matrixAngle = (m: Mat4) => Math.atan2(m[1], m[0]);
+
+/**
+ * 两骨解析 IK，按骨骼实际朝向（子骨 rest 平移方向）求旋转；
+ * shared 的 solveTwoBoneIk2d 假设骨骼沿局部 +x，本骨架远臂朝下，直接用会整条臂转错 ~90°。
+ */
+function solveTwoBoneDirected(upper: Transform, lower: Transform, end: Transform, target: [number, number], bendPositive: boolean, mix: number) {
+  const s: [number, number] = [upper.translation[0], upper.translation[1]];
+  const l1 = Math.hypot(lower.translation[0], lower.translation[1]), l2 = Math.hypot(end.translation[0], end.translation[1]);
+  const phi1 = Math.atan2(lower.translation[1], lower.translation[0]), phi2 = Math.atan2(end.translation[1], end.translation[0]);
+  const dx = target[0] - s[0], dy = target[1] - s[1];
+  const raw = Math.hypot(dx, dy);
+  const d = Math.min(l1 + l2 - 1e-6, Math.max(Math.abs(l1 - l2) + 1e-6, raw));
+  const sign = bendPositive ? 1 : -1;
+  const shoulder = Math.acos(Math.min(1, Math.max(-1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))));
+  const alpha = Math.atan2(dy, dx) - sign * shoulder;
+  const elbow: [number, number] = [s[0] + l1 * Math.cos(alpha), s[1] + l1 * Math.sin(alpha)];
+  const wrist: [number, number] = [s[0] + dx / raw * d, s[1] + dy / raw * d];
+  const beta = Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]);
+  const r1 = alpha - phi1, r2 = beta - alpha + phi1 - phi2;
+  const u0 = zAngle(upper.rotation), w0 = zAngle(lower.rotation);
+  const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+  const fu = u0 + wrap(r1 - u0) * mix, fl = w0 + wrap(r2 - w0) * mix;
+  return {
+    reached: raw <= l1 + l2 + 1e-6 && raw >= Math.abs(l1 - l2) - 1e-6,
+    upperLocal: { ...upper, rotation: quaternionFromZRotation(fu) },
+    lowerLocal: { ...lower, rotation: quaternionFromZRotation(fl) },
+  };
 }
 
-function applySocketIk(pose: EvaluatedPose, skeleton: Skeleton, body: BodyProfile, equipment: EquipmentDefinition[], diagnostics: string[]): EvaluatedPose {
+function socketWorld(pose: EvaluatedPose, socket: BodySocket): Mat4 | undefined {
+  const bone = pose.worldMatrices[socket.boneId];
+  return bone ? multiplyMatrices(bone, transformToMatrix(socket.rest)) : undefined;
+}
+
+/** 与 publishDiagnostics 的 sampleIkReach 相同的主手 socket 选择（按 preferredPrimaryHand 的 semantic）。 */
+function primaryHandSocket(body: BodyProfile, item: EquipmentDefinition): BodySocket | undefined {
+  const left = item.weapon?.preferredPrimaryHand === "left";
+  const semantic = left ? "weapon_hand_left" : "weapon_hand_right";
+  return body.sockets.find((s) => s.semantic === semantic || s.id === semantic)
+    ?? body.sockets.find((s) => left ? s.semantic === "hand_left" || s.semantic === "weapon_hand_left" : s.semantic === "hand_right" || s.semantic === "weapon_hand_right");
+}
+
+/**
+ * 双手武器 IK（终端 skeletal_constraints / validateTwoHandIkSample 语义）：
+ * 武器世界 = 主手 socket 世界 × primaryGrip⁻¹，目标 = 武器世界 × secondaryGrip 的平移，在上臂父空间解两骨。
+ * alignEnd 时末端骨世界朝向对齐 secondaryGrip 世界朝向（手跟枪走）。
+ */
+function applyWeaponIk(pose: EvaluatedPose, skeleton: Skeleton, body: BodyProfile, equipment: EquipmentDefinition[], diagnostics: string[], alignEnd: boolean): EvaluatedPose {
   let current = pose;
   for (const item of equipment) {
     const c = item.weapon?.secondaryHandConstraint;
-    if (!c) continue;
-    const target = socketWorld(current, body, c.targetSocket);
+    const weapon = item.weapon;
+    if (!c || !weapon?.primaryGrip || !weapon.secondaryGrip) continue;
+    const socket = primaryHandSocket(body, item);
+    const hand = socket ? socketWorld(current, socket) : undefined;
     const upper = skeleton.bones.find((bone) => bone.id === c.upperBoneId);
-    if (!target || !upper) { diagnostics.push(`IK ${c.id}: 缺少 targetSocket ${c.targetSocket} 或骨骼 ${c.upperBoneId}`); continue; }
+    if (!hand || !upper) { diagnostics.push(`IK ${c.id}: 缺少主手 socket 或骨骼 ${c.upperBoneId}`); continue; }
+    const secondary = multiplyMatrices(multiplyMatrices(hand, invert2d(transformToMatrix(weapon.primaryGrip))), transformToMatrix(weapon.secondaryGrip));
     const parentWorld = upper.parentId ? current.worldMatrices[upper.parentId]! : IDENTITY;
-    const t = transformPoint(invert2d(parentWorld), [target[12], target[13], 0]);
-    const result = solveTwoBoneIk2d({
-      upperRest: current.local[c.upperBoneId]!,
-      lowerRest: current.local[c.lowerBoneId]!,
-      endRest: current.local[c.endBoneId]!,
-      targetLocalToUpperParent: [t[0], t[1]],
-      bendPositive: c.bendDirection === "positive",
-      stretch: c.stretch,
-      maxStretch: c.maxStretch,
-      mix: c.mix,
-    });
-    for (const d of result.diagnostics) diagnostics.push(`IK ${c.id}: ${d.code}`);
-    const local = { ...current.local, [c.upperBoneId]: result.upperLocal, [c.lowerBoneId]: result.lowerLocal };
-    current = { ...current, local, worldMatrices: recomputeWorld(skeleton, local) };
+    const t = transformPoint(invert2d(parentWorld), [secondary[12], secondary[13], 0]);
+    const result = solveTwoBoneDirected(current.local[c.upperBoneId]!, current.local[c.lowerBoneId]!, current.local[c.endBoneId]!, [t[0], t[1]], c.bendDirection !== "negative", c.mix);
+    if (!result.reached) diagnostics.push(`IK ${c.id}: unreachable`);
+    let local = { ...current.local, [c.upperBoneId]: result.upperLocal, [c.lowerBoneId]: result.lowerLocal };
+    let world = recomputeWorld(skeleton, local);
+    if (alignEnd && (c as { alignEnd?: boolean }).alignEnd) {
+      const end = skeleton.bones.find((bone) => bone.id === c.endBoneId);
+      const parent = end?.parentId ? world[end.parentId] : undefined;
+      if (parent) {
+        const angle = matrixAngle(secondary) - matrixAngle(parent);
+        local = { ...local, [c.endBoneId]: { ...local[c.endBoneId]!, rotation: quaternionFromZRotation(angle) } };
+        world = recomputeWorld(skeleton, local);
+      }
+    }
+    current = { ...current, local, worldMatrices: world };
   }
   return current;
 }
@@ -165,7 +211,7 @@ export function evaluatePose(input: SceneInput): { pose: EvaluatedPose; body?: B
     return found;
   });
   const body = pickBodyProfile(input.document, binding.skeletonId, input.bodyProfileId);
-  if (input.ik === "socket" && body) pose = applySocketIk(pose, input.skeleton, body, equipment, diagnostics);
+  if (input.ik && input.ik !== "off" && body) pose = applyWeaponIk(pose, input.skeleton, body, equipment, diagnostics, input.ik === "weapon-align");
   return { pose, body, equipment, diagnostics };
 }
 

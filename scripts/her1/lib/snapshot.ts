@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import type { AnyMotionTrack, MotionClip, Skeleton } from "../../../packages/shared/src/animation";
 import type { SkeletalProjectDocument } from "../../../packages/shared/src/skeletalProject";
 import { decodePng, type RgbaImage } from "./png";
@@ -71,10 +71,15 @@ export function writeJsonFile(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+/** 快照内相对路径一律用 `/`；ECHO（Windows）旧快照里是 `\`，读取时兼容。 */
+export const snapshotPath = (...parts: string[]) => posix.join(...parts.map((part) => part.replace(/\\/g, "/")));
+
 export function loadSnapshot(dir: string): LoadedSnapshot {
   const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as SnapshotManifest;
   const document = JSON.parse(readFileSync(join(dir, "document.json"), "utf8")) as SkeletalProjectDocument;
   const skeleton = JSON.parse(readFileSync(join(dir, "skeleton.json"), "utf8")) as Skeleton;
+  for (const action of manifest.actions) action.clipFile = snapshotPath(action.clipFile);
+  for (const item of [...manifest.materials, ...manifest.references]) item.file = snapshotPath(item.file);
   const clips: Record<string, MotionClip> = {};
   for (const action of manifest.actions) clips[action.phase] = JSON.parse(readFileSync(join(dir, action.clipFile), "utf8")) as MotionClip;
   const images = new Map<string, RgbaImage>();

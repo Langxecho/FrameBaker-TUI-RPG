@@ -6,6 +6,8 @@ export interface SeamSpec {
   handAttachmentId: string;
   /** 远臂链根骨骼；它及其子孙骨骼上的可见 binding 部件算「远臂」。 */
   farRootBone: string;
+  /** 只有落在它及其子孙骨骼部件上的切口外侧点才算「接上」（前臂）；缺省同 farRootBone。腕口压在上臂/肩上不算接上。 */
+  joinRootBone?: string;
   /** 接缝带（美术原生像素，含端点），与 checkArt 的 openEdgeBand 同义。 */
   openBand: [number, number, number, number];
   nativeSize: [number, number];
@@ -148,7 +150,10 @@ export function measureSeam(scene: Scene, images: Map<string, RgbaImage>, skelet
   const distFar = chebyshevDistance(farMask, width, height);
   const distHand = chebyshevDistance(handMask, width, height);
   const { cuff, palm } = findCuff(handImage, spec);
-  const farSet = new Set(far);
+  const joinBones = descendantBones(skeleton, spec.joinRootBone ?? spec.farRootBone);
+  const joinSet = new Set(far.filter((i) => joinBones.has(scene.items[i]!.boneId)));
+  const joinMask = new Uint8Array(width * height);
+  for (const i of joinSet) { const m = raster.coverage.get(i)!; for (let p = 0; p < m.length; p += 1) if (m[p]) joinMask[p] = 1; }
   const toPx = (u: number, v: number) => {
     const [wx, wy] = imagePixelToWorld(hand, handImage, u, v);
     const [px, py] = worldToPixel(raster, wx, wy);
@@ -161,7 +166,7 @@ export function measureSeam(scene: Scene, images: Map<string, RgbaImage>, skelet
     if (x < 0 || y < 0 || x >= width || y >= height) continue;
     samples += 1;
     const p = y * width + x, who = raster.owner[p]!;
-    if (farMask[p] || farSet.has(who)) { joined += 1; marks.push({ x, y, rgb: [40, 220, 90] }); continue; }
+    if (joinMask[p] || joinSet.has(who)) { joined += 1; marks.push({ x, y, rgb: [40, 220, 90] }); continue; }
     exposed += 1;
     maxGap = Math.max(maxGap, distFar[p]! / scale);
     marks.push({ x, y, rgb: [235, 40, 40] });
@@ -201,7 +206,7 @@ export function measureSeam(scene: Scene, images: Map<string, RgbaImage>, skelet
   if (!far.length) reasons.push("远臂没有可见部件");
   if (missing.length) reasons.push(`远臂缺素材：${missing.join("、")}`);
   if (!cuff.length) reasons.push("手图接缝带内找不到腕部切口");
-  if (metrics.joinRatio < thresholds.minJoinRatio) reasons.push(`切口外侧接上远臂 ${(metrics.joinRatio * 100).toFixed(0)}% < ${(thresholds.minJoinRatio * 100).toFixed(0)}%（露出 ${exposed} 点，最大空档 ${maxGap.toFixed(1)}）`);
+  if (metrics.joinRatio < thresholds.minJoinRatio) reasons.push(`切口外侧接上远臂${spec.joinRootBone ? `（${spec.joinRootBone}）` : ""} ${(metrics.joinRatio * 100).toFixed(0)}% < ${(thresholds.minJoinRatio * 100).toFixed(0)}%（露出 ${exposed} 点，最大空档 ${maxGap.toFixed(1)}）`);
   if (metrics.gapPixels > thresholds.maxGapPixels) reasons.push(`手与远臂之间透底缝 ${metrics.gapPixels} px`);
   metrics.reasons = reasons;
   metrics.verdict = reasons.length ? "FAIL" : "PASS";
