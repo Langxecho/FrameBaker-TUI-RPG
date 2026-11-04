@@ -70,7 +70,7 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 | her1am3 | — | T03 握枪手 + StageC `FAR_C21C`（只显 live 透视残肢）→ 断腕 |
 | her1am3b | — | 额外 HIDE 轨 → `PREVIEW_RENDER_FAILED`。**退役** |
 | **her1am3c** | **1268→1274** | 当前：去掉 `FAR_C21C`，远臂 keepbase；support-hand rest `[1,1,1]` 已显示。T03c（rev 1339）只换了素材，没有改这个 clip；T03c 后腕口明显接不上 |
-| her1am3d | 未写 | 计划：`fix-wrist` 派生，只替换远臂两条旋转轨（§6 T03c） |
+| her1am3d | 未写 | 不再作为 clip 派生：G3 her1-hd 带双手 IK，clip 的远臂旋转被覆盖。`fix-wrist` 在 r1339 快照上搜过 her1 装备杠杆，自审 FAIL，结论**仍需画师新手**（§6 T03c）。tag 保留未用 |
 
 ### 3.3 铁桶接线（M2）现状
 
@@ -112,23 +112,34 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 
 ## 6. 美术包（按优先级）
 
-### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · **已入库，腕口 FAIL**（2026-11-04，rev 1339）
+### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · **已入库，腕口 FAIL，仍需画师新手**（2026-11-04，rev 1339）
 
 - 检查：v1、v2 FAIL（v1：103 半透明 / 47 描边断口；v2：77 / 48）。**v7 PASS_seam_exempt**：89×38，腕口豁免带 `intended_open_edge_band=[0,0,59,37]`，带外的外露半透明和描边断口都是 0。PSD md5 `4ffa0575…`。v3–v6 的检查结论没有回报。
 - 写入：ECHO 在 worktree `F:\CodeProject\FB-her1-run`（`origin/cursor/her1-cloud-handoff-7321`）上执行 check → `t03c --apply`。rev 1335→1336 首次 rematerialize；之后做过 drawOffset / 旧 pivot 试验，又恢复合同 pivot。当前 rev **1339**，live 快照一致。
 - 结果：`c34-g3-K02-p19v-p19y-her1` 与 `-her1-hd` 的 `:support-hand` 现为素材 **`e53e3c92`**（`hand_sup_g3_y-her1`），size **[178,76]**，pivot 为合同值 `[0.786517, 0.789474]`。live `59fc3f63` 未动。clip 仍是 her1am3c，没有接线。
-- 待核实：回报只确认 pivot 已恢复，support-hand 的 drawOffset 终值没有回报。下次 probe 时从工程文档核对，记入 `state.json` 的 `packs.T03c.landed.drawOffsetNote`。
+- drawOffset 终值：r1339 快照里 `-her1-hd` 的 `:support-hand` 为 0（与 gun-rigid 同层组 `rifle-hold`，主握手 1），rest 为单位变换，挂 `rifle-support`；`:p15-support` rest 隐藏 0.001。
 - 自审：**FAIL**。ECHO 复审 G3 五态，支撑手与远臂腕口明显接不上，不是残差级。早先“护木下支撑手在、接腕残差同 T03b”的结论作废。
-- 已核实（代码与历史记录，不依赖实机渲染）：
+- 已核实（代码与历史记录）：
   - 合同 pivot 换算正确：pivot_px `[70,8]`（自上）对应 FB 左下原点的 `[70/89, 30/38]`，手图内容与 T03b 同位，问题不在 support-hand 枢轴；
-  - `drawOffset` 只影响层序、不移动位置，drawOffset 试验修不了腕口；
-  - FB 预览不做双手 IK，远臂完全由 her1am3c 的 FK 摆位，支撑手刚性挂在 `rifle-support` socket；
-  - T03b-fix 前后前臂远端 x 都停在 594，her1am3c 从没把前臂送到支撑手位置。
-- 最可能的根因：接线。her1am3c 远臂两骨的姿势没对准 T03c 的腕口。次要可能是素材：腕口延伸的方向或宽度和远臂对不上。
-- 修法（runbook §6.1）：ECHO 只读 `snapshot`，云端用 `fix-wrist` 以 her1am3c 为基线求解 `her1am3d`（只替换远臂两条旋转轨）并离线自审，PASS 后 ECHO `apply-plan`。`fix-wrist` 会报前臂与腕口的夹角和宽度是否覆盖，据此判断要不要等画师的新手。`wire` 只管显隐，修不了位置。
-- 阻塞：云端还没拿到真实工程快照，未自渲、未写任何东西。her1am3d 不存在；live 未动。
+  - `drawOffset` 只影响层序、不移动位置，drawOffset 试验修不了腕口。
+- 快照 r1339-g3 离线自渲（ECHO 只读快照，分支 `her1/snapshot-r1339-g3`，未并入 PR）：`render` 52 帧 FAIL 52，`fix-wrist --tag her1am3d` 修前、修后都是 FAIL 52/52。
+- **更正**：早先写的“FB 预览不做双手 IK”是错的。`c34-g3-K02-p19v-p19y-her1-hd` 带 `secondaryHandConstraint` `c34-support-ik`（upper_arm_far → forearm_far → hand_far，目标 socket `rifle-support`，bend positive，mix 1，stretch forbid，alignEnd）。FB 预览把远臂解到 `secondaryGrip`，hand_far 的朝向跟枪走，clip 里远臂的旋转被整段覆盖，所以按 clip 派生 her1am3d 无效。离线渲染现已默认按同样的 IK 求解（`--ik weapon-align`）。
+- 根因（素材几何，不是接线）：
+  - IK 让前臂远端（hand_far 原点）停在指节 pivot 上（= `secondaryGrip` (140,−16)），每一帧都够得着；
+  - T03c 的腕口切口离 pivot 约 82 世界单位，切口朝手内方向固定是手图坐标 54°；
+  - 前臂进手方向（枪坐标系，0° = 沿枪管指向枪口）：idle 14°（13~15°），aim/fire 132°（130~143°），两组差 118°，一张刚性手图接不住；
+  - 修前：aim/fire 切口外侧接上远臂 0%、透底缝 12~36 px，腕口残肢插进上臂/肩；idle 前臂只露 2%（在躯干后），开口腕口浮在躯干上，透底缝 9~14 px。
+- 已排除的加性修法（不动 live）：
+  - her1 装备杠杆：指节沿枪管 ±40、垂直 ±12、手转 ±20°、两种 bend，最佳仍有 77° 夹角，而且手离开护木；离开枪身的大范围扫描也 ≥51°；
+  - 现有 p15 下托手：只有手不在枪上时角度才过关，不可用；
+  - clip 派生（her1am3d 旋转轨）：被 IK 覆盖。
+- 结论：**仍需画师新手**，两张刚性手图（规格见 `state.json` 的 `packs.T03c.wristFix.artSpec`）：
+  - 瞄准手（aim/fire，prepare/recover 后段）：腕口切口中心放在 pivot（= 前臂远端），切口朝枪坐标 −48°（前臂从前下方 132° 进手），袖口宽与前臂图末端一致，约 56 世界单位（2× 下约 28 原生 px），并沿前臂方向盖过前臂图末端（末端在 pivot 后 11）至少 4；
+  - 待机手（idle，prepare/recover 前段）：远臂前臂藏在躯干后，腕口不能开口，画收口袖口或把腕藏到枪身后（若要画延伸，方向 14°）；
+  - 两张都挂 `rifle-support`，rest 隐藏 0.001，按 `att:` scale 换显：prepare 约 t=0.21、recover 约 t=0.13 换手。
+- 自审：修前、修后的腕口特写与全身图都 FAIL，`plan.json` 判定 `needs-art`、无写入操作，没有推回 PR，也没有交 ECHO 写入。live 未动。
 
-### T10b（优先级 2，现为唯一待交包）— G1 手枪瞄准远侧前臂胸口托出 · 等画师
+### T10b（优先级 2）— G1 手枪瞄准远侧前臂胸口托出 · 等画师
 
 - 状态：`waiting-artist`，包已经交给对接师。尚无回稿。
 - 合同：必交 `att-p19x-forearm_far_foreshrt_g1aim`（**25×39** → 50×78，pivot `[0.298810, 0.823529]`）；可选手肘 `att-p19x-elbow_far_foreshrt_g1aim`（72×72 → 144×144，pivot 0.5/0.5）。大臂不在包里，继续被胸口挡住（STRIP）。目标剪影对照 `正确.jpg`：前臂从胸口后方托出到枪底。

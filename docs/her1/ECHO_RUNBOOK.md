@@ -64,7 +64,7 @@ bun run her1 t03c --input "<…>\T03c_支撑手.psd" --apply --expected-rev 1335
 
 apply 依次执行：再次 check（FAIL 即停）→ 连接核对 → revision 闸门 → 上传 PNG（metadata 带 sha256 与来源）→ `aic_apply_operations`（baseRevision + 幂等键 `her1-t03c-r<rev>-<hash>`）→ 重读文档，live 快照逐字节比对 → 写 `T03c-receipt.json` → 回写 `state.json`（`currentMaterial`、`currentSize`、`status=rematerialized-pending-self-qc`、`lastKnownRevision`）。
 
-T03c 默认不改 clip：her1am3c 已经显示 support-hand。ECHO 自审判定 T03c 后支撑手与远臂腕口明显接不上，按 §6.1 走快照 → 云端离线求解 → `apply-plan`；`wire` 只管显隐，修不了腕口位置。
+T03c 默认不改 clip：her1am3c 已经显示 support-hand。T03c 后支撑手与远臂腕口明显接不上。云端已在 r1339 快照上按 §6.1 自审，结论**仍需画师新手**（README §6 T03c）。新手图回稿之前不要写任何腕口修正；`wire` 只管显隐，修不了腕口位置。
 
 ## 4. T10b（优先级 2）：G1 透视前臂 rematerialize + 薄接线
 
@@ -114,7 +114,7 @@ bun run her1 call aic_render_preview --args render-g3-aim.json --out <预览目�
 
 ### 6.1 腕口修正：只读快照 → 云端离线求解 → `apply-plan`
 
-FB 预览不做双手 IK（`solveTwoBoneIk2d` 只用于诊断），远臂完全由 clip 的 FK 摆位，支撑手刚性挂在枪的 `rifle-support` socket 上。腕口接不上时，云端需要真实工程数据才能自渲自审，所以分三步：
+her1 装备带双手 IK `weapon.secondaryHandConstraint`（`c34-support-ik`：upper_arm_far → forearm_far → hand_far，mix 1，alignEnd）。FB 预览里远臂被解到 `secondaryGrip`，clip 的远臂旋转被覆盖；r1339 快照里 clip 的远臂在 t=0 是单位旋转，而 ECHO 的 `aic_render_preview` 参考图远臂举到枪上，只有按 IK 渲染才对得上。支撑手挂在 hand_far 的 `rifle-support` socket 上，朝向跟枪走。腕口接不上时，云端需要真实工程数据才能自渲自审，所以分三步：
 
 **① ECHO：只读快照（不写工程）**
 
@@ -134,15 +134,18 @@ bun run her1 render --snapshot docs/her1/snapshots/r1339-g3              # 现�
 bun run her1 fix-wrist --snapshot docs/her1/snapshots/r1339-g3 --tag her1am3d
 ```
 
-- 渲染语义与 FB 一致：部件世界矩阵 = 骨骼世界 × rest × `att:` 偏移；pivot 以图片左下为原点；装备附件 rest = socket.rest ∘ 附件 rest，挂在 socket 骨骼上；`drawOffset` 只影响层序；尊重 binding `attachmentVisibility`；不做 IK。
-- 腕口度量（`seam.json`）：手图接缝带内未描边的边界像素就是腕口切口。PASS 要求切口外侧至少 90% 落在远臂部件上，并且被手和远臂两面夹住的透底缝不超过 4 px。外轮廓凹角处的背景不算透底缝。叠加图里绿 = 接上，红 = 露出，黄 = 透底缝。
-- `fix-wrist` 对每个采样时刻求远臂上臂和前臂两个旋转增量，让前臂远端插进腕口 `--overlap` 个单位。两支肘向解里取前臂最顺着腕口方向进的那支，再逐采样烘焙成新 clip `…-clip-her1am3d`：只替换这两条旋转轨，支撑手轨和其它轨原样保留。修前修后用同一组时刻对照渲染，写出 `<phase>_before_after.png`，`plan.json` 里带 `selfQc`。
-- 根因判读：
-  - 修后 PASS：问题出在接线，也就是 clip 的远臂姿势没对准腕口，不需要画师。
-  - 修后残差小但前臂与腕口夹角大于 20°（备注「需对着画」），或前臂比腕口窄、切口外侧仍露出：问题出在素材，腕口延伸的方向或宽度和远臂对不上，需要画师。
-  - 备注「够不着」或「超过 N rad」：远臂长度或姿势差得太远，需要回到动作设计层面处理。
-  - 支撑手的 socket 挂在远臂链上时，脚本直接拒绝修，因为那种情况要改附件 rest 或 socket。
-- 云端逐张看 `after/*_wrist.png` 和全身图，按 `her1-fb-self-qc` 自审。自审通过才把 `plan.json` 推回 PR 分支；没通过就继续改，不交给 ECHO。
+- 渲染语义与 FB 一致：部件世界矩阵 = 骨骼世界 × rest × `att:` 偏移；pivot 以图片左下为原点；装备附件 rest = socket.rest ∘ 附件 rest，挂在 socket 骨骼上；`drawOffset` 只影响层序；尊重 binding `attachmentVisibility`。
+- 双手 IK（`--ik weapon-align`，默认）：目标 = 主握手 socket（语义 `weapon_hand_right`）× inv(`primaryGrip`) × `secondaryGrip`；两骨按子骨 rest 平移方向求解，`bendDirection` 定肘向，`stretch forbid` 不拉长；alignEnd 让 hand_far 的世界朝向等于枪的朝向。`--ik weapon` 不做 alignEnd，`--ik off` 只做 FK（只用于对照）。
+- 腕口度量（`seam.json`）：手图接缝带内未描边的边界像素就是腕口切口。PASS 要求切口外侧至少 90% 落在远臂前臂子树（`forearm_far` 及其下）的部件上，并且被手和远臂两面夹住的透底缝不超过 4 px。外轮廓凹角处的背景不算透底缝。叠加图里绿 = 接上，红 = 露出，黄 = 透底缝。
+- `fix-wrist` 先看装备：
+  - **装备带 IK、支撑手挂在 IK 链末端**（G3 her1 就是这样）：clip 的远臂旋转会被覆盖，脚本不改 clip，而是搜 her1 装备杠杆：指节沿枪管滑动、垂直抬落、手图旋转、bendDirection。每组杠杆都把 IK 目标放到腕口中心再往里 `--overlap`，并平移支撑手 rest 让指节留在原处。候选装备 id 为 `<基线装备>-<tag>`（例如 `…-her1-hd-her1am3d`），写出 `wristik-report.json`（逐帧前臂进手角、腕口夹角、够不着帧数、前臂可见度与末端宽度、画师规格）。
+  - **装备不带 IK**：沿用 clip 求解。逐采样求远臂上臂和前臂两个旋转增量，让前臂远端插进腕口 `--overlap` 个单位，取前臂最顺着腕口方向进的那支肘向解，烘焙成 `…-clip-<tag>`，只替换这两条旋转轨。支撑手的 socket 挂在远臂链上时直接拒绝。
+  - 两条路径都用同一组时刻（含参考图时刻）对照渲染修前/修后，写出 `<phase>_before_after.png`，`plan.json` 里带 `selfQc`、`verdict` 与 `verdictLabel`。
+- 结论（`plan.json` 的 `verdictLabel`）：
+  - **接线可修**：修后自审 PASS。IK 路径的计划只含一条 her1 `upsert-equipment`，clip 路径照旧是 `create-motion-clip` + `upsert-action`。
+  - **仍需画师新手**：IK 每帧都够得着，但没有杠杆能把前臂与腕口夹角压到 20° 以内，或切口外侧仍露出。脚本按相位分组打印画师规格：前臂进手角与腕口应朝方向（枪坐标系）、前臂可见度、前臂图末端宽度、需要几张手图、换显时刻。计划不含写入操作。
+  - **够不着**：IK 目标超出远臂长度（stretch forbid），要回到动作或装备设计层面处理。计划不含写入操作。
+- 云端逐张看 `after/*_wrist.png` 和全身图，按 `her1-fb-self-qc` 自审。只有自审 PASS、结论为「接线可修」时才把 `plan.json` 推回 PR 分支；否则继续改或按画师规格开包，不交给 ECHO。
 
 **③ ECHO：写入（默认 dry-run）**
 
@@ -152,7 +155,7 @@ bun run her1 apply-plan --plan <plan.json>                               # dry-r
 bun run her1 apply-plan --plan <plan.json> --apply --expected-rev <N>
 ```
 
-闸门：只允许 her1 的 `create-motion-clip` 和 `upsert-action`；`selfQc` 必须是 PASS；动作当前指针必须仍是计划的基线 clip，并且基线 clip 内容的 sha 与快照一致（快照之后有人改过就停止，重新快照）；revision 闸门和写后 live 快照比对与其它写命令相同。成功后写回执和 `wristfix-<tag>-revert-operations.json`，`state.json` 记 `clipTag` 或 `phaseClipTags` 与 revision。写入后照 §6 在 FB 里用 `aic_render_preview` 再自审一遍。live 切换仍然等 ECHO 决定。
+闸门：IK 计划（`mode: equipment-ik`）只允许一条 `upsert-equipment`，id 必须含 her1 且不同于基线装备，基线装备内容的 sha 必须与快照一致，候选 id 在工程里还不能存在；成功后候选 id 追加到 `guns.<枪>.her1Equipment`，装备的切换仍由 ECHO 决定。clip 计划只允许 her1 的 `create-motion-clip` 和 `upsert-action`。两种计划的 `selfQc` 都必须是 PASS（FAIL 时报错带上 `verdictLabel`）；clip 计划另要求动作当前指针必须仍是计划的基线 clip，并且基线 clip 内容的 sha 与快照一致（快照之后有人改过就停止，重新快照）；revision 闸门和写后 live 快照比对与其它写命令相同。成功后写回执和 `wristfix-<tag>-revert-operations.json`，`state.json` 记 `clipTag` 或 `phaseClipTags` 与 revision。写入后照 §6 在 FB 里用 `aic_render_preview` 再自审一遍。live 切换仍然等 ECHO 决定。
 
 ## 7. 回退与应急
 

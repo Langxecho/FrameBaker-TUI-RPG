@@ -102,7 +102,7 @@
     "T03c": {
       "title": "T03c 冲锋枪（MP-9，K02）更大画布支撑手",
       "priority": 1,
-      "status": "landed-wrist-fail",
+      "status": "landed-needs-art",
       "gun": "G3",
       "dir": "docs/her1/packs/T03c",
       "echoPackDir": "01_待改/T03c_冲锋枪更大支撑手_g3",
@@ -126,21 +126,37 @@
         "equipment": ["c34-g3-K02-p19v-p19y-her1", "c34-g3-K02-p19v-p19y-her1-hd"],
         "clip": "her1am3c（未接线）",
         "liveSnapshot": "一致",
-        "drawOffsetNote": "回报只确认 pivot 已恢复合同值；support-hand 的 drawOffset 终值未回报，下次 probe 时从工程文档核对并记入此处",
+        "drawOffsetNote": "r1339 快照：-her1-hd 的 :support-hand drawOffset 0（drawGroup rifle-hold，主握手 1），rest 单位变换，挂 rifle-support；:p15-support rest 隐藏 0.001",
         "selfQc": "ECHO 复审 FAIL：支撑手与远臂腕口明显接不上（不是残差级）；早先“护木下支撑手在、接腕残差同 T03b”的结论作废"
       },
       "wristFix": {
-        "status": "blocked-need-snapshot",
-        "verdict": "FAIL（ECHO 自渲判定；云端尚未拿到真实工程，未自渲）",
+        "status": "needs-art",
+        "verdict": "仍需画师新手",
+        "snapshot": { "branch": "her1/snapshot-r1339-g3", "path": "docs/her1/snapshots/r1339-g3", "revision": 1339, "mergedIntoPr": false },
+        "selfQc": "FAIL：render 52/52 FAIL；fix-wrist --tag her1am3d 修前 52/52、修后 52/52 FAIL。aim/fire 腕口残肢插进上臂/肩，切口外侧接上远臂 0%，透底缝 12~36 px；idle 开口腕口浮在躯干上（前臂在躯干后，只露 2%），透底缝 9~14 px；最佳杠杆修后手离开护木",
         "verifiedFacts": [
           "合同 pivot 换算正确：native 89×38、pivot_px [70,8]（自上）= FB pivot [70/89, 30/38]（左下原点），手图内容与 T03b 同位，问题不在 support-hand 枢轴",
           "drawOffset 只影响层序、不移动位置，drawOffset 试验修不了腕口",
-          "FB 预览不做双手 IK（solveTwoBoneIk2d 只用于诊断）：远臂完全由 her1am3c 的 FK 摆位，支撑手刚性挂在 rifle-support socket",
-          "T03b-fix 前后远臂前臂远端 x 都停在 594：her1am3c 没把前臂送到支撑手位置"
+          "更正：FB 预览做双手 IK。所有 her1 装备（G1/G3/G4/G5 及 -hd）都带 secondaryHandConstraint c34-support-ik：upper_arm_far→forearm_far→hand_far，targetSocket rifle-support，bendDirection positive，mix 1，stretch forbid，alignEnd。clip 的远臂旋转被覆盖，按 clip 派生 her1am3d 无效",
+          "IK 目标 = 主握手 socket（rifle-main）× inv(primaryGrip) × secondaryGrip (140,−16)；alignEnd 让 hand_far 朝向等于枪的朝向；每帧都够得着",
+          "前臂远端停在指节 pivot 上；T03c 腕口切口中心离 pivot 约 82 世界单位，切口朝手内 54°（手图坐标）",
+          "前臂进手方向（枪坐标系，0° 沿枪管指向枪口）：idle 14°（13~15°，肩到握点 184），aim/fire 132°（130~143°，肩到握点 85），两组差 118°",
+          "前臂可见度：idle 2%（在躯干后），aim 64%；前臂图末端离 pivot 11、宽约 56 世界单位",
+          "her1 装备杠杆搜索（指节沿枪管 ±40 / 垂直 ±12 / 手转 ±20° / 两种 bend）：基线最大夹角 119°，最佳 77°（> 20° 上限），且手离开护木；离开枪身的大范围扫描仍 ≥51°",
+          "现有 p15 下托手只有手不在枪上时角度才过关，不可用"
         ],
-        "likelyCause": "接线：her1am3c 的远臂（upper_arm_far / forearm_far）姿势没对准 T03c 腕口。次要可能是腕口延伸方向或宽度与远臂对不上（素材问题）；fix-wrist 的夹角与宽度度量能区分两者",
-        "plan": "ECHO 跑只读 snapshot（runbook §6.1 ①）→ 云端 render + fix-wrist 求 her1am3d 并自审 → 自审 PASS 后 ECHO apply-plan",
+        "cause": "素材几何：一张刚性手图的腕口方向固定（54°、离 pivot 82），而 IK 下前臂按相位以 14° 或 132° 进手，并停在 pivot 上；不是接线问题，现有资产上没有加性解",
+        "artSpec": {
+          "angleFrame": "枪坐标系：0° = 沿枪管指向枪口，90° = 垂直枪管朝上；支撑手随枪转（alignEnd）",
+          "anchor": "腕口切口中心 = pivot = 前臂远端 = secondaryGrip；指节/手指向枪身延伸",
+          "sprites": [
+            { "role": "aim", "phases": ["aim", "fire", "prepare 后段", "recover 前段"], "forearmInDeg": 132, "forearmInRangeDeg": [130, 143], "cutOutwardDeg": -48, "forearmVisiblePct": 64, "cuffWidthWorld": 56, "overlapWorld": 4, "note": "腕口沿前臂方向盖过前臂图末端（pivot 后 11）至少 4，宽度与前臂末端一致" },
+            { "role": "idle", "phases": ["idle", "prepare 前段", "recover 后段"], "forearmInDeg": 14, "forearmInRangeDeg": [13, 15], "cutOutwardDeg": -166, "forearmVisiblePct": 2, "note": "前臂藏在躯干后：腕口不能开口，画收口袖口或把腕藏到枪身后" }
+          ],
+          "swap": { "method": "两张都挂 rifle-support，rest 隐藏 0.001，按 att: scale 换显", "prepareAt": 0.21, "recoverAt": 0.13 }
+        },
         "newTag": "her1am3d",
+        "planPushed": false,
         "written": false
       },
       "sprites": [
@@ -160,7 +176,7 @@
       ],
       "wiring": {
         "default": "none",
-        "note": "已落地（rev 1339），her1am3c 未改。腕口接不上：用 fix-wrist 以 her1am3c 为基线派生 her1am3d（只替换远臂两条旋转轨），见 runbook §6.1；wire 只管显隐，修不了位置。",
+        "note": "已落地（rev 1339），her1am3c 未改。远臂由装备 IK c34-support-ik 驱动，改 clip 无效；r1339 快照上 fix-wrist 自审 FAIL，结论仍需画师新手（wristFix.artSpec）。新手图回稿后按 att: scale 换显接线，wire 只管显隐。",
         "baseClipTag": "her1am3c",
         "suggestedTag": "her1am3d"
       }
