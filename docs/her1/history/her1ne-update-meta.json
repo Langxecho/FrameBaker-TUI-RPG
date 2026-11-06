@@ -1,0 +1,148 @@
+{
+ "revision_before": 337,
+ "mode": "apply",
+ "tag": "her1ne",
+ "elbows_near_created": {
+  "att-p19y-elbow_near-c21-p45-her1": {
+   "src_template": "att-cap_near",
+   "drawOrder": 2174,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "6e1e888b-d9ea-4504-81f0-1014e58f7b22",
+   "native": [
+    72,
+    72
+   ],
+   "angle": 45,
+   "label_zh": "伸直一点"
+  },
+  "att-p19y-elbow_near-c21-p65-her1": {
+   "src_template": "att-cap_near",
+   "drawOrder": 2176,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "5c789c82-c217-43c4-a886-799b05878e5d",
+   "native": [
+    72,
+    72
+   ],
+   "angle": 65,
+   "label_zh": "弯一点"
+  },
+  "att-p19y-elbow_near-c21-p75-her1": {
+   "src_template": "att-cap_near",
+   "drawOrder": 2177,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "06e9cb66-54f2-4d85-b470-67d7fd236983",
+   "native": [
+    72,
+    72
+   ],
+   "angle": 75,
+   "label_zh": "中弯"
+  },
+  "att-p19y-elbow_near-c21-p90-her1": {
+   "src_template": "att-cap_near",
+   "drawOrder": 2178,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "a5ac1740-e617-4e54-bb24-fe84ed170837",
+   "native": [
+    72,
+    72
+   ],
+   "angle": 90,
+   "label_zh": "直角"
+  },
+  "att-p19y-elbow_near-c21-p105-her1": {
+   "src_template": "att-cap_near",
+   "drawOrder": 2179,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "61fe82cf-6bb1-4d66-9084-1e1a307fb9f3",
+   "native": [
+    72,
+    72
+   ],
+   "angle": 105,
+   "label_zh": "弯很深"
+  },
+  "att-p19y-elbow_near-c21-p120-her1": {
+   "src_template": "att-cap_near",
+   "drawOrder": 2181,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "42d58db7-ad9a-42a8-9737-90a92528ca2d",
+   "native": [
+    72,
+    72
+   ],
+   "angle": 120,
+   "label_zh": "最弯"
+  }
+ },
+ "mats": {
+  "att-p19y-elbow_near-c21-p45-her1": "6e1e888b-d9ea-4504-81f0-1014e58f7b22",
+  "att-p19y-elbow_near-c21-p65-her1": "5c789c82-c217-43c4-a886-799b05878e5d",
+  "att-p19y-elbow_near-c21-p75-her1": "06e9cb66-54f2-4d85-b470-67d7fd236983",
+  "att-p19y-elbow_near-c21-p90-her1": "a5ac1740-e617-4e54-bb24-fe84ed170837",
+  "att-p19y-elbow_near-c21-p105-her1": "61fe82cf-6bb1-4d66-9084-1e1a307fb9f3",
+  "att-p19y-elbow_near-c21-p120-her1": "42d58db7-ad9a-42a8-9737-90a92528ca2d"
+ },
+ "template": "att-cap_near",
+ "note": "ADD only; clip wiring M2",
+ "elbow_near_drawOrders": {
+  "45": 2174,
+  "65": 2176,
+  "75": 2177,
+  "90": 2178,
+  "105": 2179,
+  "120": 2181
+ },
+ "revision_after": 338,
+ "mats_short": {
+  "att-p19y-elbow_near-c21-p45-her1": "6e1e888b",
+  "att-p19y-elbow_near-c21-p65-her1": "5c789c82",
+  "att-p19y-elbow_near-c21-p75-her1": "06e9cb66",
+  "att-p19y-elbow_near-c21-p90-her1": "a5ac1740",
+  "att-p19y-elbow_near-c21-p105-her1": "61fe82cf",
+  "att-p19y-elbow_near-c21-p120-her1": "42d58db7"
+ }
+}

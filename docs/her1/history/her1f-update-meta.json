@@ -1,0 +1,116 @@
+{
+  "tag": "her1f",
+  "rev_before": 447,
+  "rev_after_clips": 448,
+  "rev_after_acts": 449,
+  "root_cause_render_fail": [
+    "scale 0.001 on existing animated live tracks (value < ~0.15) \u2192 PREVIEW_RENDER_FAILED",
+    "scale 0.001 on her1 iron elbow clip tracks \u2192 PREVIEW_RENDER_FAILED (rest 0.001 OK if no clip track)",
+    "scale 0.001 on att-shoulder_cap_near-redraw1 \u2192 PREVIEW_RENDER_FAILED"
+  ],
+  "fix": {
+    "hide_live": "translation [5000,5000,0]",
+    "caps_safe": "scale 0.001 for cap_near/far/shoulder_cap_near",
+    "caps_redraw1": "translation far",
+    "iron_elbows": "scale 1000 all 12 + translation origin/far per schedule",
+    "knees": "g1-her1 scale 1000; bend/g2-5 left at binding rest"
+  },
+  "schedules": {
+    "idle": [
+      {
+        "t": 0.0,
+        "near": 105,
+        "far": 105
+      }
+    ],
+    "prepare": [
+      {
+        "t": 0.0,
+        "near": 105,
+        "far": 105
+      },
+      {
+        "t": 0.03,
+        "near": 105,
+        "far": 120
+      },
+      {
+        "t": 0.09,
+        "near": 90,
+        "far": 105
+      },
+      {
+        "t": 0.12,
+        "near": 75,
+        "far": 90
+      },
+      {
+        "t": 0.15,
+        "near": 65,
+        "far": 75
+      },
+      {
+        "t": 0.18,
+        "near": 45,
+        "far": 75
+      },
+      {
+        "t": 0.21,
+        "near": 45,
+        "far": 65
+      },
+      {
+        "t": 0.299,
+        "near": 45,
+        "far": 65
+      }
+    ],
+    "aim": [
+      {
+        "t": 0.0,
+        "near": 45,
+        "far": 65
+      },
+      {
+        "t": 2.399,
+        "near": 45,
+        "far": 65
+      }
+    ],
+    "fire": [
+      {
+        "t": 0.0,
+        "near": 45,
+        "far": 65
+      },
+      {
+        "t": 0.299,
+        "near": 45,
+        "far": 65
+      }
+    ],
+    "recover": [
+      {
+        "t": 0.0,
+        "near": 45,
+        "far": 65
+      },
+      {
+        "t": 0.15,
+        "near": 75,
+        "far": 90
+      },
+      {
+        "t": 0.2,
+        "near": 90,
+        "far": 105
+      },
+      {
+        "t": 0.499,
+        "near": 105,
+        "far": 105
+      }
+    ]
+  },
+  "note": "her1b still has broken her1hl/her1m2 keys; her1bt retargeted to *-clip-her1f. Live/art01/art02 untouched."
+}

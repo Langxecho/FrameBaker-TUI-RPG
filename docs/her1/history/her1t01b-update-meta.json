@@ -1,0 +1,57 @@
+{
+  "tag": "her1t01b",
+  "clip_tag": "her1am_c21k",
+  "supersedes_clip_tag": "her1am_c21j",
+  "revision_equip_add": 1256,
+  "revision_c21j_partial_end": 1262,
+  "revision_c21j_bind": 1277,
+  "revision_before_c21k": 1287,
+  "revision_after": 1296,
+  "budget_after": 124,
+  "equipment_targets": [
+    "c34-g1-K05-p19y-her1",
+    "c34-g1-K05-p19y-her1-hd"
+  ],
+  "attachment_new": "c34-g1-K05-p19y-her1:p15-idle-support",
+  "new_idle_materialId": "56d4bc2e-8e24-461f-91ef-127fe5442c57",
+  "new_idle_mat_short": "56d4bc2e",
+  "attachment_kept_aim": "c34-g1-K05-p19y-her1:p15-support",
+  "p15_mat_short": "2143d7ba",
+  "size": [60, 54],
+  "pivot": [0.26666666666666666, 0.7037037037037037],
+  "native": [30, 27],
+  "png": "hand_sup_g1_idle_y-her1.png",
+  "socket": "rifle-support",
+  "live_untouched": true,
+  "g3_untouched": true,
+  "g3_clip_tag": "her1am3c",
+  "her1bt_bound": {
+    "idle": "c34-g1:idle-clip-her1am_c21k",
+    "prepare": "c34-g1:prepare-clip-her1am_c21k",
+    "aim": "c34-g1:aim-clip-her1am_c21k",
+    "fire": "c34-g1:fire-clip-her1am_c21k",
+    "recover": "c34-g1:recover-clip-her1am_c21k",
+    "cancel": "c34-g1:cancel-clip-her1am_c21k",
+    "hit": "c34-g1:hit-clip-her1am_c21k",
+    "enter": "c34-g1:enter-clip-her1am_c21k"
+  },
+  "recipe": {
+    "idle": "HIDE p15 + SHOW idle-support[1000] + HIDE forearm/upper/cap_far + STRIP elbow_far-p78",
+    "prepare": "HIDE p15 + SHOW idle-support keepbase",
+    "aim/fire/recover": "SHOW p15 scale[1,1,1] + STRIP idle-support (rest HIDE)",
+    "cancel/hit/enter": "HIDE p15 + STRIP idle-support",
+    "raster_note": "upsert HIDE on p15-idle-support → PREVIEW_RENDER_FAILED; use STRIP"
+  },
+  "previews": {
+    "box": "/workspace/art/pkg/03_效果预览/her1_t01b_idle/",
+    "handoff": "/workspace/uploads/art_handoff_v2/03_效果预览/her1_t01b_idle/",
+    "echo": "E:\\CodexBuild\\demo-final-20261015\\phase15\\p19\\her1\\render\\her1_t01b_idle\\"
+  },
+  "artist_source": "/workspace/uploads/art_handoff_v2/_check_手_T01b_v1/T01b_待机远侧手_在这里画.png",
+  "selfcheck": {
+    "idle_relaxed_hand": true,
+    "aim_keeps_p15_fist": true,
+    "live_untouched": true,
+    "g3_untouched": true
+  }
+}

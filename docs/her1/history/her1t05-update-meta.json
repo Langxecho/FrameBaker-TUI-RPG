@@ -1,0 +1,108 @@
+{
+ "revision_before": 341,
+ "mode": "apply",
+ "tag": "her1t05",
+ "source_equipment": "c34-g5-K07-p19y",
+ "new_equipment": "c34-g5-K07-p19y-her1",
+ "materials_uploaded": {
+  "p19/her1/stage/hand_fire_g5_y-her1.png": "39ce659b-2156-4107-88f0-970fdf2b4b4c",
+  "p19/her1/stage/hand_sup_g5_y-her1.png": "38b6ea32-4f60-4bab-8a32-9f7cfbd82ba9"
+ },
+ "hand_materialIds": {
+  "fire": "39ce659b-2156-4107-88f0-970fdf2b4b4c",
+  "support": "38b6ea32-4f60-4bab-8a32-9f7cfbd82ba9"
+ },
+ "hand_mats_short": {
+  "fire": "39ce659b",
+  "support": "38b6ea32"
+ },
+ "attachment_map": {
+  "c34-g5-K07-p19y:gun-rigid": "c34-g5-K07-p19y-her1:gun-rigid",
+  "c34-g5-K07-p19y:grip-hand": "c34-g5-K07-p19y-her1:grip-hand",
+  "c34-g5-K07-p19y:support-hand": "c34-g5-K07-p19y-her1:support-hand",
+  "c34-g5-K07-p19y:p15-support": "c34-g5-K07-p19y-her1:p15-support"
+ },
+ "attachment_detail": {
+  "c34-g5-K07-p19y-her1:gun-rigid": {
+   "from": "c34-g5-K07-p19y:gun-rigid",
+   "role": "gun-rigid",
+   "materialId": "e5a5436f-1a87-4bb2-a416-b185493e36b2",
+   "size": [
+    604,
+    132
+   ],
+   "pivot": [
+    0.271523178807947,
+    0.696969696969697
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g5-K07-p19y-her1:grip-hand": {
+   "from": "c34-g5-K07-p19y:grip-hand",
+   "role": "fire",
+   "materialId": "39ce659b-2156-4107-88f0-970fdf2b4b4c",
+   "size": [
+    64,
+    78
+   ],
+   "pivot": [
+    0.3125,
+    1.0
+   ],
+   "native": [
+    32,
+    39
+   ],
+   "png": "hand_fire_g5_y-her1.png",
+   "kept_clone_material": false
+  },
+  "c34-g5-K07-p19y-her1:support-hand": {
+   "from": "c34-g5-K07-p19y:support-hand",
+   "role": "support",
+   "materialId": "38b6ea32-4f60-4bab-8a32-9f7cfbd82ba9",
+   "size": [
+    62,
+    56
+   ],
+   "pivot": [
+    0.6774193548387096,
+    1.0
+   ],
+   "native": [
+    31,
+    28
+   ],
+   "png": "hand_sup_g5_y-her1.png",
+   "kept_clone_material": false
+  },
+  "c34-g5-K07-p19y-her1:p15-support": {
+   "from": "c34-g5-K07-p19y:p15-support",
+   "role": "p15-support",
+   "materialId": "72b1b2d5-6e07-4315-9c6a-a8dfde0e6e5a",
+   "size": [
+    115,
+    112
+   ],
+   "pivot": [
+    0.22185117733627635,
+    0.8647783549783566
+   ],
+   "kept_clone_material": true
+  }
+ },
+ "policy": {
+  "additive_only": true,
+  "upload_hands_only": true,
+  "keep_gun_rigid_material": true,
+  "keep_p15_support_material": true,
+  "no_live_mutate": true,
+  "no_clips_actions_pointer": true,
+  "leave_her1t03_her1t04_alone": true,
+  "live_att_prefix": "c34-g5-K07-p19y:",
+  "note_task_json_prefix_was": "c34-g5-K07: (shorter — NOT used; followed LIVE)",
+  "serial_note": "T03–T05 hand serial completes with her1t05"
+ },
+ "artist_source": "/workspace/uploads/art_handoff_v2/_check_手_T05_v1/export/",
+ "expected_rev": 341,
+ "revision_after": 342
+}

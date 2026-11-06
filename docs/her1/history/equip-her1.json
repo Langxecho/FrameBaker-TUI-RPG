@@ -1,0 +1,32 @@
+{
+ "revision_before": 331,
+ "equipment": "c34-g1-K05-p19y-her1",
+ "source_equipment": "c34-g1-K05-p19y",
+ "materials": {
+  "p19/her1/stage/gun_K05-her1.png": "61daedcd-4e9f-4766-9e02-9e6f0691f2b4",
+  "p19/her1/stage/hand_fire_g1_y-her1.png": "90fe3e87-20c3-4b43-baa1-1564021e3aef",
+  "p19/her1/stage/hand_sup_g1_y-her1.png": "2143d7ba-5315-4bd1-b333-728427c85a9c"
+ },
+ "attachment_map": {
+  "c34-g1-K05-p19y:gun-rigid": "c34-g1-K05-p19y-her1:gun-rigid",
+  "c34-g1-K05-p19y:grip-hand": "c34-g1-K05-p19y-her1:grip-hand",
+  "c34-g1-K05-p19y:p13g1-grip-f036": "c34-g1-K05-p19y-her1:p13g1-grip-f036",
+  "c34-g1-K05-p19y:p13g1-grip-f040": "c34-g1-K05-p19y-her1:p13g1-grip-f040",
+  "c34-g1-K05-p19y:p13g1-grip-f041": "c34-g1-K05-p19y-her1:p13g1-grip-f041",
+  "c34-g1-K05-p19y:p13g1-grip-f042": "c34-g1-K05-p19y-her1:p13g1-grip-f042",
+  "c34-g1-K05-p19y:p13g1-grip-f043": "c34-g1-K05-p19y-her1:p13g1-grip-f043",
+  "c34-g1-K05-p19y:p13g1-grip-f044": "c34-g1-K05-p19y-her1:p13g1-grip-f044",
+  "c34-g1-K05-p19y:p13g1-grip-f046": "c34-g1-K05-p19y-her1:p13g1-grip-f046",
+  "c34-g1-K05-p19y:p13g1-grip-f048": "c34-g1-K05-p19y-her1:p13g1-grip-f048",
+  "c34-g1:legacy-grip-hand": "c34-g1:legacy-grip-hand-her1",
+  "c34-g1:p13g1s-grip-f036": "c34-g1:p13g1s-grip-f036-her1",
+  "c34-g1:p13g1s-grip-f040": "c34-g1:p13g1s-grip-f040-her1",
+  "c34-g1:p13g1s-grip-f041": "c34-g1:p13g1s-grip-f041-her1",
+  "c34-g1:p13g1s-grip-f042": "c34-g1:p13g1s-grip-f042-her1",
+  "c34-g1:p13g1s-grip-f043": "c34-g1:p13g1s-grip-f043-her1",
+  "c34-g1:p13g1s-grip-f044": "c34-g1:p13g1s-grip-f044-her1",
+  "c34-g1:p13g1s-grip-f046": "c34-g1:p13g1s-grip-f046-her1",
+  "c34-g1:p13g1s-grip-f048": "c34-g1:p13g1s-grip-f048-her1",
+  "c34-g1-K05-p19y:p15-support": "c34-g1-K05-p19y-her1:p15-support"
+ }
+}

@@ -1,0 +1,136 @@
+{
+ "revision_before": 1252,
+ "mode": "apply",
+ "tag": "her1t03b",
+ "equipment_targets": [
+  "c34-g3-K02-p19v-p19y-her1",
+  "c34-g3-K02-p19v-p19y-her1-hd"
+ ],
+ "attachment": "c34-g3-K02-p19v-p19y-her1:support-hand",
+ "old_support_mats_short": {
+  "c34-g3-K02-p19v-p19y-her1": "3593cf75",
+  "c34-g3-K02-p19v-p19y-her1-hd": "3593cf75"
+ },
+ "new_support_materialId": "55fec0ec-2beb-443e-87f5-46e5b60fa6b4",
+ "new_support_mat_short": "55fec0ec",
+ "size": [
+  58,
+  62
+ ],
+ "pivot": [
+  0.3448275862068966,
+  0.967741935483871
+ ],
+ "native": [
+  29,
+  31
+ ],
+ "png": "hand_sup_g3_y-her1.png",
+ "patched": [
+  {
+   "equip": "c34-g3-K02-p19v-p19y-her1",
+   "att": "c34-g3-K02-p19v-p19y-her1:support-hand",
+   "old_short": "3593cf75",
+   "new_short": "55fec0ec"
+  },
+  {
+   "equip": "c34-g3-K02-p19v-p19y-her1-hd",
+   "att": "c34-g3-K02-p19v-p19y-her1:support-hand",
+   "old_short": "3593cf75",
+   "new_short": "55fec0ec"
+  }
+ ],
+ "policy": {
+  "rematerialize_only": true,
+  "no_reclone": true,
+  "no_live_mutate": true,
+  "live_untouched": true,
+  "no_grip_gun_p15_change": true,
+  "clip_show_changes": false,
+  "note": "T03b redraw of support hand; her1 + her1-hd share att id string"
+ },
+ "live_support_mat_before": "59fc3f63-57ed-49e1-aed6-cf52d9634ce2",
+ "artist_source": "/workspace/uploads/art_handoff_v2/_check_手_T03b_v1/T03b_支撑手_在这里画.png",
+ "expected_rev": 1252,
+ "revision_after": 1253,
+ "live_support_mat_after": "59fc3f63-57ed-49e1-aed6-cf52d9634ce2",
+ "eq_after_detail": {
+  "c34-g3-K02-p19v-p19y-her1": [
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:gun-rigid",
+    "mat_short": "149134cb",
+    "size": [
+     332,
+     116
+    ]
+   },
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:grip-hand",
+    "mat_short": "7c417ebc",
+    "size": [
+     64,
+     78
+    ]
+   },
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:support-hand",
+    "mat_short": "55fec0ec",
+    "size": [
+     58,
+     62
+    ]
+   },
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:p15-support",
+    "mat_short": "72b1b2d5",
+    "size": [
+     115,
+     112
+    ]
+   }
+  ],
+  "c34-g3-K02-p19v-p19y-her1-hd": [
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:gun-rigid",
+    "mat_short": "149134cb",
+    "size": [
+     332,
+     116
+    ]
+   },
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:grip-hand",
+    "mat_short": "7c417ebc",
+    "size": [
+     64,
+     78
+    ]
+   },
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:support-hand",
+    "mat_short": "55fec0ec",
+    "size": [
+     58,
+     62
+    ]
+   },
+   {
+    "id": "c34-g3-K02-p19v-p19y-her1:p15-support",
+    "mat_short": "72b1b2d5",
+    "size": [
+     115,
+     112
+    ]
+   }
+  ]
+ },
+ "live_untouched": true,
+ "clip_show_changes_needed": false,
+ "clip_tag_her1bt": "her1am3",
+ "budget_left_after_apply": 167,
+ "self_check": {
+  "support_hand_on_handguard": true,
+  "known_far_arm_wrist_gap": true,
+  "note": "support hand visible on foregrip; forearm-to-hand gap is known unrelated issue"
+ }
+}

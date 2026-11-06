@@ -1,0 +1,40 @@
+{
+ "revision_before": 1268,
+ "revision_after": 1274,
+ "tag": "her1am3c",
+ "failed_tag": "her1am3b",
+ "failed_reason": "extra HIDE tracks on c21c/p15-equip caused PREVIEW_RENDER_FAILED; her1am3c = her1am3 minus FAR_C21C only",
+ "root_cause": "H1",
+ "live_support_mat": "59fc3f63",
+ "her1_support_mat": "55fec0ec",
+ "live_untouched": true,
+ "policy": {
+  "her1_only": true,
+  "no_rematerialize": true,
+  "keepbase_far_arms": true,
+  "drop_FAR_C21C": true
+ },
+ "nz": {
+  "before_aim": 75524,
+  "after_aim": 77835,
+  "after_fire": 77945,
+  "live_aim": 75909
+ },
+ "flesh_gun_band": {
+  "before": 11001,
+  "after": 12958,
+  "live": 11503,
+  "gained_vs_before": 2188,
+  "note": "gain concentrated in shoulder↔stump band; distal tip x unchanged at 594"
+ },
+ "self_review": {
+  "inner_far_arm": "improved",
+  "wrist_join": "partial_residual_gap",
+  "hand_size": "unfixed_needs_artist_larger_canvas",
+  "claim_fully_fixed": false
+ },
+ "budget_left": 146,
+ "t01b": "paused_not_resumed",
+ "preview_pkg": "/workspace/art/pkg/03_效果预览/her1_t03b_fix/",
+ "preview_handoff": "/workspace/uploads/art_handoff_v2/03_效果预览/her1_t03b_fix/"
+}

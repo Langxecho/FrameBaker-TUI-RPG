@@ -1,0 +1,106 @@
+{
+ "revision_before": 339,
+ "mode": "apply",
+ "tag": "her1t03",
+ "source_equipment": "c34-g3-K02-p19v-p19y",
+ "new_equipment": "c34-g3-K02-p19v-p19y-her1",
+ "materials_uploaded": {
+  "p19/her1/stage/hand_fire_g3_y-her1.png": "7c417ebc-9a98-408c-a2a6-e21bbe4c35b6",
+  "p19/her1/stage/hand_sup_g3_y-her1.png": "3593cf75-be25-49d2-838e-9a52f70e7656"
+ },
+ "hand_materialIds": {
+  "grip-hand": "7c417ebc-9a98-408c-a2a6-e21bbe4c35b6",
+  "support-hand": "3593cf75-be25-49d2-838e-9a52f70e7656"
+ },
+ "hand_mats_short": {
+  "grip-hand": "7c417ebc",
+  "support-hand": "3593cf75"
+ },
+ "attachment_map": {
+  "c34-g3-K02-p19v-p19y:gun-rigid": "c34-g3-K02-p19v-p19y-her1:gun-rigid",
+  "c34-g3-K02-p19v-p19y:grip-hand": "c34-g3-K02-p19v-p19y-her1:grip-hand",
+  "c34-g3-K02-p19v-p19y:support-hand": "c34-g3-K02-p19v-p19y-her1:support-hand",
+  "c34-g3-K02-p19v-p19y:p15-support": "c34-g3-K02-p19v-p19y-her1:p15-support"
+ },
+ "attachment_detail": {
+  "c34-g3-K02-p19v-p19y-her1:gun-rigid": {
+   "from": "c34-g3-K02-p19v-p19y:gun-rigid",
+   "role": "gun-rigid",
+   "materialId": "149134cb-e279-4679-9bb1-0b48b30addf2",
+   "size": [
+    332,
+    116
+   ],
+   "pivot": [
+    0.3373493975903614,
+    0.6206896551724138
+   ],
+   "kept_clone_material": true
+  },
+  "c34-g3-K02-p19v-p19y-her1:grip-hand": {
+   "from": "c34-g3-K02-p19v-p19y:grip-hand",
+   "role": "grip-hand",
+   "materialId": "7c417ebc-9a98-408c-a2a6-e21bbe4c35b6",
+   "size": [
+    64,
+    78
+   ],
+   "pivot": [
+    0.34375,
+    1.0
+   ],
+   "native": [
+    32,
+    39
+   ],
+   "png": "hand_fire_g3_y-her1.png",
+   "kept_clone_material": false
+  },
+  "c34-g3-K02-p19v-p19y-her1:support-hand": {
+   "from": "c34-g3-K02-p19v-p19y:support-hand",
+   "role": "support-hand",
+   "materialId": "3593cf75-be25-49d2-838e-9a52f70e7656",
+   "size": [
+    58,
+    62
+   ],
+   "pivot": [
+    0.3448275862068966,
+    0.967741935483871
+   ],
+   "native": [
+    29,
+    31
+   ],
+   "png": "hand_sup_g3_y-her1.png",
+   "kept_clone_material": false
+  },
+  "c34-g3-K02-p19v-p19y-her1:p15-support": {
+   "from": "c34-g3-K02-p19v-p19y:p15-support",
+   "role": "p15-support",
+   "materialId": "72b1b2d5-6e07-4315-9c6a-a8dfde0e6e5a",
+   "size": [
+    115,
+    112
+   ],
+   "pivot": [
+    0.22185117733627635,
+    0.8647783549783566
+   ],
+   "kept_clone_material": true
+  }
+ },
+ "policy": {
+  "additive_only": true,
+  "upload_hands_only": true,
+  "keep_gun_rigid_material": true,
+  "keep_p15_support_material": true,
+  "no_live_mutate": true,
+  "no_clips_actions_pointer": true,
+  "live_att_prefix": "c34-g3-K02-p19v-p19y:",
+  "note_task_json_prefix_was": "c34-g3-K02-p19v: (shorter — NOT used; followed LIVE)"
+ },
+ "artist_source": "/workspace/uploads/art_handoff_v2/_check_手_T03_v1/export/",
+ "expected_rev": 339,
+ "revision_after": 340
+}

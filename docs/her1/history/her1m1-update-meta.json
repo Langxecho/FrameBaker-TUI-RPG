@@ -1,0 +1,172 @@
+{
+ "revision_before": 335,
+ "revision_after": 336,
+ "mode": "apply",
+ "tag": "her1m1",
+ "mats": {
+  "att-p19y-elbow_far-c21-p45-her1": "75a70071-5e28-4b2f-abe3-57b072ad0e99",
+  "att-p19y-elbow_far-c21-p65-her1": "9d32713d-f94e-4a66-a790-228ebfe2a87d",
+  "att-p19y-elbow_far-c21-p75-her1": "67dcda71-0303-4c56-b77b-04bcbb52f0c4",
+  "att-p19y-elbow_far-c21-p90-her1": "3039b867-b68f-4ca6-9086-56cfb06a9a0e",
+  "att-p19y-elbow_far-c21-p105-her1": "6a919d1c-3865-4550-9818-94743a121e0d",
+  "att-p19y-elbow_far-c21-p120-her1": "0d482f84-8013-48e8-8838-e3e1b302f86b",
+  "att-p19x-knee_far_g1-her1": "0127b742-3c93-4ff6-b183-dde5e0d22704",
+  "att-p19x-knee_near_g1-her1": "54f6a058-5498-46bd-bd67-254222cc774a"
+ },
+ "elbows_created": {
+  "att-p19y-elbow_far-c21-p45-her1": {
+   "src": "att-p19y-elbow_far-c21-p45",
+   "drawOrder": 577,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "75a70071-5e28-4b2f-abe3-57b072ad0e99",
+   "native": [
+    72,
+    72
+   ]
+  },
+  "att-p19y-elbow_far-c21-p65-her1": {
+   "src": "att-p19y-elbow_far-c21-p65",
+   "drawOrder": 578,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "9d32713d-f94e-4a66-a790-228ebfe2a87d",
+   "native": [
+    72,
+    72
+   ]
+  },
+  "att-p19y-elbow_far-c21-p75-her1": {
+   "src": "att-p19y-elbow_far-c21-p75",
+   "drawOrder": 579,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "67dcda71-0303-4c56-b77b-04bcbb52f0c4",
+   "native": [
+    72,
+    72
+   ]
+  },
+  "att-p19y-elbow_far-c21-p90-her1": {
+   "src": "att-p19y-elbow_far-c21-p90",
+   "drawOrder": 581,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "3039b867-b68f-4ca6-9086-56cfb06a9a0e",
+   "native": [
+    72,
+    72
+   ]
+  },
+  "att-p19y-elbow_far-c21-p105-her1": {
+   "src": "att-p19y-elbow_far-c21-p105",
+   "drawOrder": 582,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "6a919d1c-3865-4550-9818-94743a121e0d",
+   "native": [
+    72,
+    72
+   ]
+  },
+  "att-p19y-elbow_far-c21-p120-her1": {
+   "src": "att-p19y-elbow_far-c21-p120",
+   "drawOrder": 583,
+   "size": [
+    144,
+    144
+   ],
+   "pivot": [
+    0.5,
+    0.5
+   ],
+   "materialId": "0d482f84-8013-48e8-8838-e3e1b302f86b",
+   "native": [
+    72,
+    72
+   ]
+  }
+ },
+ "knees_updated": {
+  "att-p19x-knee_far_g1-her1": {
+   "old_materialId": "1eb341e2-a77f-4c0d-9b5e-afc2386dc052",
+   "old_size": [
+    86,
+    116
+   ],
+   "old_pivot": [
+    0.5,
+    0.4482758620689655
+   ],
+   "new_materialId": "0127b742-3c93-4ff6-b183-dde5e0d22704",
+   "new_size": [
+    240,
+    240
+   ],
+   "new_pivot": [
+    0.5,
+    0.5
+   ],
+   "native": [
+    120,
+    120
+   ],
+   "placement_note": "expanded content-crop [43, 58] → full 120x120 cell; canvas_offset [240, 590]→[202, 556] to keep abs pivot"
+  },
+  "att-p19x-knee_near_g1-her1": {
+   "old_materialId": "3d1e6901-9587-4dab-8105-e55bb17eb8ad",
+   "old_size": [
+    108,
+    64
+   ],
+   "old_pivot": [
+    0.5,
+    0.5
+   ],
+   "new_materialId": "54f6a058-5498-46bd-bd67-254222cc774a",
+   "new_size": [
+    240,
+    240
+   ],
+   "new_pivot": [
+    0.5,
+    0.5
+   ],
+   "native": [
+    120,
+    120
+   ],
+   "placement_note": "expanded content-crop [54, 32] → full 120x120 cell; canvas_offset [122, 604]→[89, 560] to keep abs pivot"
+  }
+ }
+}

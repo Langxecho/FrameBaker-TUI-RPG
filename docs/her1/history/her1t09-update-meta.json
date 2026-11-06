@@ -1,0 +1,81 @@
+{
+ "tag": "her1t09",
+ "revision_before": 1296,
+ "mode": "apply",
+ "budget_before": 124,
+ "attachment": "att-upper_arm_near-her1",
+ "attachments": [
+  "att-upper_arm_near-her1"
+ ],
+ "updates": {
+  "att-upper_arm_near-her1": {
+   "old_materialId": "bdeb2555-eb24-493f-b851-d745b4bdd6cf",
+   "old_mat_short": "bdeb2555",
+   "new_materialId": "ab320a40-3a04-4868-a2c5-56e70b601e5a",
+   "new_mat_short": "ab320a40",
+   "old_size": [
+    140,
+    122
+   ],
+   "new_size": [
+    140,
+    122
+   ],
+   "old_pivot": [
+    0.7169642857142858,
+    0.86
+   ],
+   "new_pivot": [
+    0.7169642857142858,
+    0.86
+   ],
+   "native": [
+    70,
+    61
+   ]
+  }
+ },
+ "live_aid": "att-upper_arm_near",
+ "live_mat_before": "1a614ab6-aedb-4ae9-9d2e-b9c633a5021e",
+ "live_mat_short_before": "1a614ab6",
+ "live_size_before": [
+  112,
+  200
+ ],
+ "policy": {
+  "rematerialize_only": true,
+  "binding_not_equipment": true,
+  "no_live_mutate": true,
+  "no_rest_change": true,
+  "no_clips_actions_equip": true,
+  "note": "T09 armpit residual cleanup on att-upper_arm_near-her1; upsert-binding only"
+ },
+ "artist_source": "/workspace/uploads/art_handoff_v2/_check_手_T09_v1/T09_近侧大臂腋下_在这里画.png",
+ "png": "att-upper_arm_near-her1.png",
+ "expected_rev": 1296,
+ "pixel_delta_vs_bak": 114,
+ "revision_after": 1297,
+ "budget_after": 123,
+ "live_mat_after": "1a614ab6-aedb-4ae9-9d2e-b9c633a5021e",
+ "live_untouched": true,
+ "new_mat_short": "ab320a40",
+ "old_mat_short": "bdeb2555",
+ "previews": {
+  "box": "/workspace/art/pkg/03_效果预览/her1_t09_armpit/",
+  "handoff": "/workspace/uploads/art_handoff_v2/03_效果预览/her1_t09_armpit/",
+  "echo": "E:\\CodexBuild\\demo-final-20261015\\phase15\\p19\\her1\\render\\her1_t09_armpit\\\\"
+ },
+ "selfcheck": {
+  "idle_armpit_cleaned": true,
+  "prepare_arm_intact": true,
+  "no_missing_arm_segments": true,
+  "live_untouched": true,
+  "t10_not_imported": true,
+  "t03c_untouched": true,
+  "pixel_delta": 114,
+  "pixel_delta_in_problem_box": 21,
+  "opaque_net_change": 1,
+  "notes": "Artist PASS recolors off-palette residual flesh toward crease/deep_shadow/glove palette; idle/prepare medial armpit reads clean vs orange-box residual."
+ },
+ "bak_dir": "parts_bak_pre_her1t09"
+}

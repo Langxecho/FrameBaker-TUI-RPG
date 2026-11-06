@@ -81,6 +81,14 @@
 
 根级 `scripts/version.ts` 实现 main 的 `MAJOR.WEEK.BUG` 发布规则，并统一同步根包/workspace package 版本、Bun lockfile workspace 版本、MCP 对外版本及中英文 changelog 发布标题。WEEK 是大版本内单调递增的开发周序号，不使用会跨年回退的 ISO 自然周。版本历史存放在 `docs/CHANGELOG.md` 与 `docs/CHANGELOG.zh-CN.md`，详细规则见 `docs/VERSIONING.md` 与 `docs/VERSIONING.zh-CN.md`。
 
+### 制作 SOP 与 her1 续作
+
+- `skill/` 是 FrameBaker 制作 SOP 的唯一真源（`fb-character-authoring`、`rpg-content-production`、`her1-fb-self-qc`）；`skill/README.md` 给出索引、去重约定（Region 显隐规则只在 `references/region-visibility.md`）和“被引用但未入库”的 ECHO 文档清单。它们是供 agent 阅读的 Markdown，不会被自动加载。
+- `docs/her1/` 是 HELLO WORLD her1 的单一真相源：`README.md`（状态、枪种映射、clip 指针、live 只读清单、待交美术包）、`state.json`（脚本读取的机读状态）、`ECHO_RUNBOOK.md`、`packs/<任务>/`（美术包合同）和只读的 `history/`。
+- `scripts/her1/` 是独立的 Bun CLI（`bun run her1 <命令>`，自带 `tsconfig.json`，已纳入 `bun run typecheck`）。离线模块：`lib/png.ts` / `lib/psd.ts`（最小 PNG/PSD 读取，无依赖）、`lib/checkArt.ts`（美术包合同检查）、`lib/visibility.ts`（clip 显隐审计与加性接线 clip 派生）、`lib/plans.ts`（rematerialize / 接线 / 回退操作计划）。`lib/echo.ts` 是最小 Streamable HTTP MCP + REST 客户端，`lib/runner.ts` 负责写入闸门（必需工具、live 素材核对、`--expected-rev`、幂等键、写后 live 快照）并把结果回写 `docs/her1/state.json`。运行输出在 gitignored 的 `storage/her1-runs/`。测试：`tests/her1-*.test.ts`（含假 ECHO 服务）。
+- 腕口工具链（`scripts/her1/lib/render.ts`、`seam.ts`、`wristFix.ts`、`wristIk.ts`、`snapshot.ts`、`wristRunner.ts`）：`snapshot` 从 ECHO 只读导出工程快照到 gitignored 的 `docs/her1/snapshots/r<rev>-<枪>/`（文档、骨架、her1bt clip、素材，可选 `aic_render_preview` 参考图）。`render` 离线复现 FB 预览语义（骨骼世界 × rest × `att:` 偏移、pivot 左下原点、装备 rest 与 socket 合成、`drawOffset` 只管层序，默认按装备双手 IK `weapon.secondaryHandConstraint` 求解：目标 = 主握手 socket × inv(primaryGrip) × secondaryGrip，`alignEnd` 时末端骨朝向跟枪），并度量支撑手腕口切口与远臂前臂子树的衔接。`fix-wrist` 先看装备：支撑手挂在 IK 链末端时（clip 的远臂旋转被覆盖），由 `wristIk.ts` 搜加性 her1 装备杠杆（副握点滑动/抬落、手图 rest 旋转、肘向），判「接线可修 / 仍需画师新手 / 够不着」并按相位打印画师规格；否则逐采样求解远臂上臂/前臂旋转，派生加性 `*-her1*` clip。两条路径都写出带修前/修后自审的计划。`apply-plan` 在 ECHO 上写入自审通过的计划，沿用 revision / live 闸门，另加基线 clip 或基线装备哈希核对。
+- `hand-set`（`scripts/her1/lib/handSet.ts`）在一张刚性手图盖不住 IK 腕口角度时，把一个目录里的多张加性支撑手装进工程。每张手图替换原来的单张附件，各自 rest 隐藏（`scale` 0.001）；每个相位的新 clip 保留基线轨道，再加一条阶跃 `att:` scale 轨，同一时刻只 SHOW 一张（`SHOW` 1000 / `IDENT` 1）。美术包检查未过、`handset.json` 的自审不是 PASS、或现场 her1 装备与基线 clip 的哈希对不上自审快照时，命令拒绝写入。默认 dry-run。T03c 的代画稿在 `docs/her1/packs/T03c/cloud-r1/`。
+
 ### 跨仓库 fbanim-v3 夹具
 
 - 权威源：`tests/fixtures/fbanim-v3/`（入库字节 + `manifest.json`）。
