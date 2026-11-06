@@ -13,7 +13,7 @@ import { loadSnapshot } from "../scripts/her1/lib/snapshot";
 import { loadState, type Her1State } from "../scripts/her1/lib/state";
 import { deriveWristFixClip, MAX_ALIGN_DEG } from "../scripts/her1/lib/wristFix";
 import { G3_WRIST, runApplyPlan, runFixWrist, runRender, runSnapshot, seamSpecFromState } from "../scripts/her1/lib/wristRunner";
-import { applyOperations, PROJECT_ID } from "./her1-fixture";
+import { applyOperations, paintBlock, PROJECT_ID } from "./her1-fixture";
 import { baseClip, document, HAND_ID, images, MAT, skeleton, writeSnapshot } from "./her1-wrist-fixture";
 
 const workRoot = mkdtempSync(join(tmpdir(), "her1-wrist-"));
@@ -98,6 +98,35 @@ describe("her1 离线渲染与腕口度量", () => {
     const result = deriveWristFixClip(document(), skeleton, images(), baseClip("aim"), "c34-g3:aim-clip-her1am3d", spec);
     const scene = composeScene({ document: document(), skeleton, clip: result.clip, time: 0, equipmentIds: ["c34-g3-K02-p19v-p19y-her1-hd"] });
     expect(measureSeam(scene, images(), skeleton, spec, { time: 0 }).metrics.gapPixels).toBe(0);
+  });
+
+  test("手与前臂之间的缝被不透明部件（枪身）盖住时不算透底", () => {
+    const spec = { ...seamSpecFromState(loadState(), G3_WRIST), upperBone: "upper_arm_far", lowerBone: "forearm_far", equipmentIds: ["c34-g3-K02-p19v-p19y-her1-hd"], overlap: 4, step: 0.1, maxDelta: 1.2 };
+    const result = deriveWristFixClip(document(), skeleton, images(), baseClip("aim"), "c34-g3:aim-clip-her1am3d", spec);
+    const scene = composeScene({ document: document(), skeleton, clip: result.clip, time: 0, equipmentIds: ["c34-g3-K02-p19v-p19y-her1-hd"] });
+    const hand = scene.items.find((item) => item.attachmentId === HAND_ID)!;
+    hand.world = [...hand.world];
+    hand.world[12] += 8;
+    const imgs = images();
+    expect(measureSeam(scene, imgs, skeleton, spec, { time: 0 }).metrics.gapPixels).toBeGreaterThan(0);
+    const raster = rasterize(scene.items, imgs, { scale: 1 });
+    const handIndex = scene.items.indexOf(hand);
+    const foreIndex = scene.items.findIndex((item) => item.boneId === "forearm_far" && !item.attachmentId.endsWith("forearm_far"));
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const { width, height } = raster.image;
+    for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) {
+      if (raster.owner[y * width + x] !== -1) continue;
+      const row = (dx: number, who: number) => Array.from({ length: 10 }, (_, k) => raster.owner[y * width + x + dx * (k + 1)]).includes(who);
+      if (!row(1, handIndex) || !row(-1, foreIndex)) continue;
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    }
+    expect(minX).toBeLessThanOrEqual(maxX);
+    const wx = minX + raster.bounds.minX, wy = raster.bounds.maxY - (maxY + 1);
+    const occluderMat = "occluder-0000-4000-8000-000000000099";
+    imgs.set(occluderMat, paintBlock(1, 1, [72, 72, 84], [0, 0, 0, 0]));
+    const world: typeof hand.world = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, wx, wy, 0, 1];
+    scene.items.push({ ...hand, slotId: "gun", attachmentId: "gun-rigid", boneId: "chest", materialId: occluderMat, size: [maxX - minX + 1, maxY - minY + 1], pivot: [0, 0], world });
+    expect(measureSeam(scene, imgs, skeleton, spec, { time: 0 }).metrics.gapPixels).toBe(0);
   });
 
   test("支撑手挂在远臂链上时拒绝用远臂旋转修", () => {

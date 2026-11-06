@@ -182,10 +182,11 @@ export function measureSeam(scene: Scene, images: Map<string, RgbaImage>, skelet
     return false;
   };
   // 只数被手与远臂「两面夹住」的透底像素；外轮廓凹角处的背景不算断腕。
-  const sandwiched = (x: number, y: number) => ([[1, 0], [0, 1], [1, 1], [1, -1]] as const).some(([dx, dy]) => (hits(handMask, x, y, dx, dy) && hits(farMask, x, y, -dx, -dy)) || (hits(farMask, x, y, dx, dy) && hits(handMask, x, y, -dx, -dy)));
+  const distJoin = chebyshevDistance(joinMask, width, height);
+  const sandwiched = (x: number, y: number) => ([[1, 0], [0, 1], [1, 1], [1, -1]] as const).some(([dx, dy]) => (hits(handMask, x, y, dx, dy) && hits(joinMask, x, y, -dx, -dy)) || (hits(joinMask, x, y, dx, dy) && hits(handMask, x, y, -dx, -dy)));
   for (let p = 0; p < width * height; p += 1) {
-    if (handMask[p] || farMask[p] || !far.length) continue;
-    if (distHand[p]! > 2 * scale || distFar[p]! > 2 * scale) continue;
+    if (handMask[p] || farMask[p] || !joinSet.size || raster.owner[p]! >= 0) continue;
+    if (distHand[p]! > 2 * scale || distJoin[p]! > 2 * scale) continue;
     const x = p % width, y = (p - x) / width;
     if (sandwiched(x, y)) { gapPixels += 1; marks.push({ x, y, rgb: [250, 210, 40] }); }
   }

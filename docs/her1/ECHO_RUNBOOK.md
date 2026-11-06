@@ -136,7 +136,7 @@ bun run her1 fix-wrist --snapshot docs/her1/snapshots/r1339-g3 --tag her1am3d
 
 - 渲染语义与 FB 一致：部件世界矩阵 = 骨骼世界 × rest × `att:` 偏移；pivot 以图片左下为原点；装备附件 rest = socket.rest ∘ 附件 rest，挂在 socket 骨骼上；`drawOffset` 只影响层序；尊重 binding `attachmentVisibility`。
 - 双手 IK（`--ik weapon-align`，默认）：目标 = 主握手 socket（语义 `weapon_hand_right`）× inv(`primaryGrip`) × `secondaryGrip`；两骨按子骨 rest 平移方向求解，`bendDirection` 定肘向，`stretch forbid` 不拉长；alignEnd 让 hand_far 的世界朝向等于枪的朝向。`--ik weapon` 不做 alignEnd，`--ik off` 只做 FK（只用于对照）。
-- 腕口度量（`seam.json`）：手图接缝带内未描边的边界像素就是腕口切口。PASS 要求切口外侧至少 90% 落在远臂前臂子树（`forearm_far` 及其下）的部件上，并且被手和远臂两面夹住的透底缝不超过 4 px。外轮廓凹角处的背景不算透底缝。叠加图里绿 = 接上，红 = 露出，黄 = 透底缝。
+- 腕口度量（`seam.json`）：手图接缝带内未描边的边界像素就是腕口切口。PASS 要求切口外侧至少 90% 落在远臂前臂子树（`forearm_far` 及其下）的部件上，并且被手和远臂前臂子树两面夹住的透底缝不超过 4 px。只数真正透到背景的像素：缝里若是枪身等不透明部件，或缝对面是上臂而不是前臂，都不算；外轮廓凹角处的背景也不算。叠加图里绿 = 接上，红 = 露出，黄 = 透底缝。
 - `fix-wrist` 先看装备：
   - **装备带 IK、支撑手挂在 IK 链末端**（G3 her1 就是这样）：clip 的远臂旋转会被覆盖，脚本不改 clip，而是搜 her1 装备杠杆：指节沿枪管滑动、垂直抬落、手图旋转、bendDirection。每组杠杆都把 IK 目标放到腕口中心再往里 `--overlap`，并平移支撑手 rest 让指节留在原处。候选装备 id 为 `<基线装备>-<tag>`（例如 `…-her1-hd-her1am3d`），写出 `wristik-report.json`（逐帧前臂进手角、腕口夹角、够不着帧数、前臂可见度与末端宽度、画师规格）。
   - **装备不带 IK**：沿用 clip 求解。逐采样求远臂上臂和前臂两个旋转增量，让前臂远端插进腕口 `--overlap` 个单位，取前臂最顺着腕口方向进的那支肘向解，烘焙成 `…-clip-<tag>`，只替换这两条旋转轨。支撑手的 socket 挂在远臂链上时直接拒绝。
