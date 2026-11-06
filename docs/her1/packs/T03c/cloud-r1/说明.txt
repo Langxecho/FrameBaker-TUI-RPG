@@ -1,0 +1,10 @@
+T03c 云端代画的多档支撑手（2026-11-06）。画师没空，按 state.json 里 wristFix.artSpec 的腕口方向把手续出来。
+
+28 张 hand_<key>.png，合同色板，无半透明。瞄准手沿用原来的 :support-hand，其余是 :support-hand-<key>。
+全部 rest 隐藏 0.001。五态新 clip tag her1am3d，从 her1am3c 复制，只加阶跃 att: scale 换显。不改远臂旋转，不动 live。
+
+ECHO 写入见 docs/her1/ECHO_RUNBOOK.md §3.1：
+  bun run her1 hand-set --dir docs/her1/packs/T03c/cloud-r1
+  bun run her1 hand-set --dir docs/her1/packs/T03c/cloud-r1 --apply --expected-rev <N>
+
+视觉自审通过。挥枪过渡仍有 5–14 px 的袖口外角缺口，严格透底缝不是全清。细节在 handset.json 的 selfQc。

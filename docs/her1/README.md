@@ -70,7 +70,7 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 | her1am3 | — | T03 握枪手 + StageC `FAR_C21C`（只显 live 透视残肢）→ 断腕 |
 | her1am3b | — | 额外 HIDE 轨 → `PREVIEW_RENDER_FAILED`。**退役** |
 | **her1am3c** | **1268→1274** | 当前：去掉 `FAR_C21C`，远臂 keepbase；support-hand rest `[1,1,1]` 已显示。T03c（rev 1339）只换了素材，没有改这个 clip；T03c 后腕口明显接不上 |
-| her1am3d | 未写 | 不再作为 clip 派生：G3 her1-hd 带双手 IK，clip 的远臂旋转被覆盖。`fix-wrist` 在 r1339 快照上搜过 her1 装备杠杆，自审 FAIL，结论**仍需画师新手**（§6 T03c）。tag 保留未用 |
+| her1am3d | 未写 | 云端代画的多档支撑手换显，稿在 `packs/T03c/cloud-r1/`。远臂仍由双手 IK 驱动，不改旋转轨；28 张手全部 rest 隐藏 0.001，clip 用阶跃 `att:` scale 换显。视觉自审通过，挥枪过渡仍有外角缺口（§6）。等 ECHO `hand-set` dry-run 后 apply |
 
 ### 3.3 铁桶接线（M2）现状
 
@@ -112,7 +112,7 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
 
 ## 6. 美术包（按优先级）
 
-### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · **已入库，腕口 FAIL，仍需画师新手**（2026-11-04，rev 1339）
+### T03c（优先级 1）— G3 冲锋枪更大画布支撑手 · **云端代画 draft，视觉自审通过，未写入**（2026-11-06）
 
 - 检查：v1、v2 FAIL（v1：103 半透明 / 47 描边断口；v2：77 / 48）。**v7 PASS_seam_exempt**：89×38，腕口豁免带 `intended_open_edge_band=[0,0,59,37]`，带外的外露半透明和描边断口都是 0。PSD md5 `4ffa0575…`。v3–v6 的检查结论没有回报。
 - 写入：ECHO 在 worktree `F:\CodeProject\FB-her1-run`（`origin/cursor/her1-cloud-handoff-7321`）上执行 check → `t03c --apply`。rev 1335→1336 首次 rematerialize；之后做过 drawOffset / 旧 pivot 试验，又恢复合同 pivot。当前 rev **1339**，live 快照一致。
@@ -138,6 +138,9 @@ ECHO 运行的 FB 服务比 GitHub 任一分支都新（例如 `aic_render_previ
   - 待机手（idle，prepare/recover 前段）：远臂前臂藏在躯干后，腕口不能开口，画收口袖口或把腕藏到枪身后（若要画延伸，方向 14°）；
   - 两张都挂 `rifle-support`，rest 隐藏 0.001，按 `att:` scale 换显：prepare 约 t=0.21、recover 约 t=0.13 换手。
 - 自审：修前、修后的腕口特写与全身图都 FAIL，`plan.json` 判定 `needs-art`、无写入操作，没有推回 PR，也没有交 ECHO 写入。live 未动。
+- **云端代画（2026-11-06，画师没空，按上面的规格把手续出来）**：`packs/T03c/cloud-r1/`，28 张色板内手图（瞄准、举枪、收口待机，加 prepare/fire/recover 的角度分档）。两件 her1 装备上的 `:support-hand` 换成这 28 张，全部 rest 隐藏 0.001；新 tag **`her1am3d`** 从 her1am3c 复制五态 clip，只加阶跃 `att:` scale 换显，不改远臂旋转。基线装备与基线 clip 的哈希锁在 r1339 快照上。
+- 代画自审（r1339 离线渲染，`handSetClip` 的正式换显，不是另一套插值）：全身与腕口特写里，支撑手都接在远臂上，没有悬空、没有缺段、没有两只手同时出现。严格透底缝 125 帧里 14 帧 FAIL，全在 prepare/recover 挥枪，接上率都是 100%，缺口 5–14 px，是袖口外角的小豁口；idle/aim 稳态和 fire 全段严格 PASS。
+- 未写入。ECHO 先 `probe`，再按 runbook §3.1 dry-run；`--apply` 仍等 ECHO。live 切换不在这次。
 
 ### T10b（优先级 2）— G1 手枪瞄准远侧前臂胸口托出 · 等画师
 

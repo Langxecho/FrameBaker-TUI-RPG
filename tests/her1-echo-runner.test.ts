@@ -1,12 +1,13 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { MotionClip } from "../packages/shared/src/animation";
 import type { SkeletalProjectDocument } from "../packages/shared/src/skeletalProject";
 import type { AicOperation } from "../scripts/her1/lib/plans";
 import { encodePng } from "../scripts/her1/lib/png";
-import { runProbe, runRevert, runT03c, runT10b, type RunContext } from "../scripts/her1/lib/runner";
+import { stableSha, type HandSet } from "../scripts/her1/lib/handSet";
+import { runHandSet, runProbe, runRevert, runT03c, runT10b, type RunContext } from "../scripts/her1/lib/runner";
 import { clipIdFor, loadState, loadTask, type Her1State } from "../scripts/her1/lib/state";
 import { applyOperations, baseClip, her1Document, paintBlock, PROJECT_ID } from "./her1-fixture";
 
@@ -111,6 +112,44 @@ function writeArt(name: string, packId: "T03c" | "T10b", spriteIndex = 0): strin
 
 const savedState = (): Her1State => JSON.parse(readFileSync(ctx.statePath, "utf8"));
 
+const G3_EQ = ["c34-g3-K02-p19v-p19y-her1", "c34-g3-K02-p19v-p19y-her1-hd"];
+const G3_HAND = "c34-g3-K02-p19v-p19y-her1:support-hand";
+const G3_PHASES = ["idle", "prepare", "aim", "fire", "recover"];
+
+/** 用夹具工程的装备与基线 clip 哈希组一套两张手的 hand-set，供假 ECHO 跑 dry-run / apply。 */
+function writeHandSet(name: string, mutate?: (set: HandSet) => void): string {
+  for (const phase of G3_PHASES) {
+    const id = `c34-g3:${phase}-clip-her1am3c`;
+    fake.clips.set(id, baseClip(id));
+  }
+  const dir = join(workRoot, name);
+  mkdirSync(dir, { recursive: true });
+  const fill = loadTask(loadState(), "T03c").palette[0]!.rgb as [number, number, number];
+  for (const key of ["aim", "idle"]) writeFileSync(join(dir, `hand_${key}.png`), encodePng(paintBlock(16, 16, fill, [1, 1, 14, 14])));
+  const set: HandSet = {
+    kind: "her1-hand-set",
+    version: 1,
+    pack: "T03c",
+    gun: "G3",
+    snapshotRevision: 1335,
+    baseTag: "her1am3c",
+    tag: "her1am3d",
+    equipmentIds: G3_EQ,
+    replaceAttachmentId: G3_HAND,
+    baseEquipmentSha: Object.fromEntries(G3_EQ.map((id) => [id, stableSha(fake.document.equipment!.find((item) => item.id === id))])),
+    baseClipSha: Object.fromEntries(G3_PHASES.map((phase) => [phase, stableSha(fake.clips.get(`c34-g3:${phase}-clip-her1am3c`))])),
+    sprites: [
+      { key: "aim", file: "hand_aim.png", attachmentId: G3_HAND, nativeSize: [16, 16], pivot: [0.5, 0.5], openBand: null },
+      { key: "idle", file: "hand_idle.png", attachmentId: `${G3_HAND}-idle`, nativeSize: [16, 16], pivot: [0.5, 0.5], openBand: null },
+    ],
+    schedule: { idle: [[0, "idle"]], prepare: [[0, "idle"], [0.2, "aim"]], aim: [[0, "aim"]], fire: [[0, "aim"]], recover: [[0, "aim"], [0.2, "idle"]] },
+    selfQc: { verdict: "PASS", summary: "测试夹具" },
+  };
+  mutate?.(set);
+  writeFileSync(join(dir, "handset.json"), JSON.stringify(set));
+  return dir;
+}
+
 describe("her1 ECHO 运行器（假 ECHO 服务）", () => {
   test("probe：工具、revision、live 素材与 her1bt 指针全部核对", async () => {
     const result = await runProbe(ctx);
@@ -208,6 +247,57 @@ describe("her1 ECHO 运行器（假 ECHO 服务）", () => {
     const livePath = join(workRoot, "bad-revert.json");
     writeFileSync(livePath, JSON.stringify([{ type: "upsert-action", action: { id: "c34-g1:p16k10-aim", name: "x", motionClipId: "y", speed: 1, repeat: 1, loop: false } }]));
     await expect(runRevert(ctx, { ops: livePath, apply: true, expectedRev: 1337, updateState: false })).rejects.toThrow("live 轨禁止写入");
+  });
+
+  test("hand-set dry-run：不上传、不写入，只出计划", async () => {
+    await runHandSet(ctx, { dir: writeHandSet("handset-dry"), apply: false, updateState: true });
+    expect(fake.uploads).toEqual([]);
+    expect(fake.applyCalls).toEqual([]);
+    const operations = JSON.parse(readFileSync(join(ctx.outDir, "handset-her1am3d-operations.json"), "utf8")) as AicOperation[];
+    expect(operations.map((op) => op.type)).toEqual(["upsert-equipment", "upsert-equipment", "create-motion-clip", "upsert-action", "create-motion-clip", "upsert-action", "create-motion-clip", "upsert-action", "create-motion-clip", "upsert-action", "create-motion-clip", "upsert-action"]);
+    expect(JSON.stringify(operations)).toContain("pending-upload:aim");
+    expect(savedState().guns.G3.clipTag).toBe("her1am3c");
+  });
+
+  test("hand-set 自审未过、基线哈希不符或动作指针被改时都不上传", async () => {
+    await expect(runHandSet(ctx, { dir: writeHandSet("handset-qc", (set) => { set.selfQc.verdict = "FAIL"; }), apply: true, expectedRev: 1335, updateState: true })).rejects.toThrow("离线自审不是 PASS");
+    expect(fake.uploads).toEqual([]);
+    await expect(runHandSet(ctx, { dir: writeHandSet("handset-sha", (set) => { set.baseClipSha.aim = "0".repeat(64); }), apply: true, expectedRev: 1335, updateState: true })).rejects.toThrow("内容与自审快照不同");
+    expect(fake.uploads).toEqual([]);
+    const dir = writeHandSet("handset-pointer");
+    fake.document.animations.find((item) => item.id === "c34-g3:her1bt-aim")!.motionClipId = "c34-g3:aim-clip-her1am3b";
+    await expect(runHandSet(ctx, { dir, apply: true, expectedRev: 1335, updateState: true })).rejects.toThrow("当前指向");
+    expect(fake.uploads).toEqual([]);
+    expect(fake.applyCalls).toEqual([]);
+  });
+
+  test("hand-set apply：上传手图、两件 her1 装备换成 rest 隐藏的多张手、五态改指向，live 不动", async () => {
+    await runHandSet(ctx, { dir: writeHandSet("handset-ok"), apply: true, expectedRev: 1335, updateState: true });
+    expect(fake.uploads.map((item) => item.name).sort()).toEqual(["hand_sup_g3_aim-her1.png", "hand_sup_g3_idle-her1.png"]);
+    expect(fake.uploads.every((item) => item.metadata.handSet === "her1am3d" && item.metadata.her1Task === "T03c")).toBe(true);
+    expect(fake.applyCalls).toHaveLength(1);
+    expect(fake.applyCalls[0].baseRevision).toBe(1335);
+    expect(fake.applyCalls[0].idempotencyKey).toMatch(/^her1-handset-g3-her1am3d-r1335-[0-9a-f]{16}$/);
+    for (const id of G3_EQ) {
+      const equipment = fake.document.equipment!.find((item) => item.id === id)!;
+      const aim = equipment.attachments.find((item) => item.id === G3_HAND)!;
+      const idle = equipment.attachments.find((item) => item.id === `${G3_HAND}-idle`)!;
+      expect(aim.rest.scale).toEqual([0.001, 0.001, 1]);
+      expect(idle.rest.scale).toEqual([0.001, 0.001, 1]);
+      expect(aim.materialId).toStartWith("abcdef");
+      expect(equipment.attachments.some((item) => item.id.includes("p15-idle-support"))).toBe(true);
+    }
+    expect(fake.document.equipment!.find((item) => item.id === "c34-g3-K02-p19v-p19y")!.attachments[0].materialId).toStartWith("59fc3f63");
+    for (const phase of G3_PHASES) expect(fake.document.animations.find((item) => item.id === `c34-g3:her1bt-${phase}`)!.motionClipId).toBe(`c34-g3:${phase}-clip-her1am3d`);
+    const aimClip = fake.clips.get("c34-g3:aim-clip-her1am3d")!;
+    const hand = aimClip.tracks.find((track) => track.targetId === `att:${G3_HAND}`) as { interpolation?: string };
+    expect(hand.interpolation).toBe("step");
+    expect(aimClip.tracks.some((track) => track.targetId === "forearm_far")).toBe(true);
+    const state = savedState();
+    expect(state.guns.G3.clipTag).toBe("her1am3d");
+    expect(state.packs.T03c.status).toBe("rematerialized-pending-self-qc");
+    expect(state.packs.T03c.wristFix).toMatchObject({ written: true, handSet: { tag: "her1am3d", revision: 1336 } });
+    expect(fake.document.animations.find((item) => item.id === "c34-g1:p16k10-aim")!.motionClipId).toBe("c34-g1:aim-clip-p16k10");
   });
 
   test("写入后 live 快照若被改动，运行器报警停止", async () => {

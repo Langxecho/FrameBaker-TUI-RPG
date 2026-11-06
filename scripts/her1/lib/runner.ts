@@ -5,6 +5,7 @@ import type { MotionClip } from "../../../packages/shared/src/animation";
 import type { SkeletalProjectDocument } from "../../../packages/shared/src/skeletalProject";
 import { checkSprite, findSprite, normalizedSprite, renderCheckOverlay, type CheckReport } from "./checkArt";
 import { currentRevision, fetchClip, fetchDocument, McpClient, uploadMaterial } from "./echo";
+import { checkHandSet, handSetImages, loadHandSet, planHandSet } from "./handSet";
 import { assertRevertable, checkClipPointers, checkLiveMaterials, liveSnapshot, planT03c, planT10b, planWiring, revertOperations, type AicOperation, type WiringPlanResult } from "./plans";
 import { decodePng, encodePng, type RgbaImage } from "./png";
 import { findLayer, layerToCanvas, readPsd } from "./psd";
@@ -191,6 +192,49 @@ export async function runT03c(ctx: RunContext, input: { input: string; record?: 
     writeJson(ctx.statePath, ctx.state);
   }
   nextSteps(ctx, true, "T03c", outcome.revision);
+}
+
+/** 多档支撑手（her1-hand-set）：逐张检查 → 闸门 → 上传 → 两件 her1 装备换成多张隐藏手图 + 五态新 tag 换显 clip 与动作指针。 */
+export async function runHandSet(ctx: RunContext, input: { dir: string } & ApplyGate): Promise<void> {
+  const set = loadHandSet(input.dir);
+  if (set.selfQc.verdict !== "PASS") throw new Error(`手图组离线自审不是 PASS（${set.selfQc.summary}），拒绝写入`);
+  const images = handSetImages(input.dir, set);
+  const checks = checkHandSet(images, set, loadTask(ctx.state, set.pack));
+  const failed = checks.filter((item) => item.report.verdict !== "PASS");
+  for (const item of failed) ctx.log(`  ${item.key}: FAIL — ${item.report.failures.join("；")}`);
+  if (failed.length) throw new Error(`check_art FAIL ${failed.length}/${checks.length} 张：不上传、不接线`);
+  ctx.log(`手图 ${checks.length} 张检查 PASS（${set.pack} 色板、无半透明、外露描边完整）`);
+  const connection = await connect(ctx);
+  assertRevisionGate(connection, input);
+  const phases = Object.keys(set.schedule);
+  const baseClips = await fetchBaseClips(ctx, set.gun, set.baseTag, phases);
+  const pending = Object.fromEntries(set.sprites.map((sprite) => [sprite.key, `pending-upload:${sprite.key}`]));
+  const dry = planHandSet(connection.document, ctx.state, set, pending, baseClips);
+  reportIssues(ctx, dry);
+  const materials: Record<string, string> = {};
+  for (const sprite of set.sprites) {
+    if (!input.apply) { materials[sprite.key] = pending[sprite.key]!; continue; }
+    const png = encodePng(normalizedSprite(images.get(sprite.key)!));
+    materials[sprite.key] = await uploadMaterial(ctx.apiBase, png, `hand_sup_${set.gun.toLowerCase()}_${sprite.key}-her1.png`, { her1Task: set.pack, handSet: set.tag, spriteId: sprite.key, sha256: createHash("sha256").update(png).digest("hex") });
+  }
+  const plan = input.apply ? planHandSet(connection.document, ctx.state, set, materials, baseClips) : dry;
+  writePlan(ctx, `handset-${set.tag}`, connection, plan.operations);
+  for (const clip of plan.newClips) writeJson(join(ctx.outDir, `${clip.id.replace(/[:/]/g, "_")}.json`), clip);
+  ctx.log(`计划：upsert-equipment ${set.equipmentIds.length} 个（${set.replaceAttachmentId} → ${set.sprites.length} 张隐藏手图），新 clip ${plan.newClips.map((clip) => clip.id).join("、")}`);
+  if (!input.apply) return nextSteps(ctx, false, set.pack, connection.revision);
+  const outcome = await applyGuarded(ctx, connection, `handset-${set.gun.toLowerCase()}-${set.tag}`, plan.operations, input);
+  receipt(ctx, `handset-${set.tag}`, { revisionBefore: connection.revision, revisionAfter: outcome.revision, materials, newClips: plan.newClips.map((clip) => clip.id), warnings: plan.issues });
+  if (input.updateState) {
+    const gun = ctx.state.guns[set.gun];
+    gun.clipTag = set.tag;
+    if (gun.phaseClipTags) for (const phase of phases) delete gun.phaseClipTags[phase];
+    const pack = ctx.state.packs[set.pack]!;
+    pack.status = "rematerialized-pending-self-qc";
+    pack.wristFix = { ...(pack.wristFix ?? {}), written: true, handSet: { tag: set.tag, revision: outcome.revision, materials } };
+    ctx.state.echo.lastKnownRevision = outcome.revision;
+    writeJson(ctx.statePath, ctx.state);
+  }
+  nextSteps(ctx, true, set.pack, outcome.revision);
 }
 
 export async function runT10b(ctx: RunContext, input: { forearm: string; elbow?: string; tag: string; phases: string[]; wiring: boolean; record?: boolean } & ApplyGate): Promise<void> {

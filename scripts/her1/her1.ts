@@ -8,7 +8,7 @@ import { join, resolve } from "node:path";
 import type { MotionClip } from "../../packages/shared/src/animation";
 import type { SkeletalProjectDocument } from "../../packages/shared/src/skeletalProject";
 import { apiBaseFromMcp, McpClient } from "./lib/echo";
-import { runCheck, runProbe, runRevert, runT03c, runT10b, runWire, type RunContext } from "./lib/runner";
+import { runCheck, runHandSet, runProbe, runRevert, runT03c, runT10b, runWire, type RunContext } from "./lib/runner";
 import { loadState, REPO_ROOT, STATE_PATH, type GunKey } from "./lib/state";
 import { auditClipVisibility, collectRestScales } from "./lib/visibility";
 import type { IkMode } from "./lib/render";
@@ -31,6 +31,8 @@ const HELP = `her1 工具链
   call <tool> [--args <args.json>]         调用任意 MCP 工具，image 结果存为 PNG
   probe                                    只读核对 revision、live 素材、her1bt 指针
   t03c --input <T03c_支撑手.psd>            check → rematerialize 两件 her1 G3 支撑手
+  hand-set --dir docs/her1/packs/T03c/cloud-r1
+                                           多档支撑手：逐张 check → 两件 her1 装备换成多张隐藏手图 + 五态新 tag 换显 clip
   t10b --forearm <psd> [--elbow <psd>] [--tag her1am_c21o] [--phases aim,fire] [--no-wiring]
   wire --gun G3 --base-tag her1am3c --tag her1am3d --phases aim,fire --show <att,…> --strip <att,…>
   revert --ops <run>/<任务>-revert-operations.json   恢复某次写入前的 her1 binding/装备/动作指针
@@ -162,6 +164,7 @@ async function main(): Promise<number> {
   if (command === "call") { await callTool(ctx, positional[1] ?? need(flags, "tool"), str(flags, "args")); return Number(process.exitCode ?? 0); }
   if (command === "probe") { const result = await runProbe(ctx); return result.pointerMismatches ? 3 : 0; }
   const record = flags.record === true || flags.apply === true;
+  if (command === "hand-set") { await runHandSet(ctx, { dir: resolve(need(flags, "dir")), ...gate(flags) }); return 0; }
   if (command === "t03c") { await runT03c(ctx, { input: need(flags, "input"), record, ...gate(flags) }); return 0; }
   if (command === "t10b") {
     const pack = ctx.state.packs.T10b;

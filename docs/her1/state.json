@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-04",
+  "updatedAt": "2026-11-06",
   "lastLiveCheck": "2026-11-04（ECHO 回报：T03c apply 后 live 快照一致）",
   "echo": {
     "machine": "ECHO b4abf5bf-…",
@@ -102,7 +102,7 @@
     "T03c": {
       "title": "T03c 冲锋枪（MP-9，K02）更大画布支撑手",
       "priority": 1,
-      "status": "landed-needs-art",
+      "status": "cloud-art-draft",
       "gun": "G3",
       "dir": "docs/her1/packs/T03c",
       "echoPackDir": "01_待改/T03c_冲锋枪更大支撑手_g3",
@@ -130,8 +130,17 @@
         "selfQc": "ECHO 复审 FAIL：支撑手与远臂腕口明显接不上（不是残差级）；早先“护木下支撑手在、接腕残差同 T03b”的结论作废"
       },
       "wristFix": {
-        "status": "needs-art",
-        "verdict": "仍需画师新手",
+        "status": "cloud-art-draft",
+        "verdict": "云端代画视觉通过，未写入",
+        "cloudArt": {
+          "dir": "docs/her1/packs/T03c/cloud-r1",
+          "tag": "her1am3d",
+          "baseTag": "her1am3c",
+          "sprites": 28,
+          "date": "2026-11-06",
+          "selfQc": "视觉 PASS。125 帧里 14 帧严格透底缝 5–14 px，接上率都是 100%，集中在 prepare/recover 挥枪；idle/aim 稳态与 fire 全段严格 PASS。未写入。",
+          "written": false
+        },
         "snapshot": { "branch": "her1/snapshot-r1339-g3", "path": "docs/her1/snapshots/r1339-g3", "revision": 1339, "mergedIntoPr": false },
         "selfQc": "FAIL：render 52/52 FAIL；fix-wrist --tag her1am3d 修前 52/52、修后 52/52 FAIL。aim/fire 腕口残肢插进上臂/肩，切口外侧接上远臂 0%，透底缝 12~36 px；idle 开口腕口浮在躯干上（前臂在躯干后，只露 2%），透底缝 9~14 px；最佳杠杆修后手离开护木",
         "verifiedFacts": [
@@ -176,7 +185,7 @@
       ],
       "wiring": {
         "default": "none",
-        "note": "已落地（rev 1339），her1am3c 未改。远臂由装备 IK c34-support-ik 驱动，改 clip 无效；r1339 快照上 fix-wrist 自审 FAIL，结论仍需画师新手（wristFix.artSpec）。新手图回稿后按 att: scale 换显接线，wire 只管显隐。",
+        "note": "已落地（rev 1339），her1am3c 未改。远臂由装备 IK 驱动，改 clip 旋转无效。云端代画的 28 张手在 packs/T03c/cloud-r1，tag her1am3d，按 att: scale 换显；视觉自审通过，尚未写入。wire 不能代替 hand-set。",
         "baseClipTag": "her1am3c",
         "suggestedTag": "her1am3d"
       }

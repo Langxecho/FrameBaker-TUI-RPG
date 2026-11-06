@@ -1,0 +1,712 @@
+{
+  "kind": "her1-hand-set",
+  "version": 1,
+  "pack": "T03c",
+  "gun": "G3",
+  "snapshotRevision": 1339,
+  "baseTag": "her1am3c",
+  "tag": "her1am3d",
+  "equipmentIds": [
+    "c34-g3-K02-p19v-p19y-her1",
+    "c34-g3-K02-p19v-p19y-her1-hd"
+  ],
+  "replaceAttachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand",
+  "baseEquipmentSha": {
+    "c34-g3-K02-p19v-p19y-her1": "6059c744a1ed284e1fb9900afd667869d1b12e0467aabd7b590d7621e7c8af89",
+    "c34-g3-K02-p19v-p19y-her1-hd": "073b904ebd3694cc999833710e75dc609fd1b4fc24ab14aa8dd49963f79100d3"
+  },
+  "baseClipSha": {
+    "idle": "f84f3287ec58284e0bf2f6e3d0849f85ad074dad0cdb0c3ef9f99a5076e69a5e",
+    "prepare": "e9aed8fd7d97869245cfa90546be44800a61accffb4f0d6649c1c1e97b1754e7",
+    "aim": "57fa977174c4de5da9802d599f7f31e68f1ffba488952d60c8600a6e2cee9f19",
+    "fire": "15e3261e8c41f05f076097aeedc4e8cb02580cb4ae4b99484604859628fa0c5f",
+    "recover": "11b2a43f0c7c03d23352a1439144b51448a7272c68dc4b6a0ebd2abeea976d8f"
+  },
+  "sprites": [
+    {
+      "key": "idle",
+      "file": "hand_idle.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-idle",
+      "nativeSize": [
+        39,
+        25
+      ],
+      "pivot": [
+        0.7692307692307693,
+        0.84
+      ],
+      "openBand": null
+    },
+    {
+      "key": "p1ab",
+      "file": "hand_p1ab.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p1ab",
+      "nativeSize": [
+        34,
+        28
+      ],
+      "pivot": [
+        0.17647058823529413,
+        0.8214285714285714
+      ],
+      "openBand": [
+        5,
+        23,
+        21,
+        27
+      ]
+    },
+    {
+      "key": "p1ba",
+      "file": "hand_p1ba.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p1ba",
+      "nativeSize": [
+        35,
+        27
+      ],
+      "pivot": [
+        0.14285714285714285,
+        0.8148148148148149
+      ],
+      "openBand": [
+        10,
+        25,
+        29,
+        26
+      ]
+    },
+    {
+      "key": "p1bb",
+      "file": "hand_p1bb.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p1bb",
+      "nativeSize": [
+        39,
+        29
+      ],
+      "pivot": [
+        0.07692307692307693,
+        0.7931034482758621
+      ],
+      "openBand": [
+        18,
+        22,
+        32,
+        28
+      ]
+    },
+    {
+      "key": "p2a",
+      "file": "hand_p2a.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p2a",
+      "nativeSize": [
+        37,
+        30
+      ],
+      "pivot": [
+        0,
+        0.7666666666666666
+      ],
+      "openBand": [
+        17,
+        20,
+        34,
+        29
+      ]
+    },
+    {
+      "key": "p2ba",
+      "file": "hand_p2ba.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p2ba",
+      "nativeSize": [
+        38,
+        31
+      ],
+      "pivot": [
+        0.02631578947368421,
+        0.6774193548387097
+      ],
+      "openBand": [
+        19,
+        18,
+        35,
+        30
+      ]
+    },
+    {
+      "key": "p2bb",
+      "file": "hand_p2bb.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p2bb",
+      "nativeSize": [
+        38,
+        31
+      ],
+      "pivot": [
+        0,
+        0.6451612903225806
+      ],
+      "openBand": [
+        20,
+        17,
+        36,
+        30
+      ]
+    },
+    {
+      "key": "p3a",
+      "file": "hand_p3a.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p3a",
+      "nativeSize": [
+        42,
+        38
+      ],
+      "pivot": [
+        0,
+        0.5789473684210527
+      ],
+      "openBand": [
+        28,
+        20,
+        41,
+        34
+      ]
+    },
+    {
+      "key": "p3b",
+      "file": "hand_p3b.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p3b",
+      "nativeSize": [
+        43,
+        37
+      ],
+      "pivot": [
+        0,
+        0.5135135135135135
+      ],
+      "openBand": [
+        31,
+        16,
+        42,
+        32
+      ]
+    },
+    {
+      "key": "raise",
+      "file": "hand_raise.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-raise",
+      "nativeSize": [
+        41,
+        29
+      ],
+      "pivot": [
+        0,
+        0.7241379310344828
+      ],
+      "openBand": [
+        38,
+        0,
+        40,
+        15
+      ]
+    },
+    {
+      "key": "p4aaa",
+      "file": "hand_p4aaa.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p4aaa",
+      "nativeSize": [
+        41,
+        37
+      ],
+      "pivot": [
+        0,
+        0.5135135135135135
+      ],
+      "openBand": [
+        31,
+        14,
+        40,
+        30
+      ]
+    },
+    {
+      "key": "p4aab",
+      "file": "hand_p4aab.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p4aab",
+      "nativeSize": [
+        42,
+        36
+      ],
+      "pivot": [
+        0,
+        0.5277777777777778
+      ],
+      "openBand": [
+        26,
+        17,
+        38,
+        32
+      ]
+    },
+    {
+      "key": "p4aba",
+      "file": "hand_p4aba.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p4aba",
+      "nativeSize": [
+        39,
+        34
+      ],
+      "pivot": [
+        0,
+        0.5588235294117647
+      ],
+      "openBand": [
+        23,
+        15,
+        38,
+        32
+      ]
+    },
+    {
+      "key": "p4abb",
+      "file": "hand_p4abb.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p4abb",
+      "nativeSize": [
+        39,
+        32
+      ],
+      "pivot": [
+        0,
+        0.625
+      ],
+      "openBand": [
+        22,
+        17,
+        36,
+        30
+      ]
+    },
+    {
+      "key": "p4b",
+      "file": "hand_p4b.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-p4b",
+      "nativeSize": [
+        36,
+        29
+      ],
+      "pivot": [
+        0,
+        0.6896551724137931
+      ],
+      "openBand": [
+        18,
+        15,
+        33,
+        27
+      ]
+    },
+    {
+      "key": "aim",
+      "file": "hand_aim.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand",
+      "nativeSize": [
+        36,
+        26
+      ],
+      "pivot": [
+        0,
+        0.8461538461538461
+      ],
+      "openBand": [
+        19,
+        12,
+        34,
+        25
+      ]
+    },
+    {
+      "key": "f1aa",
+      "file": "hand_f1aa.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-f1aa",
+      "nativeSize": [
+        38,
+        31
+      ],
+      "pivot": [
+        0,
+        0.6774193548387097
+      ],
+      "openBand": [
+        18,
+        18,
+        35,
+        30
+      ]
+    },
+    {
+      "key": "f1ab",
+      "file": "hand_f1ab.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-f1ab",
+      "nativeSize": [
+        39,
+        32
+      ],
+      "pivot": [
+        0,
+        0.625
+      ],
+      "openBand": [
+        20,
+        16,
+        37,
+        31
+      ]
+    },
+    {
+      "key": "f1ba",
+      "file": "hand_f1ba.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-f1ba",
+      "nativeSize": [
+        38,
+        35
+      ],
+      "pivot": [
+        0,
+        0.6
+      ],
+      "openBand": [
+        21,
+        19,
+        36,
+        33
+      ]
+    },
+    {
+      "key": "f1bb",
+      "file": "hand_f1bb.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-f1bb",
+      "nativeSize": [
+        40,
+        33
+      ],
+      "pivot": [
+        0.025,
+        0.6363636363636364
+      ],
+      "openBand": [
+        20,
+        18,
+        37,
+        31
+      ]
+    },
+    {
+      "key": "r1aaa",
+      "file": "hand_r1aaa.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1aaa",
+      "nativeSize": [
+        35,
+        25
+      ],
+      "pivot": [
+        0,
+        0.76
+      ],
+      "openBand": [
+        15,
+        15,
+        32,
+        24
+      ]
+    },
+    {
+      "key": "r1aab",
+      "file": "hand_r1aab.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1aab",
+      "nativeSize": [
+        38,
+        31
+      ],
+      "pivot": [
+        0.07894736842105263,
+        0.8387096774193549
+      ],
+      "openBand": [
+        16,
+        23,
+        33,
+        30
+      ]
+    },
+    {
+      "key": "r1aba",
+      "file": "hand_r1aba.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1aba",
+      "nativeSize": [
+        35,
+        27
+      ],
+      "pivot": [
+        0.08571428571428572,
+        0.8148148148148149
+      ],
+      "openBand": [
+        10,
+        19,
+        32,
+        26
+      ]
+    },
+    {
+      "key": "r1abb",
+      "file": "hand_r1abb.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1abb",
+      "nativeSize": [
+        32,
+        27
+      ],
+      "pivot": [
+        0.0625,
+        0.8148148148148149
+      ],
+      "openBand": [
+        9,
+        21,
+        27,
+        26
+      ]
+    },
+    {
+      "key": "r1baa",
+      "file": "hand_r1baa.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1baa",
+      "nativeSize": [
+        34,
+        28
+      ],
+      "pivot": [
+        0.11764705882352941,
+        0.8214285714285714
+      ],
+      "openBand": [
+        9,
+        24,
+        29,
+        27
+      ]
+    },
+    {
+      "key": "r1bab",
+      "file": "hand_r1bab.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1bab",
+      "nativeSize": [
+        34,
+        27
+      ],
+      "pivot": [
+        0.14705882352941177,
+        0.8148148148148149
+      ],
+      "openBand": [
+        9,
+        25,
+        27,
+        26
+      ]
+    },
+    {
+      "key": "r1bba",
+      "file": "hand_r1bba.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1bba",
+      "nativeSize": [
+        33,
+        26
+      ],
+      "pivot": [
+        0.15151515151515152,
+        0.8076923076923077
+      ],
+      "openBand": [
+        5,
+        22,
+        23,
+        25
+      ]
+    },
+    {
+      "key": "r1bbb",
+      "file": "hand_r1bbb.png",
+      "attachmentId": "c34-g3-K02-p19v-p19y-her1:support-hand-r1bbb",
+      "nativeSize": [
+        36,
+        28
+      ],
+      "pivot": [
+        0.2222222222222222,
+        0.8214285714285714
+      ],
+      "openBand": [
+        1,
+        25,
+        22,
+        27
+      ]
+    }
+  ],
+  "schedule": {
+    "idle": [
+      [
+        0,
+        "idle"
+      ]
+    ],
+    "prepare": [
+      [
+        0,
+        "idle"
+      ],
+      [
+        0.179167,
+        "p1ab"
+      ],
+      [
+        0.1875,
+        "p1ba"
+      ],
+      [
+        0.195833,
+        "p1bb"
+      ],
+      [
+        0.20833,
+        "p2a"
+      ],
+      [
+        0.225,
+        "p2ba"
+      ],
+      [
+        0.233333,
+        "p2bb"
+      ],
+      [
+        0.24167,
+        "p3a"
+      ],
+      [
+        0.25,
+        "p3b"
+      ],
+      [
+        0.25833,
+        "raise"
+      ],
+      [
+        0.34167,
+        "p4aaa"
+      ],
+      [
+        0.35,
+        "p4aab"
+      ],
+      [
+        0.354167,
+        "p4aba"
+      ],
+      [
+        0.358333,
+        "p4abb"
+      ],
+      [
+        0.366667,
+        "p4b"
+      ],
+      [
+        0.39167,
+        "aim"
+      ]
+    ],
+    "aim": [
+      [
+        0,
+        "aim"
+      ]
+    ],
+    "fire": [
+      [
+        0,
+        "f1aa"
+      ],
+      [
+        0.025,
+        "f1ab"
+      ],
+      [
+        0.05,
+        "f1ba"
+      ],
+      [
+        0.075,
+        "f1bb"
+      ],
+      [
+        0.1,
+        "aim"
+      ]
+    ],
+    "recover": [
+      [
+        0,
+        "aim"
+      ],
+      [
+        0.06667,
+        "r1aaa"
+      ],
+      [
+        0.075,
+        "r1aab"
+      ],
+      [
+        0.083333,
+        "r1aba"
+      ],
+      [
+        0.0875,
+        "r1abb"
+      ],
+      [
+        0.095833,
+        "r1baa"
+      ],
+      [
+        0.1,
+        "r1bab"
+      ],
+      [
+        0.108333,
+        "r1bba"
+      ],
+      [
+        0.116667,
+        "r1bbb"
+      ],
+      [
+        0.125,
+        "idle"
+      ]
+    ]
+  },
+  "selfQc": {
+    "verdict": "PASS",
+    "summary": "视觉自审通过：五态支撑手都接在远臂腕口上，没有悬空、没有缺段、没有两只手同时出现。严格透底缝在挥枪过渡的 14/125 帧仍有 5–14 px 外角缺口，这 14 帧接上率都是 100%；idle/aim 稳态与 fire 全段严格 PASS。",
+    "date": "2026-11-06",
+    "snapshot": "r1339-g3",
+    "sampledFrames": 125,
+    "metricFail": 14,
+    "joinOnFail": 1,
+    "gapRangePx": [
+      5,
+      14
+    ],
+    "method": "handSetClip 阶跃换显，离线 IK 渲染；prepare/fire/recover 每 1/60 秒，aim/idle 每 0.2 秒，并包含每个换手时刻"
+  }
+}

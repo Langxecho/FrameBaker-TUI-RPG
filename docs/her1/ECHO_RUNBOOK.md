@@ -64,7 +64,23 @@ bun run her1 t03c --input "<…>\T03c_支撑手.psd" --apply --expected-rev 1335
 
 apply 依次执行：再次 check（FAIL 即停）→ 连接核对 → revision 闸门 → 上传 PNG（metadata 带 sha256 与来源）→ `aic_apply_operations`（baseRevision + 幂等键 `her1-t03c-r<rev>-<hash>`）→ 重读文档，live 快照逐字节比对 → 写 `T03c-receipt.json` → 回写 `state.json`（`currentMaterial`、`currentSize`、`status=rematerialized-pending-self-qc`、`lastKnownRevision`）。
 
-T03c 默认不改 clip：her1am3c 已经显示 support-hand。T03c 后支撑手与远臂腕口明显接不上。云端已在 r1339 快照上按 §6.1 自审，结论**仍需画师新手**（README §6 T03c）。新手图回稿之前不要写任何腕口修正；`wire` 只管显隐，修不了腕口位置。
+T03c 默认不改 clip：her1am3c 已经显示 support-hand。单张手图在双手 IK 下接不住腕口（README §6）。不要再对 T03c 跑上面的 `t03c --apply`。多档新手图走 §3.1，不要用 `wire` 代替（`wire` 只管整段显隐，不换手）。
+
+## 3.1 T03c 多档支撑手 `hand-set`（云端代画，尚未写入）
+
+稿在 `docs/her1/packs/T03c/cloud-r1/`：`handset.json` + 28 张 `hand_<key>.png`。瞄准手沿用 `:support-hand`，其余是 `:support-hand-<key>`。全部 rest 隐藏 0.001，五态新 clip `*-clip-her1am3d` 用阶跃 `att:` scale 换显（SHOW `[1000,1000,1]` / IDENT `[1,1,1]`）。基线是 her1am3c，装备与基线 clip 的哈希必须仍等于 r1339 自审快照。
+
+```powershell
+bun run her1 probe
+bun run her1 hand-set --dir docs/her1/packs/T03c/cloud-r1
+# 看 handset-her1am3d-operations.json：两个 upsert-equipment（只换 her1 / her1-hd 的支撑手），
+#   五个 create-motion-clip + 五个 upsert-action（c34-g3:her1bt-* → *-clip-her1am3d）
+bun run her1 hand-set --dir docs/her1/packs/T03c/cloud-r1 --apply --expected-rev <probe 记下的 N>
+```
+
+拒绝条件：任一张手图 check FAIL、`selfQc.verdict` 不是 PASS、tag 已退役、装备或基线 clip 哈希与快照不符、动作当前指针不是 her1am3c。dry-run 不上传。apply 后 live 快照必须逐字节不变；`state.json` 把 `guns.G3.clipTag` 写成 `her1am3d`。
+
+自审结论写在 `handset.json` 的 `selfQc` 和 README §6：视觉通过；挥枪过渡有 5–14 px 外角缺口，严格透底缝不是全清。写入后按 §6 用 ECHO 预览再看一遍，再决定要不要把 live 切到这套 her1 装备。
 
 ## 4. T10b（优先级 2）：G1 透视前臂 rematerialize + 薄接线
 
